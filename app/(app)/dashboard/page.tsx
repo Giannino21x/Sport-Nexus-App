@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
 import { useEvents, useMe, useMembers } from "@/lib/hooks";
@@ -12,10 +13,22 @@ export default function DashboardPage() {
   const { data: members } = useMembers();
   const { data: events } = useEvents();
 
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    // Keep the greeting in sync across hour-boundary transitions without a full page reload.
+    const t = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(t);
+  }, []);
+
   if (!me) return null;
 
-  const hour = new Date().getHours();
-  const greeting = hour < 11 ? "Guten Morgen" : hour < 18 ? "Hallo" : "Guten Abend";
+  const hour = now.getHours();
+  const greeting =
+    hour < 5 ? "Gute Nacht" :
+    hour < 11 ? "Guten Morgen" :
+    hour < 17 ? "Guten Tag" :
+    hour < 22 ? "Guten Abend" :
+    "Gute Nacht";
 
   const upcoming = events.filter((e) => e.status === "upcoming").sort((a, b) => a.date.localeCompare(b.date));
   const matchSuggestions = members.filter(
@@ -23,10 +36,27 @@ export default function DashboardPage() {
   ).slice(0, 3);
 
   const branchCount = new Set(members.map((m) => m.branch).filter(Boolean)).size;
-  const profileFields: (string | undefined)[] = [me.bio, me.offer, me.search, me.mobile, me.web];
-  const profileFilled = profileFields.filter((v) => v && v.trim().length > 0).length
-    + (me.sports.length > 0 ? 1 : 0);
-  const profilePct = Math.round((profileFilled / (profileFields.length + 1)) * 100);
+
+  const nonEmpty = (v?: string | null) => Boolean(v && v.trim().length > 0);
+  const profileChecks: { label: string; filled: boolean }[] = [
+    { label: "Profilbild", filled: nonEmpty(me.avatarUrl) },
+    { label: "Firma", filled: nonEmpty(me.company) },
+    { label: "Rolle", filled: nonEmpty(me.role) },
+    { label: "Branche", filled: nonEmpty(me.branch) },
+    { label: "Arbeitsort", filled: nonEmpty(me.work) },
+    { label: "Wohnort", filled: nonEmpty(me.home) },
+    { label: "Bio", filled: nonEmpty(me.bio) },
+    { label: "Angebot", filled: nonEmpty(me.offer) },
+    { label: "Suche", filled: nonEmpty(me.search) },
+    { label: "Sportinteressen", filled: (me.sports ?? []).length > 0 },
+    { label: "Mobile", filled: nonEmpty(me.mobile) },
+    { label: "Webseite", filled: nonEmpty(me.web) },
+    { label: "LinkedIn", filled: nonEmpty(me.linkedin) },
+  ];
+  const profileFilled = profileChecks.filter((c) => c.filled).length;
+  const profileTotal = profileChecks.length;
+  const profilePct = Math.round((profileFilled / profileTotal) * 100);
+  const profileMissing = profileChecks.filter((c) => !c.filled).map((c) => c.label);
 
   const stats = [
     { k: "Mitglieder", v: members.length, sub: "im Netzwerk" },
@@ -158,7 +188,7 @@ export default function DashboardPage() {
                       border: "1px solid var(--line)",
                     }}
                   >
-                    <Avatar first={m.first} last={m.last} color={m.color} size={34} />
+                    <Avatar first={m.first} last={m.last} color={m.color} size={34} url={m.avatarUrl} />
                     <div style={{ minWidth: 0, flex: 1 }}>
                       <div style={{ fontSize: 13.5, fontWeight: 500 }}>{m.first} {m.last}</div>
                       <div style={{ fontSize: 11.5, color: "var(--ink-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -185,19 +215,67 @@ export default function DashboardPage() {
             </div>
           )}
 
-          <div className="card" style={{ padding: 20 }}>
-            <div className="upper-label">Deine Profil-Sichtbarkeit</div>
+          <Link
+            href="/profile"
+            className="card"
+            style={{ padding: 20, display: "block", cursor: "pointer", transition: "transform 120ms" }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 10 }}>
+              <div className="upper-label">Deine Profil-Sichtbarkeit</div>
+              <div className="mono" style={{ fontSize: 12, color: "var(--ink-3)" }}>
+                {profileFilled}/{profileTotal}
+              </div>
+            </div>
             <div style={{ fontSize: 13, color: "var(--ink-3)", marginTop: 8, marginBottom: 12 }}>
-              Dein Profil ist zu {profilePct}% ausgefüllt.
-              {profilePct < 100 && " Ergänze fehlende Felder, um gefunden zu werden."}
+              {profilePct === 100
+                ? "Dein Profil ist komplett ausgefüllt."
+                : `Dein Profil ist zu ${profilePct}% ausgefüllt. Ergänze fehlende Felder, um gefunden zu werden.`}
             </div>
-            <div style={{ height: 6, background: "var(--bg-sunken)", borderRadius: 4, overflow: "hidden" }}>
-              <div style={{ width: `${profilePct}%`, height: "100%", background: "var(--accent)" }} />
+            <div
+              style={{
+                height: 8,
+                background: "var(--bg-sunken)",
+                borderRadius: 4,
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  width: `${profilePct}%`,
+                  height: "100%",
+                  background: profilePct === 100 ? "var(--success)" : "var(--accent)",
+                  transition: "width 240ms ease-out",
+                }}
+              />
             </div>
-            <Link href="/profile" className="btn btn-text" style={{ marginTop: 12, padding: "6px 0" }}>
-              Profil vervollständigen →
-            </Link>
-          </div>
+            {profileMissing.length > 0 && (
+              <div style={{ marginTop: 12, display: "flex", flexWrap: "wrap", gap: 6 }}>
+                {profileMissing.slice(0, 8).map((label) => (
+                  <span
+                    key={label}
+                    className="chip"
+                    style={{
+                      fontSize: 11,
+                      padding: "3px 8px",
+                      border: "1px dashed var(--line-strong)",
+                      background: "transparent",
+                      color: "var(--ink-3)",
+                    }}
+                  >
+                    {label}
+                  </span>
+                ))}
+                {profileMissing.length > 8 && (
+                  <span style={{ fontSize: 11, color: "var(--ink-4)", alignSelf: "center" }}>
+                    +{profileMissing.length - 8} weitere
+                  </span>
+                )}
+              </div>
+            )}
+            <div className="btn btn-text" style={{ marginTop: 14, padding: "6px 0", display: "inline-flex" }}>
+              {profilePct === 100 ? "Profil ansehen" : "Profil vervollständigen"} →
+            </div>
+          </Link>
         </div>
       </div>
     </div>

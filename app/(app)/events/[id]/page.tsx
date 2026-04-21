@@ -73,6 +73,19 @@ export default function EventDetailPage() {
     });
   };
 
+  const onAddToCalendar = () => {
+    const ics = buildIcs(ev);
+    const blob = new Blob([ics], { type: "text/calendar;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${ev.id}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
   return (
     <div>
       <Link
@@ -100,14 +113,25 @@ export default function EventDetailPage() {
               {past && <span className="chip" style={{ background: "rgba(255,255,255,0.15)", color: "#fff", borderColor: "transparent" }}>Vergangenes Event</span>}
             </div>
             <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
-              <div>
+              <div style={{ minWidth: 0, flex: "1 1 320px" }}>
                 <div className="upper-label" style={{ color: "rgba(255,255,255,0.7)" }}>{ev.title}</div>
-                <div className="serif" style={{ fontSize: 52, lineHeight: 1.02, letterSpacing: "-0.015em", marginTop: 8, maxWidth: 720 }}>
+                <div
+                  className="serif"
+                  style={{
+                    fontSize: "clamp(28px, 5vw, 52px)",
+                    lineHeight: 1.1,
+                    letterSpacing: "-0.015em",
+                    marginTop: 8,
+                    maxWidth: 720,
+                    overflowWrap: "anywhere",
+                    wordBreak: "break-word",
+                  }}
+                >
                   {ev.subtitle}
                 </div>
               </div>
               <div style={{ textAlign: "right" }}>
-                <div className="serif" style={{ fontSize: 64, lineHeight: 1 }}>{d.getDate()}</div>
+                <div className="serif" style={{ fontSize: 64, lineHeight: 1.1 }}>{d.getDate()}</div>
                 <div className="mono" style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.14em", marginTop: 4, color: "rgba(255,255,255,0.8)" }}>
                   {d.toLocaleDateString("de-CH", { month: "long", year: "numeric" })}
                 </div>
@@ -167,7 +191,7 @@ export default function EventDetailPage() {
                   href={`/directory/${m.id}`}
                   style={{ marginLeft: i === 0 ? 0 : -10, cursor: "pointer", border: "2px solid var(--bg-elevated)", borderRadius: "50%", display: "inline-flex" }}
                 >
-                  <Avatar first={m.first} last={m.last} color={m.color} size={40} />
+                  <Avatar first={m.first} last={m.last} color={m.color} size={40} url={m.avatarUrl} />
                 </Link>
               ))}
               <div
@@ -220,7 +244,7 @@ export default function EventDetailPage() {
                 >
                   {pending ? "..." : registered ? "Abmelden" : "Jetzt registrieren"} <Icon name="arrow" size={14} />
                 </button>
-                <button className="btn btn-ghost" style={{ width: "100%", marginTop: 8 }}>
+                <button className="btn btn-ghost" style={{ width: "100%", marginTop: 8 }} onClick={onAddToCalendar}>
                   <Icon name="calendar" size={14} /> Zum Kalender hinzufügen
                 </button>
               </>
@@ -230,9 +254,6 @@ export default function EventDetailPage() {
                 <div style={{ fontSize: 13, color: "var(--ink-3)", marginBottom: 16 }}>
                   Dieses Event fand am {d.toLocaleDateString("de-CH", { day: "numeric", month: "long", year: "numeric" })} statt.
                 </div>
-                <button className="btn btn-ghost" style={{ width: "100%" }}>
-                  <Icon name="link" size={14} /> Event-Bericht ansehen
-                </button>
               </>
             )}
           </div>
@@ -257,6 +278,45 @@ export default function EventDetailPage() {
       </div>
     </div>
   );
+}
+
+function buildIcs(ev: { id: string; title: string; subtitle: string; date: string; time: string; venue: string; address: string; desc: string }): string {
+  // Parse "HH:MM – HH:MM" (allow en-dash or hyphen) from ev.time; fall back to a 2h block at 12:00.
+  const m = /(\d{1,2}):(\d{2})\s*[–-]\s*(\d{1,2}):(\d{2})/.exec(ev.time);
+  const startH = m ? parseInt(m[1], 10) : 12;
+  const startM = m ? parseInt(m[2], 10) : 0;
+  const endH = m ? parseInt(m[3], 10) : startH + 2;
+  const endM = m ? parseInt(m[4], 10) : startM;
+
+  // ev.date is YYYY-MM-DD → build local datetimes
+  const [yr, mo, dy] = ev.date.split("-").map((n) => parseInt(n, 10));
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  const fmt = (y: number, mo: number, d: number, h: number, mi: number) =>
+    `${y}${pad(mo)}${pad(d)}T${pad(h)}${pad(mi)}00`;
+  const dtStart = fmt(yr, mo, dy, startH, startM);
+  const dtEnd = fmt(yr, mo, dy, endH, endM);
+  const now = new Date();
+  const dtStamp = `${now.getUTCFullYear()}${pad(now.getUTCMonth() + 1)}${pad(now.getUTCDate())}T${pad(now.getUTCHours())}${pad(now.getUTCMinutes())}${pad(now.getUTCSeconds())}Z`;
+
+  const escape = (s: string) => s.replace(/\\/g, "\\\\").replace(/\n/g, "\\n").replace(/[,;]/g, (c) => "\\" + c);
+
+  const lines = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//SportNexus//EN",
+    "CALSCALE:GREGORIAN",
+    "BEGIN:VEVENT",
+    `UID:${ev.id}@sportnexus`,
+    `DTSTAMP:${dtStamp}`,
+    `DTSTART:${dtStart}`,
+    `DTEND:${dtEnd}`,
+    `SUMMARY:${escape(ev.title + (ev.subtitle ? " — " + ev.subtitle : ""))}`,
+    `LOCATION:${escape(ev.venue + (ev.address ? ", " + ev.address : ""))}`,
+    `DESCRIPTION:${escape(ev.desc)}`,
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ];
+  return lines.join("\r\n");
 }
 
 function DetailRow({ icon, label, value }: { icon: IconName; label: string; value: string }) {

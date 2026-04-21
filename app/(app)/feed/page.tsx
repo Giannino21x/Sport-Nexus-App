@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
 import { useSettings } from "@/components/settings-context";
 import { reload, useMe, usePosts, type Post } from "@/lib/hooks";
-import { createPostAction } from "@/app/actions/posts";
-
-const TRENDING = ["Nachfolge KMU", "AI in der Schweiz", "ESG Reporting", "Handball WM", "Series A 2026"];
+import { createPostAction, likePostAction } from "@/app/actions/posts";
 
 export default function FeedPage() {
   const { dataSource } = useSettings();
@@ -19,8 +17,51 @@ export default function FeedPage() {
   const [localPosts, setLocalPosts] = useState<Post[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [likedIds, setLikedIds] = useState<Set<string>>(new Set());
+  const [likeDelta, setLikeDelta] = useState<Record<string, number>>({});
 
   const allPosts = [...localPosts, ...posts];
+
+  // Derive trending topics from real post tags + hashtags in post bodies.
+  // Only show when at least 3 distinct topics appear across posts.
+  const trending = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const p of allPosts) {
+      if (p.tag && p.tag.trim()) {
+        const k = p.tag.trim();
+        counts.set(k, (counts.get(k) ?? 0) + 1);
+      }
+      const hashtags = p.body.match(/#[\p{L}\d_-]{2,}/gu) ?? [];
+      for (const h of hashtags) {
+        const k = h.slice(1);
+        counts.set(k, (counts.get(k) ?? 0) + 1);
+      }
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([label, count]) => ({ label, count }));
+  }, [allPosts]);
+
+  const onLike = (postId: string) => {
+    if (likedIds.has(postId)) return; // one like per session per post
+    setLikedIds((s) => new Set(s).add(postId));
+    setLikeDelta((d) => ({ ...d, [postId]: (d[postId] ?? 0) + 1 }));
+    if (dataSource !== "live" || postId.startsWith("local-") || postId.startsWith("demo-")) return;
+    likePostAction(postId).then((r) => {
+      if (r.error) {
+        // roll back
+        setLikedIds((s) => {
+          const n = new Set(s);
+          n.delete(postId);
+          return n;
+        });
+        setLikeDelta((d) => ({ ...d, [postId]: Math.max(0, (d[postId] ?? 1) - 1) }));
+      } else {
+        reload("posts");
+      }
+    });
+  };
 
   const onPost = () => {
     const body = draft.trim();
@@ -75,7 +116,7 @@ export default function FeedPage() {
       {composerOpen && me && (
         <div className="card" style={{ padding: 18, marginBottom: 18 }}>
           <div className="row" style={{ alignItems: "flex-start" }}>
-            <Avatar first={me.first} last={me.last} color={me.color} size={40} />
+            <Avatar first={me.first} last={me.last} color={me.color} size={40} url={me.avatarUrl} />
             <div style={{ flex: 1 }}>
               <textarea
                 className="textarea"
@@ -99,7 +140,15 @@ export default function FeedPage() {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)", gap: 18 }} className="dash-grid">
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns:
+            trending.length >= 3 ? "minmax(0, 2fr) minmax(0, 1fr)" : "minmax(0, 1fr)",
+          gap: 18,
+        }}
+        className="dash-grid"
+      >
         <div className="col" style={{ gap: 14 }}>
           {allPosts.length === 0 ? (
             <div className="card" style={{ padding: 32, textAlign: "center", color: "var(--ink-3)" }}>
@@ -109,7 +158,7 @@ export default function FeedPage() {
             allPosts.map((p) => (
               <div key={p.id} className="card" style={{ padding: 20 }}>
                 <div className="row">
-                  <Avatar first={p.author.first} last={p.author.last} color={p.author.color} size={44} />
+                  <Avatar first={p.author.first} last={p.author.last} color={p.author.color} size={44} url={p.author.avatarUrl} />
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontSize: 14, fontWeight: 500 }}>{p.author.first} {p.author.last}</div>
                     <div style={{ fontSize: 11.5, color: "var(--ink-3)" }}>
@@ -131,42 +180,51 @@ export default function FeedPage() {
                     color: "var(--ink-3)",
                   }}
                 >
-                  <button className="btn-text" style={{ padding: 0, fontSize: 12, color: "var(--ink-3)" }}>
-                    ↑ Interessant · {p.likes}
+                  <button
+                    className="btn-text"
+                    onClick={() => onLike(p.id)}
+                    disabled={likedIds.has(p.id)}
+                    style={{
+                      padding: 0,
+                      fontSize: 12,
+                      color: likedIds.has(p.id) ? "var(--accent)" : "var(--ink-3)",
+                      cursor: likedIds.has(p.id) ? "default" : "pointer",
+                    }}
+                  >
+                    ↑ Interessant · {p.likes + (likeDelta[p.id] ?? 0)}
                   </button>
-                  <button className="btn-text" style={{ padding: 0, fontSize: 12, color: "var(--ink-3)" }}>
+                  <span style={{ padding: 0, fontSize: 12, color: "var(--ink-4)" }}>
                     Antworten · {p.replies}
-                  </button>
-                  <button className="btn-text" style={{ padding: 0, fontSize: 12, color: "var(--ink-3)", marginLeft: "auto" }}>
-                    Teilen
-                  </button>
+                  </span>
                 </div>
               </div>
             ))
           )}
         </div>
-        <div className="col" style={{ gap: 18 }}>
-          <div className="card" style={{ padding: 20 }}>
-            <div className="upper-label" style={{ marginBottom: 10 }}>Trending Themen</div>
-            {TRENDING.map((t, i) => (
-              <div
-                key={t}
-                style={{
-                  padding: "8px 0",
-                  borderTop: "1px solid var(--line)",
-                  display: "flex",
-                  justifyContent: "space-between",
-                  fontSize: 13,
-                }}
-              >
-                <span>#{t.toLowerCase().replace(/\s/g, "")}</span>
-                <span className="mono" style={{ color: "var(--ink-4)", fontSize: 11 }}>
-                  {5 + i * 4} posts
-                </span>
-              </div>
-            ))}
+        {trending.length >= 3 && (
+          <div className="col" style={{ gap: 18 }}>
+            <div className="card" style={{ padding: 20 }}>
+              <div className="upper-label" style={{ marginBottom: 10 }}>Trending Themen</div>
+              {trending.map((t, i) => (
+                <div
+                  key={t.label}
+                  style={{
+                    padding: "8px 0",
+                    borderTop: i === 0 ? "none" : "1px solid var(--line)",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    fontSize: 13,
+                  }}
+                >
+                  <span>#{t.label.toLowerCase().replace(/\s/g, "")}</span>
+                  <span className="mono" style={{ color: "var(--ink-4)", fontSize: 11 }}>
+                    {t.count} {t.count === 1 ? "post" : "posts"}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

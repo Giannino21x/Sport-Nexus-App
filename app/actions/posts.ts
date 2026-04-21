@@ -25,3 +25,15 @@ export async function createPostAction(body: string, tag = ""): Promise<{ error?
   revalidatePath("/feed");
   return {};
 }
+
+export async function likePostAction(postId: string): Promise<{ error?: string; likes?: number }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht eingeloggt." };
+
+  const { data, error } = await supabase.rpc("increment_post_likes", { p_post_id: postId });
+  if (error) return { error: error.message };
+
+  revalidatePath("/feed");
+  return { likes: typeof data === "number" ? data : undefined };
+}

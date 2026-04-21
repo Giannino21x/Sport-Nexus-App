@@ -34,6 +34,7 @@ function LoginInner() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/dashboard";
   const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [signInState, signInFormAction, signInPending] = useActionState(signInAction, undefined);
   const [signUpState, signUpFormAction, signUpPending] = useActionState(signUpAction, undefined);
@@ -200,14 +201,36 @@ function LoginInner() {
                     <span>Passwort</span>
                     <a href="#" style={{ color: C.textDim, fontSize: 11.5 }}>Passwort vergessen?</a>
                   </label>
-                  <input
-                    className="input"
-                    style={inputStyle}
-                    type="password"
-                    name="password"
-                    required
-                    autoComplete="current-password"
-                  />
+                  <div style={{ position: "relative" }}>
+                    <input
+                      className="input"
+                      style={{ ...inputStyle, paddingRight: 40 }}
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      required
+                      autoComplete="current-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      aria-label={showPassword ? "Passwort verbergen" : "Passwort anzeigen"}
+                      style={{
+                        position: "absolute",
+                        right: 8,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "transparent",
+                        border: "none",
+                        padding: 6,
+                        cursor: "pointer",
+                        color: C.textDim,
+                        display: "inline-flex",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Icon name={showPassword ? "eyeOff" : "eye"} size={16} />
+                    </button>
+                  </div>
                 </div>
                 {signInState?.error && (
                   <div
@@ -292,15 +315,37 @@ function LoginInner() {
                   <label className="field-label" style={labelStyle}>
                     Passwort <span style={{ color: C.textSub }}>· min. 8 Zeichen</span>
                   </label>
-                  <input
-                    className="input"
-                    style={inputStyle}
-                    type="password"
-                    name="password"
-                    required
-                    minLength={8}
-                    autoComplete="new-password"
-                  />
+                  <div style={{ position: "relative" }}>
+                    <input
+                      className="input"
+                      style={{ ...inputStyle, paddingRight: 40 }}
+                      type={showPassword ? "text" : "password"}
+                      name="password"
+                      required
+                      minLength={8}
+                      autoComplete="new-password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword((v) => !v)}
+                      aria-label={showPassword ? "Passwort verbergen" : "Passwort anzeigen"}
+                      style={{
+                        position: "absolute",
+                        right: 8,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        background: "transparent",
+                        border: "none",
+                        padding: 6,
+                        cursor: "pointer",
+                        color: C.textDim,
+                        display: "inline-flex",
+                        alignItems: "center",
+                      }}
+                    >
+                      <Icon name={showPassword ? "eyeOff" : "eye"} size={16} />
+                    </button>
+                  </div>
                 </div>
                 {signUpState?.error && (
                   <div

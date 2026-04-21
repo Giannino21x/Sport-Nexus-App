@@ -6,7 +6,7 @@ export type IconName =
   | "arrow" | "arrowUp" | "chevron" | "chevronDown" | "plus" | "x"
   | "edit" | "settings" | "check" | "link" | "mail" | "phone" | "globe"
   | "map" | "sparkle" | "logout" | "menu" | "home" | "feed" | "moon" | "sun"
-  | "building" | "trophy" | "send";
+  | "building" | "trophy" | "send" | "eye" | "eyeOff";
 
 const PATHS: Record<IconName, React.ReactNode> = {
   dashboard: <path d="M3 12h7V3H3zM14 9h7V3h-7zM14 21h7v-9h-7zM3 21h7v-6H3z" />,
@@ -45,6 +45,8 @@ const PATHS: Record<IconName, React.ReactNode> = {
   building: <><rect x="4" y="3" width="16" height="18" rx="1" /><path d="M9 7h.01M14 7h.01M9 11h.01M14 11h.01M9 15h.01M14 15h.01M10 21v-4h4v4" /></>,
   trophy: <path d="M8 4h8v4a4 4 0 0 1-8 0zM8 6H5v2a3 3 0 0 0 3 3M16 6h3v2a3 3 0 0 1-3 3M10 14h4l-1 5h-2z" />,
   send: <path d="M21 3L3 10l7 3M21 3l-7 18-3-8M21 3l-11 10" />,
+  eye: <><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z" /><circle cx="12" cy="12" r="3" /></>,
+  eyeOff: <path d="M3 3l18 18M10.6 6.1A9.6 9.6 0 0 1 12 6c6.5 0 10 6 10 6a15.3 15.3 0 0 1-3.3 3.9M6.6 6.7A15.3 15.3 0 0 0 2 12s3.5 6 10 6a9.6 9.6 0 0 0 4.4-1.1M9.9 9.9a3 3 0 0 0 4.2 4.2" />,
 };
 
 type IconProps = SVGProps<SVGSVGElement> & {

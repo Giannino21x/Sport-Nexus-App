@@ -37,19 +37,64 @@ export default function MemberDetailPage() {
       </Link>
 
       <div className="card" style={{ padding: 0, overflow: "hidden", marginBottom: 18 }}>
-        <div style={{ height: 120, background: `linear-gradient(135deg, ${m.color} 0%, var(--ink) 140%)`, position: "relative" }}>
+        <div
+          style={{
+            height: 140,
+            background: `linear-gradient(135deg, ${m.color} 0%, var(--ink) 140%)`,
+            position: "relative",
+          }}
+        >
           <div aria-hidden="true" className="avatar-stripes" />
         </div>
-        <div style={{ padding: "0 28px 24px", marginTop: -50, display: "flex", gap: 20, alignItems: "flex-end", flexWrap: "wrap" }}>
-          <Avatar first={m.first} last={m.last} color={m.color} size={108} square />
-          <div style={{ flex: 1, minWidth: 240, paddingBottom: 4 }}>
-            <div className="serif" style={{ fontSize: 40, lineHeight: 1, letterSpacing: "-0.01em" }}>
+        <div
+          style={{
+            padding: "18px 28px 24px",
+            display: "flex",
+            gap: 20,
+            alignItems: "flex-start",
+            flexWrap: "wrap",
+          }}
+        >
+          <div style={{ marginTop: -74, flexShrink: 0 }}>
+            <Avatar
+              first={m.first}
+              last={m.last}
+              color={m.color}
+              size={108}
+              square
+              url={m.avatarUrl}
+            />
+          </div>
+          <div style={{ flex: "1 1 240px", minWidth: 0 }}>
+            <div
+              className="serif"
+              style={{
+                fontSize: "clamp(26px, 4.2vw, 40px)",
+                lineHeight: 1.1,
+                letterSpacing: "-0.01em",
+                overflowWrap: "anywhere",
+                wordBreak: "break-word",
+              }}
+            >
               {m.first} {m.last}
             </div>
-            <div style={{ fontSize: 15, color: "var(--ink-2)", marginTop: 6 }}>{m.role} · {m.company}</div>
-            {m.extra && <div style={{ fontSize: 13, color: "var(--ink-3)", marginTop: 2, fontStyle: "italic" }}>{m.extra}</div>}
+            <div
+              style={{
+                fontSize: 15,
+                color: "var(--ink-2)",
+                marginTop: 6,
+                overflowWrap: "anywhere",
+              }}
+            >
+              {m.role} · {m.company}
+            </div>
+            {m.extra && (
+              <div style={{ fontSize: 13, color: "var(--ink-3)", marginTop: 2, fontStyle: "italic" }}>
+                {m.extra}
+              </div>
+            )}
           </div>
-          <div className="row" style={{ paddingBottom: 4, flexWrap: "wrap" }}>
+          <div className="row" style={{ flexWrap: "wrap" }}>
             {m.email && (
               <a className="btn btn-ghost" href={`mailto:${m.email}`}>
                 <Icon name="mail" size={14} /> E-Mail
@@ -134,9 +179,19 @@ export default function MemberDetailPage() {
                 <Icon name="globe" size={14} className="text-ink-3" /> {m.web}
               </div>
             )}
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", fontSize: 13 }}>
-              <Icon name="link" size={14} className="text-ink-3" /> linkedin.com/in/{m.id}
-            </div>
+            {m.linkedin && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", fontSize: 13 }}>
+                <Icon name="link" size={14} className="text-ink-3" />
+                <a
+                  href={m.linkedin.startsWith("http") ? m.linkedin : `https://${m.linkedin}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ color: "var(--accent)", textDecoration: "underline" }}
+                >
+                  {m.linkedin.replace(/^https?:\/\//, "")}
+                </a>
+              </div>
+            )}
             <div style={{ fontSize: 11, color: "var(--ink-4)", marginTop: 12, lineHeight: 1.5, padding: "8px 10px", background: "var(--bg-sunken)", borderRadius: 8 }}>
               Kontaktdaten sind nur für SportNexus-Members sichtbar und dürfen nicht weitergegeben werden.
             </div>

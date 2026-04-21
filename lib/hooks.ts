@@ -32,27 +32,46 @@ function useReloadTick(key: ReloadKey): number {
 
 type Row = Record<string, unknown>;
 
+// Repair UTF-8 bytes that were decoded as Latin-1 and then re-encoded as UTF-8
+// (e.g. "Zürich" stored in the DB as "ZÃ¼rich"). Only rewrites strings that
+// actually contain the mojibake markers Ã or Â, so this is safe as a no-op on
+// already-correct data. Mirror of the migration's repair function on the
+// server, so the app looks right even if the SQL repair hasn't run yet.
+function repairMojibake(s: string): string {
+  if (!s || !/[ÃÂ]/.test(s)) return s;
+  try {
+    const bytes = Uint8Array.from(s, (ch) => ch.charCodeAt(0) & 0xff);
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    return s;
+  }
+}
+
+const rm = (v: unknown): string => repairMojibake(String(v ?? ""));
+
 function rowToMember(r: Row): Member {
   return {
     id: String(r.slug ?? r.id ?? ""),
-    first: String(r.first ?? ""),
-    last: String(r.last ?? ""),
-    company: String(r.company ?? ""),
-    role: String(r.role ?? ""),
-    extra: String(r.extra ?? ""),
-    branch: String(r.branch ?? ""),
-    sub: String(r.sub ?? ""),
-    work: String(r.work ?? ""),
-    home: String(r.home ?? ""),
-    offer: String(r.offer ?? ""),
-    sports: Array.isArray(r.sports) ? (r.sports as string[]) : [],
-    search: String(r.search ?? ""),
+    first: rm(r.first),
+    last: rm(r.last),
+    company: rm(r.company),
+    role: rm(r.role),
+    extra: rm(r.extra),
+    branch: rm(r.branch),
+    sub: rm(r.sub),
+    work: rm(r.work),
+    home: rm(r.home),
+    offer: rm(r.offer),
+    sports: Array.isArray(r.sports) ? (r.sports as string[]).map(repairMojibake) : [],
+    search: rm(r.search),
     since: typeof r.since === "string" ? formatDate(r.since) : "",
     email: String(r.email ?? ""),
     mobile: String(r.mobile ?? ""),
     web: String(r.web ?? ""),
-    bio: String(r.bio ?? ""),
+    bio: rm(r.bio),
     color: String(r.color ?? "#C7916A"),
+    avatarUrl: r.avatar_url ? String(r.avatar_url) : undefined,
+    linkedin: r.linkedin ? String(r.linkedin) : undefined,
   };
 }
 
@@ -65,21 +84,21 @@ function formatDate(iso: string): string {
 function rowToEvent(r: Row): SnEvent {
   return {
     id: String(r.id ?? ""),
-    title: String(r.title ?? ""),
-    subtitle: String(r.subtitle ?? ""),
+    title: rm(r.title),
+    subtitle: rm(r.subtitle),
     date: String(r.date ?? ""),
-    time: String(r.time ?? ""),
-    city: String(r.city ?? ""),
-    venue: String(r.venue ?? ""),
-    address: String(r.address ?? ""),
+    time: rm(r.time),
+    city: rm(r.city),
+    venue: rm(r.venue),
+    address: rm(r.address),
     guests: Number(r.guests ?? 0),
     status: r.status === "past" ? "past" : "upcoming",
     featured: Boolean(r.featured),
-    desc: String(r.description ?? ""),
+    desc: rm(r.description),
     img: String(r.image_url ?? ""),
     speakers: (r.speakers as SnEvent["speakers"]) ?? [],
     agenda: (r.agenda as SnEvent["agenda"]) ?? [],
-    long: String(r.long_description ?? ""),
+    long: rm(r.long_description),
   };
 }
 
@@ -285,6 +304,7 @@ export type ChatMessage = {
   recipientDbId: string;
   body: string;
   createdAt: string;
+  attachmentUrl?: string;
 };
 
 export function useThreadMessages(meDbId: string | null, otherDbId: string | null) {
@@ -304,7 +324,7 @@ export function useThreadMessages(meDbId: string | null, otherDbId: string | nul
     (async () => {
       const { data } = await supabase
         .from("messages")
-        .select("id, sender_id, recipient_id, body, created_at")
+        .select("id, sender_id, recipient_id, body, created_at, attachment_url")
         .or(`and(sender_id.eq.${meDbId},recipient_id.eq.${otherDbId}),and(sender_id.eq.${otherDbId},recipient_id.eq.${meDbId})`)
         .order("created_at", { ascending: true });
       if (cancelled) return;
@@ -315,6 +335,7 @@ export function useThreadMessages(meDbId: string | null, otherDbId: string | nul
           recipientDbId: String(r.recipient_id),
           body: String(r.body),
           createdAt: String(r.created_at),
+          attachmentUrl: r.attachment_url ? String(r.attachment_url) : undefined,
         })),
       );
       setLoading(false);

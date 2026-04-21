@@ -4,12 +4,12 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Avatar } from "./avatar";
+import { CommandPalette } from "./command-palette";
 import { Icon, type IconName } from "./icon";
 import { LogoWordmark } from "./logo-wordmark";
 import { NotificationsPopover } from "./notifications-popover";
-import { TweaksPanel } from "./tweaks-panel";
 import { useSettings } from "./settings-context";
-import { useEvents, useMe, useNotifications } from "@/lib/hooks";
+import { useEvents, useMe, useMembers, useNotifications } from "@/lib/hooks";
 import { signOutAction } from "@/app/actions/auth";
 
 type NavItem = { k: string; href: string; label: string; icon: IconName; badge?: number; dot?: boolean; beta?: boolean };
@@ -22,10 +22,22 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { data: events } = useEvents();
   const { data: notifs } = useNotifications(meDbId);
 
-  const [tweaksOpen, setTweaksOpen] = useState(false);
   const [notifsOpen, setNotifsOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const { data: members } = useMembers();
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((o) => !o);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 
   useEffect(() => {
     const h = () => setIsMobile(window.innerWidth < 780);
@@ -116,15 +128,15 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link href="/profile" className={"nav-item" + (pathname === "/profile" ? " active" : "")}>
             <Icon name="edit" className="icon" /><span>Profil bearbeiten</span>
           </Link>
-          <button className="nav-item" onClick={() => setTweaksOpen(!tweaksOpen)}>
+          <Link href="/settings" className={"nav-item" + (pathname === "/settings" ? " active" : "")}>
             <Icon name="settings" className="icon" /><span>Einstellungen</span>
-          </button>
+          </Link>
           <button className="nav-item" onClick={handleLogout}>
             <Icon name="logout" className="icon" /><span>Abmelden</span>
           </button>
 
           <Link href="/profile" className="me" style={{ cursor: "pointer" }}>
-            <Avatar first={me.first} last={me.last} color={me.color} size={34} />
+            <Avatar first={me.first} last={me.last} color={me.color} size={34} url={me.avatarUrl} />
             <div className="me-text" style={{ flex: 1, minWidth: 0 }}>
               <div className="me-name">{me.first} {me.last}</div>
               <div className="me-role" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -154,9 +166,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             )}
           </div>
           {!isMobile && (
-            <div className="search-global" onClick={() => navigate("/directory")}>
+            <div className="search-global" onClick={() => setPaletteOpen(true)} role="button" tabIndex={0}>
               <Icon name="search" size={14} />
-              <span style={{ flex: 1 }}>Mitglieder, Events, Firmen...</span>
+              <span style={{ flex: 1 }}>Mitglieder, Events, Seiten suchen...</span>
               <kbd>⌘K</kbd>
             </div>
           )}
@@ -176,7 +188,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <Icon name={theme === "dark" ? "sun" : "moon"} />
           </button>
-          {isMobile && <Avatar first={me.first} last={me.last} color={me.color} size={30} />}
+          {isMobile && <Avatar first={me.first} last={me.last} color={me.color} size={30} url={me.avatarUrl} />}
         </div>
 
         <div className="content">{children}</div>
@@ -259,9 +271,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      {tweaksOpen && (
-        <TweaksPanel onClose={() => setTweaksOpen(false)} isMobile={isMobile} navigate={navigate} />
-      )}
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        members={members}
+        events={events}
+      />
     </div>
   );
 }

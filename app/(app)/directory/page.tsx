@@ -20,13 +20,19 @@ export default function DirectoryPage() {
   const pageSize = 12;
 
   const subOptions = useMemo(() => {
-    if (!filters.branch) return Object.values(BRANCHES).flat();
-    return BRANCHES[filters.branch] || [];
+    // Without a branch selected, sub-branches from different branches are mixed
+    // together and not meaningful — show nothing so the dropdown stays disabled.
+    if (!filters.branch) return [];
+    return BRANCHES[filters.branch] ?? [];
   }, [filters.branch]);
 
-  const allWorkCities = useMemo(() => [...new Set(members.map((m) => m.work))].sort(), [members]);
-  const allHomeCities = useMemo(() => [...new Set(members.map((m) => m.home))].sort(), [members]);
-  const allRoles = useMemo(() => [...new Set(members.map((m) => m.role))].sort(), [members]);
+  const deCollator = useMemo(() => new Intl.Collator("de-CH", { sensitivity: "base" }), []);
+  const uniqClean = (arr: string[]) =>
+    [...new Set(arr.map((v) => v?.trim()).filter((v): v is string => Boolean(v)))].sort(deCollator.compare);
+
+  const allWorkCities = useMemo(() => uniqClean(members.map((m) => m.work)), [members, deCollator]);
+  const allHomeCities = useMemo(() => uniqClean(members.map((m) => m.home)), [members, deCollator]);
+  const allRoles = useMemo(() => uniqClean(members.map((m) => m.role)), [members, deCollator]);
 
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
@@ -117,7 +123,7 @@ export default function DirectoryPage() {
               </button>
             ))}
           </div>
-          <LayoutToggle layout={layout} />
+          <LayoutToggle />
         </div>
       </div>
 
@@ -179,12 +185,50 @@ export default function DirectoryPage() {
   );
 }
 
-function LayoutToggle({ layout }: { layout: "grid" | "list" | "table" }) {
-  const icons = { grid: "grid", list: "list", table: "rows" } as const;
-  const labels = { grid: "Grid", list: "Liste", table: "Dicht" };
+function LayoutToggle() {
+  const { layout, setLayout } = useSettings();
+  const options = [
+    { k: "grid" as const, icon: "grid" as const, label: "Grid" },
+    { k: "list" as const, icon: "list" as const, label: "Liste" },
+    { k: "table" as const, icon: "rows" as const, label: "Dicht" },
+  ];
   return (
-    <div className="chip" style={{ padding: "5px 10px" }}>
-      <Icon name={icons[layout]} size={12} /> {labels[layout]}
+    <div
+      style={{
+        display: "flex",
+        border: "1px solid var(--line)",
+        borderRadius: "var(--radius)",
+        padding: 2,
+        background: "var(--bg-elevated)",
+      }}
+    >
+      {options.map((o) => {
+        const active = layout === o.k;
+        return (
+          <button
+            key={o.k}
+            type="button"
+            onClick={() => setLayout(o.k)}
+            aria-pressed={active}
+            title={o.label}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "6px 10px",
+              fontSize: 12,
+              border: "none",
+              background: active ? "var(--bg-sunken)" : "transparent",
+              color: "var(--ink)",
+              borderRadius: 7,
+              cursor: "pointer",
+            }}
+          >
+            <Icon name={o.icon} size={13} />
+            <span>{o.label}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }
@@ -237,7 +281,7 @@ function MemberCard({ m, cardStyle }: { m: Member; cardStyle: "default" | "photo
   if (cardStyle === "compact") {
     return (
       <Link href={`/directory/${m.id}`} className="card" style={{ cursor: "pointer", padding: 12, display: "flex", gap: 10, alignItems: "center" }}>
-        <Avatar first={m.first} last={m.last} color={m.color} size={42} />
+        <Avatar first={m.first} last={m.last} color={m.color} size={42} url={m.avatarUrl} />
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontSize: 13.5, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {m.first} {m.last}
@@ -259,7 +303,7 @@ function MemberCard({ m, cardStyle }: { m: Member; cardStyle: "default" | "photo
       style={{ cursor: "pointer", padding: 18, display: "flex", flexDirection: "column", gap: 12 }}
     >
       <div className="row">
-        <Avatar first={m.first} last={m.last} color={m.color} size={52} />
+        <Avatar first={m.first} last={m.last} color={m.color} size={52} url={m.avatarUrl} />
         <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 15, fontWeight: 500, lineHeight: 1.2 }}>{m.first} {m.last}</div>
           <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 2 }}>{m.role}</div>
@@ -294,7 +338,7 @@ function MemberList({ members }: { members: Member[] }) {
             alignItems: "center",
           }}
         >
-          <Avatar first={m.first} last={m.last} color={m.color} size={52} />
+          <Avatar first={m.first} last={m.last} color={m.color} size={52} url={m.avatarUrl} />
           <div style={{ minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
               <div style={{ fontSize: 15.5, fontWeight: 500 }}>{m.first} {m.last}</div>
@@ -361,7 +405,7 @@ function MemberTable({ members }: { members: Member[] }) {
               >
                 <td style={{ padding: "10px 14px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <Avatar first={m.first} last={m.last} color={m.color} size={30} />
+                    <Avatar first={m.first} last={m.last} color={m.color} size={30} url={m.avatarUrl} />
                     <span style={{ fontWeight: 500 }}>{m.first} {m.last}</span>
                   </div>
                 </td>
