@@ -7,7 +7,7 @@ import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
 import { useSettings } from "@/components/settings-context";
 import { reload, useMe } from "@/lib/hooks";
-import { SPORTS, type Member } from "@/lib/data";
+import { BRANCHES, CITIES, ROLES, SPORTS, type Member } from "@/lib/data";
 import { updateProfileAction, type ProfileInput } from "@/app/actions/members";
 
 type Form = Member & { linkedin: string; showMobile: boolean; showEmail: boolean; matchmaking: boolean };
@@ -46,6 +46,16 @@ export default function ProfilePage() {
     }
     startTransition(async () => {
       const input: ProfileInput = {
+        first: form.first,
+        last: form.last,
+        company: form.company,
+        role: form.role,
+        branch: form.branch,
+        sub: form.sub,
+        work: form.work,
+        home: form.home,
+        email: form.email,
+        since: form.since,
         bio: form.bio,
         offer: form.offer,
         search: form.search,
@@ -74,7 +84,7 @@ export default function ProfilePage() {
           <div className="upper-label">Profil bearbeiten {isDemo && <span style={{ color: "var(--accent)", marginLeft: 6 }}>· Demo (nicht gespeichert)</span>}</div>
           <h1>Dein Profil</h1>
           <div className="subtitle">
-            Daten aus HubSpot sind synchronisiert und können nur dort geändert werden. Zusätzliche Felder pflegst du hier.
+            Alle Felder kannst du hier direkt bearbeiten.
           </div>
         </div>
         <div className="row">
@@ -99,21 +109,59 @@ export default function ProfilePage() {
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)", gap: 18 }} className="dash-grid">
         <div className="col" style={{ gap: 18 }}>
           <div className="card" style={{ padding: 24 }}>
-            <div className="upper-label" style={{ marginBottom: 14 }}>
-              Stammdaten <span style={{ color: "var(--ink-4)", marginLeft: 6 }}>· aus HubSpot · read-only</span>
-            </div>
+            <div className="upper-label" style={{ marginBottom: 14 }}>Stammdaten</div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <ReadOnlyField label="Vorname" value={me.first} />
-              <ReadOnlyField label="Nachname" value={me.last} />
-              <ReadOnlyField label="Firma" value={me.company} />
-              <ReadOnlyField label="Rolle" value={me.role} />
-              <ReadOnlyField label="Branche" value={me.branch} />
-              <ReadOnlyField label="Subbranche" value={me.sub} />
-              <ReadOnlyField label="Arbeitsort" value={me.work} />
-              <ReadOnlyField label="Wohnort" value={me.home} />
-              <ReadOnlyField label="E-Mail" value={me.email} />
-              <ReadOnlyField label="Member seit" value={me.since} />
+              <TextField label="Vorname" value={form.first} onChange={(v) => set("first", v)} />
+              <TextField label="Nachname" value={form.last} onChange={(v) => set("last", v)} />
+              <TextField label="Firma" value={form.company} onChange={(v) => set("company", v)} />
+              <TextField
+                label="Rolle"
+                value={form.role}
+                onChange={(v) => set("role", v)}
+                list="roles-list"
+              />
+              <SelectField
+                label="Branche"
+                value={form.branch}
+                onChange={(v) => {
+                  set("branch", v);
+                  if (!BRANCHES[v]?.includes(form.sub)) set("sub", "");
+                }}
+                options={Object.keys(BRANCHES)}
+              />
+              <SelectField
+                label="Subbranche"
+                value={form.sub}
+                onChange={(v) => set("sub", v)}
+                options={BRANCHES[form.branch] ?? []}
+                disabled={!form.branch}
+              />
+              <TextField
+                label="Arbeitsort"
+                value={form.work}
+                onChange={(v) => set("work", v)}
+                list="cities-list"
+              />
+              <TextField
+                label="Wohnort"
+                value={form.home}
+                onChange={(v) => set("home", v)}
+                list="cities-list"
+              />
+              <TextField label="E-Mail" type="email" value={form.email} onChange={(v) => set("email", v)} />
+              <TextField
+                label="Member seit"
+                value={form.since}
+                onChange={(v) => set("since", v)}
+                placeholder="TT.MM.JJJJ"
+              />
             </div>
+            <datalist id="roles-list">
+              {ROLES.map((r) => <option key={r} value={r} />)}
+            </datalist>
+            <datalist id="cities-list">
+              {CITIES.map((c) => <option key={c} value={c} />)}
+            </datalist>
           </div>
 
           <div className="card" style={{ padding: 24 }}>
@@ -232,15 +280,15 @@ export default function ProfilePage() {
             </div>
             <div className="card" style={{ padding: 14, boxShadow: "none" }}>
               <div className="row">
-                <Avatar first={me.first} last={me.last} color={me.color} size={44} />
+                <Avatar first={form.first} last={form.last} color={me.color} size={44} />
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 500 }}>{me.first} {me.last}</div>
-                  <div style={{ fontSize: 12, color: "var(--ink-3)" }}>{me.role} · {me.company}</div>
+                  <div style={{ fontSize: 14, fontWeight: 500 }}>{form.first} {form.last}</div>
+                  <div style={{ fontSize: 12, color: "var(--ink-3)" }}>{form.role} · {form.company}</div>
                 </div>
               </div>
               <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-                <span className="chip branch">{me.branch}</span>
-                <span className="chip">{me.work}</span>
+                {form.branch && <span className="chip branch">{form.branch}</span>}
+                {form.work && <span className="chip">{form.work}</span>}
               </div>
             </div>
           </div>
@@ -257,22 +305,63 @@ export default function ProfilePage() {
   );
 }
 
-function ReadOnlyField({ label, value }: { label: string; value: string }) {
+function TextField({
+  label,
+  value,
+  onChange,
+  type = "text",
+  placeholder,
+  list,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+  placeholder?: string;
+  list?: string;
+}) {
   return (
     <div className="field" style={{ marginBottom: 0 }}>
       <label className="field-label">{label}</label>
-      <div
-        style={{
-          padding: "9px 12px",
-          background: "var(--bg-sunken)",
-          border: "1px solid var(--line)",
-          borderRadius: "var(--radius)",
-          fontSize: 13.5,
-          color: "var(--ink-2)",
-        }}
+      <input
+        className="input"
+        type={type}
+        value={value || ""}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        list={list}
+      />
+    </div>
+  );
+}
+
+function SelectField({
+  label,
+  value,
+  onChange,
+  options,
+  disabled,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  disabled?: boolean;
+}) {
+  return (
+    <div className="field" style={{ marginBottom: 0 }}>
+      <label className="field-label">{label}</label>
+      <select
+        className="input"
+        value={value || ""}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
       >
-        {value || "—"}
-      </div>
+        <option value="">— auswählen —</option>
+        {options.map((o) => (
+          <option key={o} value={o}>{o}</option>
+        ))}
+      </select>
     </div>
   );
 }
