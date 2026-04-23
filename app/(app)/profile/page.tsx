@@ -184,7 +184,7 @@ export default function ProfilePage() {
         </div>
       )}
       {status.ok && (
-        <div style={{ padding: "10px 14px", background: "var(--accent-soft)", color: "var(--success)", borderRadius: 8, marginBottom: 18, fontSize: 13 }}>
+        <div style={{ padding: "10px 14px", background: "var(--success)", color: "#FFFFFF", borderRadius: 8, marginBottom: 18, fontSize: 13, fontWeight: 500 }}>
           Profil gespeichert.
         </div>
       )}
@@ -197,13 +197,12 @@ export default function ProfilePage() {
               <TextField label="Vorname" value={form.first} onChange={(v) => set("first", v)} />
               <TextField label="Nachname" value={form.last} onChange={(v) => set("last", v)} />
               <TextField label="Firma" value={form.company} onChange={(v) => set("company", v)} />
-              <TextField
+              <ComboField
                 label="Rolle"
                 value={form.role}
                 onChange={(v) => set("role", v)}
-                list="roles-list"
+                options={ROLES}
                 placeholder="z.B. CEO, Gründerin, oder beliebig"
-                hint="Tippe frei oder wähle aus den Vorschlägen"
               />
               <SelectField
                 label="Branche"
@@ -243,9 +242,6 @@ export default function ProfilePage() {
                 placeholder="TT.MM.JJJJ"
               />
             </div>
-            <datalist id="roles-list">
-              {ROLES.map((r) => <option key={r} value={r} />)}
-            </datalist>
           </div>
 
           <div className="card" style={{ padding: 24 }}>
@@ -510,16 +506,12 @@ function TextField({
   onChange,
   type = "text",
   placeholder,
-  list,
-  hint,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   type?: string;
   placeholder?: string;
-  list?: string;
-  hint?: string;
 }) {
   return (
     <div className="field" style={{ marginBottom: 0 }}>
@@ -530,11 +522,7 @@ function TextField({
         value={value || ""}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        list={list}
       />
-      {hint && (
-        <div style={{ fontSize: 11, color: "var(--ink-4)", marginTop: 4 }}>{hint}</div>
-      )}
     </div>
   );
 }

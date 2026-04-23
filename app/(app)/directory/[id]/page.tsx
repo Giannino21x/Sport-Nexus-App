@@ -166,17 +166,31 @@ export default function MemberDetailPage() {
             <div className="upper-label" style={{ marginBottom: 10 }}>Kontakt</div>
             {m.email && (
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", fontSize: 13 }}>
-                <Icon name="mail" size={14} className="text-ink-3" /> {m.email}
+                <Icon name="mail" size={14} className="text-ink-3" />
+                <a href={`mailto:${m.email}`} style={{ color: "var(--accent)", textDecoration: "underline" }}>
+                  {m.email}
+                </a>
               </div>
             )}
             {m.mobile && (
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", fontSize: 13 }}>
-                <Icon name="phone" size={14} className="text-ink-3" /> {m.mobile}
+                <Icon name="phone" size={14} className="text-ink-3" />
+                <a href={`tel:${m.mobile.replace(/\s+/g, "")}`} style={{ color: "var(--accent)", textDecoration: "underline" }}>
+                  {m.mobile}
+                </a>
               </div>
             )}
             {m.web && (
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", fontSize: 13 }}>
-                <Icon name="globe" size={14} className="text-ink-3" /> {m.web}
+                <Icon name="globe" size={14} className="text-ink-3" />
+                <a
+                  href={m.web.startsWith("http") ? m.web : `https://${m.web}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ color: "var(--accent)", textDecoration: "underline" }}
+                >
+                  {m.web.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+                </a>
               </div>
             )}
             {m.linkedin && (

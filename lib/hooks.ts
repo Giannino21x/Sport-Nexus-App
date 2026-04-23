@@ -411,7 +411,17 @@ export type Post = {
   meta: string;
   likes: number;
   replies: number;
+  likedByMe: boolean;
   time: string;
+};
+
+export type PostReply = {
+  id: string;
+  postId: string;
+  author: Member;
+  authorDbId: string;
+  body: string;
+  createdAt: string;
 };
 
 const DEMO_POSTS_SEED = [
@@ -421,7 +431,7 @@ const DEMO_POSTS_SEED = [
   { authorSlug: "nina-schmid", body: "War ein fantastischer Lunch in Zürich — Danke an alle 70 Gäste! Nächstes Treffen: 12. Mai im Widder Hotel.", kind: "event", tag: "Event", meta: "", likes: 24, replies: 5, time: "vor 3 Tagen" },
 ];
 
-export function usePosts(): { data: Post[]; loading: boolean; isDemo: boolean } {
+export function usePosts(meDbId: string | null = null): { data: Post[]; loading: boolean; isDemo: boolean } {
   const { dataSource, hydrated } = useSettings();
   const tick = useReloadTick("posts");
   const [live, setLive] = useState<Post[]>([]);
@@ -439,10 +449,26 @@ export function usePosts(): { data: Post[]; loading: boolean; isDemo: boolean } 
         .order("created_at", { ascending: false })
         .limit(20);
       if (cancelled) return;
-      const result: Post[] = (posts ?? []).map((r: Row) => {
+      const postList = posts ?? [];
+
+      // Which of these did the current user like?
+      let likedSet = new Set<string>();
+      if (meDbId && postList.length > 0) {
+        const ids = postList.map((p) => String((p as Row).id));
+        const { data: myLikes } = await supabase
+          .from("post_likes")
+          .select("post_id")
+          .eq("member_id", meDbId)
+          .in("post_id", ids);
+        if (cancelled) return;
+        likedSet = new Set((myLikes ?? []).map((r) => String((r as Row).post_id)));
+      }
+
+      const result: Post[] = postList.map((r: Row) => {
         const author = rowToMember((r.member as Row) ?? {});
+        const id = String(r.id);
         return {
-          id: String(r.id),
+          id,
           author,
           body: String(r.body),
           kind: String(r.kind ?? "share"),
@@ -450,6 +476,7 @@ export function usePosts(): { data: Post[]; loading: boolean; isDemo: boolean } 
           meta: String(r.meta ?? ""),
           likes: Number(r.likes ?? 0),
           replies: Number(r.replies ?? 0),
+          likedByMe: likedSet.has(id),
           time: formatRelativeTime(String(r.created_at)),
         };
       });
@@ -457,14 +484,52 @@ export function usePosts(): { data: Post[]; loading: boolean; isDemo: boolean } 
       setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [dataSource, hydrated, tick]);
+  }, [dataSource, hydrated, tick, meDbId]);
 
   if (!hydrated || dataSource === "demo") {
     const demo: Post[] = DEMO_POSTS_SEED.map((p, i) => {
       const author = MEMBERS.find((m) => m.id === p.authorSlug) ?? MEMBERS[0];
-      return { id: `demo-${i}`, author, body: p.body, kind: p.kind, tag: p.tag, meta: p.meta, likes: p.likes, replies: p.replies, time: p.time };
+      return { id: `demo-${i}`, author, body: p.body, kind: p.kind, tag: p.tag, meta: p.meta, likes: p.likes, replies: p.replies, likedByMe: false, time: p.time };
     });
     return { data: demo, loading: false, isDemo: true };
   }
   return { data: live, loading, isDemo: false };
+}
+
+export function usePostReplies(postId: string | null): { data: PostReply[]; loading: boolean } {
+  const { dataSource, hydrated } = useSettings();
+  const tick = useReloadTick("posts");
+  const [replies, setReplies] = useState<PostReply[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!hydrated || dataSource !== "live" || !postId || postId.startsWith("demo-") || postId.startsWith("local-")) {
+      setReplies([]);
+      return;
+    }
+    let cancelled = false;
+    setLoading(true);
+    const supabase = createClient();
+    (async () => {
+      const { data } = await supabase
+        .from("post_replies")
+        .select("*, member:author_id(*)")
+        .eq("post_id", postId)
+        .order("created_at", { ascending: true });
+      if (cancelled) return;
+      const result: PostReply[] = (data ?? []).map((r: Row) => ({
+        id: String(r.id),
+        postId: String(r.post_id),
+        author: rowToMember((r.member as Row) ?? {}),
+        authorDbId: String(r.author_id),
+        body: rm(r.body),
+        createdAt: String(r.created_at),
+      }));
+      setReplies(result);
+      setLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [dataSource, hydrated, postId, tick]);
+
+  return { data: replies, loading };
 }

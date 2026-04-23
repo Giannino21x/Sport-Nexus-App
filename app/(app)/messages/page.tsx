@@ -56,7 +56,8 @@ function MessagesInner() {
   const initialDbId = useMemo(() => {
     if (!toParam) return convos[0]?.otherDbId ?? null;
     const memberBySlug = members.find((m) => m.id === toParam);
-    if (!memberBySlug) return convos[0]?.otherDbId ?? null;
+    // Members still loading — wait instead of falling back to a different convo
+    if (!memberBySlug) return null;
     const existing = convos.find((c) => c.other.id === toParam);
     if (existing) return existing.otherDbId;
     // New conversation — resolve to DB uuid in live, or slug in demo
@@ -64,11 +65,17 @@ function MessagesInner() {
   }, [convos, toParam, members, dataSource]);
 
   const [activeDbId, setActiveDbId] = useState<string | null>(initialDbId);
+  const userPickedRef = useRef(false);
   useEffect(() => {
-    // Respond to URL ?to= changes, but don't reset if user already opened/closed a thread.
+    // URL changed — reset user override and re-sync to the new target.
+    userPickedRef.current = false;
     setActiveDbId(initialDbId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toParam]);
+  useEffect(() => {
+    // Async data just resolved the recipient — sync unless the user already picked something manually.
+    if (!userPickedRef.current) setActiveDbId(initialDbId);
+  }, [initialDbId]);
 
   const activeConvo = convos.find((c) => c.otherDbId === activeDbId) ?? null;
   const activeMember: Member | null = activeConvo?.other ?? (toParam ? members.find((m) => m.id === toParam) ?? null : convos[0]?.other ?? null);
@@ -216,25 +223,32 @@ function MessagesInner() {
       return;
     }
 
-    if (!activeDbId) {
+    const recipient = activeDbId ?? (dataSource === "live" ? activeMember?.dbId ?? null : null);
+    if (!recipient) {
       setSendError("Kein Empfänger ausgewählt.");
       return;
     }
 
     setAttachmentPending(true);
     setSendError(null);
-    const fd = new FormData();
-    fd.append("file", file);
-    fd.append("recipientDbId", activeDbId);
-    fd.append("body", draft.trim());
-    const r = await sendMessageWithAttachmentAction(fd);
-    setAttachmentPending(false);
-    if (r.error) {
-      setSendError(r.error);
-      return;
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("recipientDbId", recipient);
+      fd.append("body", draft.trim());
+      const r = await sendMessageWithAttachmentAction(fd);
+      if (r.error) {
+        setSendError(r.error);
+        return;
+      }
+      setDraft("");
+      if (!activeDbId) { userPickedRef.current = true; setActiveDbId(recipient); }
+      reload("messages");
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : "Upload fehlgeschlagen.");
+    } finally {
+      setAttachmentPending(false);
     }
-    setDraft("");
-    reload("messages");
   };
 
   useEffect(() => {
@@ -255,15 +269,17 @@ function MessagesInner() {
       setDraft("");
       return;
     }
-    if (!activeDbId) {
+    const recipient = activeDbId ?? (dataSource === "live" ? activeMember?.dbId ?? null : null);
+    if (!recipient) {
       setSendError("Kein Empfänger ausgewählt.");
       return;
     }
     startTransition(async () => {
-      const r = await sendMessageAction(activeDbId, body);
+      const r = await sendMessageAction(recipient, body);
       if (r.error) setSendError(r.error);
       else {
         setDraft("");
+        if (!activeDbId) { userPickedRef.current = true; setActiveDbId(recipient); }
         reload("messages");
       }
     });
@@ -308,7 +324,7 @@ function MessagesInner() {
                 convos.map((conv) => (
                   <div
                     key={conv.otherDbId}
-                    onClick={() => setActiveDbId(conv.otherDbId)}
+                    onClick={() => { userPickedRef.current = true; setActiveDbId(conv.otherDbId); }}
                     style={{
                       display: "flex",
                       gap: 12,
@@ -361,7 +377,7 @@ function MessagesInner() {
                     {isMobile && (
                       <button
                         className="icon-btn"
-                        onClick={() => setActiveDbId(null)}
+                        onClick={() => { userPickedRef.current = true; setActiveDbId(null); }}
                         style={{
                           width: 34,
                           height: 34,
