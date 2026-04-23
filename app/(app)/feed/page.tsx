@@ -1,11 +1,21 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
 import { useSettings } from "@/components/settings-context";
 import { reload, useMe, usePosts, usePostReplies, type Post, type PostReply } from "@/lib/hooks";
-import { createPostAction, createReplyAction, deleteReplyAction, togglePostLikeAction } from "@/app/actions/posts";
+import {
+  createPostAction,
+  createPostWithImageAction,
+  createReplyAction,
+  deletePostAction,
+  deleteReplyAction,
+  togglePostLikeAction,
+  updatePostAction,
+} from "@/app/actions/posts";
+
+type LikeOverride = { liked: boolean; likes: number };
 
 export default function FeedPage() {
   const { dataSource } = useSettings();
@@ -14,14 +24,46 @@ export default function FeedPage() {
 
   const [composerOpen, setComposerOpen] = useState(false);
   const [draft, setDraft] = useState("");
+  const [composerImage, setComposerImage] = useState<File | null>(null);
+  const [composerImagePreview, setComposerImagePreview] = useState<string | null>(null);
+  const composerFileRef = useRef<HTMLInputElement>(null);
+
   const [localPosts, setLocalPosts] = useState<Post[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  // Per-post optimistic overrides for the demo path and pre-server optimism.
-  const [demoLiked, setDemoLiked] = useState<Record<string, boolean>>({});
-  const [demoLikeDelta, setDemoLikeDelta] = useState<Record<string, number>>({});
+
+  // Like overrides: keyed by post id. Source of truth for display until server catches up.
+  const [likeOverride, setLikeOverride] = useState<Record<string, LikeOverride>>({});
+
   const [expandedPost, setExpandedPost] = useState<string | null>(null);
   const [demoReplies, setDemoReplies] = useState<Record<string, PostReply[]>>({});
+  const [editingPost, setEditingPost] = useState<string | null>(null);
+  const [menuOpenFor, setMenuOpenFor] = useState<string | null>(null);
+
+  // Clear like overrides once the posts refetch makes them redundant.
+  useEffect(() => {
+    setLikeOverride((prev) => {
+      let changed = false;
+      const next: Record<string, LikeOverride> = {};
+      for (const [id, ov] of Object.entries(prev)) {
+        const post = posts.find((p) => p.id === id);
+        if (post && post.likedByMe === ov.liked && post.likes === ov.likes) {
+          changed = true;
+          continue;
+        }
+        next[id] = ov;
+      }
+      return changed ? next : prev;
+    });
+  }, [posts]);
+
+  // Close the menu when clicking outside
+  useEffect(() => {
+    if (!menuOpenFor) return;
+    const close = () => setMenuOpenFor(null);
+    document.addEventListener("click", close);
+    return () => document.removeEventListener("click", close);
+  }, [menuOpenFor]);
 
   const allPosts = [...localPosts, ...posts];
 
@@ -45,43 +87,66 @@ export default function FeedPage() {
   }, [allPosts]);
 
   const isDemoPost = (id: string) => id.startsWith("demo-") || id.startsWith("local-");
+  const isMyPost = (p: Post) => Boolean(me && p.author.id === me.id);
 
-  const likedByMe = (p: Post) => (p.id in demoLiked ? demoLiked[p.id] : p.likedByMe);
-  const likeCount = (p: Post) => p.likes + (demoLikeDelta[p.id] ?? 0);
+  const liked = (p: Post) => likeOverride[p.id]?.liked ?? p.likedByMe;
+  const likesNum = (p: Post) => likeOverride[p.id]?.likes ?? p.likes;
 
   const onToggleLike = (p: Post) => {
-    const currentlyLiked = likedByMe(p);
-    // Optimistic update
-    setDemoLiked((d) => ({ ...d, [p.id]: !currentlyLiked }));
-    setDemoLikeDelta((d) => ({ ...d, [p.id]: (d[p.id] ?? 0) + (currentlyLiked ? -1 : 1) }));
+    const currLiked = liked(p);
+    const currLikes = likesNum(p);
+    const newLiked = !currLiked;
+    const newLikes = Math.max(0, currLikes + (newLiked ? 1 : -1));
+
+    setLikeOverride((prev) => ({ ...prev, [p.id]: { liked: newLiked, likes: newLikes } }));
 
     if (dataSource !== "live" || isDemoPost(p.id)) return;
 
     togglePostLikeAction(p.id).then((r) => {
       if (r.error) {
-        // Roll back
-        setDemoLiked((d) => ({ ...d, [p.id]: currentlyLiked }));
-        setDemoLikeDelta((d) => ({ ...d, [p.id]: (d[p.id] ?? 0) + (currentlyLiked ? 1 : -1) }));
+        setLikeOverride((prev) => {
+          const n = { ...prev };
+          delete n[p.id];
+          return n;
+        });
         return;
       }
-      // Server truth arrives via reload — clear our optimistic overrides for this post
-      setDemoLiked((d) => {
-        const n = { ...d };
-        delete n[p.id];
-        return n;
-      });
-      setDemoLikeDelta((d) => {
-        const n = { ...d };
-        delete n[p.id];
-        return n;
-      });
+      // Keep override until refetch confirms the server state, then the effect above clears it.
       reload("posts");
     });
   };
 
+  const onPickComposerImage = () => composerFileRef.current?.click();
+
+  const onComposerImageChosen = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    if (!["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"].includes(f.type)) {
+      setError("Nur JPG, PNG, WebP oder GIF erlaubt.");
+      return;
+    }
+    if (f.size > 25 * 1024 * 1024) {
+      setError("Datei zu gross (max. 25 MB).");
+      return;
+    }
+    setError(null);
+    setComposerImage(f);
+    setComposerImagePreview(URL.createObjectURL(f));
+  };
+
+  const resetComposer = () => {
+    setComposerOpen(false);
+    setDraft("");
+    setComposerImage(null);
+    if (composerImagePreview) URL.revokeObjectURL(composerImagePreview);
+    setComposerImagePreview(null);
+    setError(null);
+  };
+
   const onPost = () => {
     const body = draft.trim();
-    if (!body) return;
+    if (!body && !composerImage) return;
     setError(null);
     if (dataSource !== "live") {
       if (!me) return;
@@ -89,6 +154,7 @@ export default function FeedPage() {
         {
           id: "local-" + Date.now(),
           author: me,
+          authorDbId: me.id,
           body,
           kind: "share",
           tag: "",
@@ -96,23 +162,39 @@ export default function FeedPage() {
           likes: 0,
           replies: 0,
           likedByMe: false,
+          imageUrl: composerImagePreview ?? undefined,
           time: "gerade eben",
         },
         ...prev,
       ]);
-      setDraft("");
-      setComposerOpen(false);
+      resetComposer();
       return;
     }
     startTransition(async () => {
-      const r = await createPostAction(body);
-      if (r.error) setError(r.error);
-      else {
-        setDraft("");
-        setComposerOpen(false);
-        reload("posts");
+      if (composerImage) {
+        const fd = new FormData();
+        fd.append("file", composerImage);
+        fd.append("body", body);
+        const r = await createPostWithImageAction(fd);
+        if (r.error) { setError(r.error); return; }
+      } else {
+        const r = await createPostAction(body);
+        if (r.error) { setError(r.error); return; }
       }
+      resetComposer();
+      reload("posts");
     });
+  };
+
+  const onDeletePost = async (p: Post) => {
+    if (!confirm("Post wirklich löschen?")) return;
+    if (dataSource !== "live" || isDemoPost(p.id)) {
+      setLocalPosts((prev) => prev.filter((x) => x.id !== p.id));
+      return;
+    }
+    const r = await deletePostAction(p.id);
+    if (r.error) { alert(r.error); return; }
+    reload("posts");
   };
 
   return (
@@ -143,14 +225,69 @@ export default function FeedPage() {
                 style={{ minHeight: 80 }}
                 autoFocus
               />
+              {composerImagePreview && (
+                <div style={{ position: "relative", marginTop: 10, borderRadius: 10, overflow: "hidden", border: "1px solid var(--line)" }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={composerImagePreview}
+                    alt="Vorschau"
+                    style={{ display: "block", width: "100%", maxHeight: 360, objectFit: "cover" }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setComposerImage(null);
+                      if (composerImagePreview) URL.revokeObjectURL(composerImagePreview);
+                      setComposerImagePreview(null);
+                    }}
+                    aria-label="Bild entfernen"
+                    style={{
+                      position: "absolute",
+                      top: 8,
+                      right: 8,
+                      width: 28,
+                      height: 28,
+                      borderRadius: "50%",
+                      background: "rgba(0,0,0,0.65)",
+                      color: "#fff",
+                      border: "none",
+                      cursor: "pointer",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: 14,
+                    }}
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
+              <input
+                ref={composerFileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={onComposerImageChosen}
+                style={{ display: "none" }}
+              />
               {error && <div style={{ fontSize: 12, color: "var(--danger)", marginTop: 6 }}>{error}</div>}
-              <div style={{ display: "flex", gap: 8, marginTop: 10, justifyContent: "flex-end" }}>
-                <button className="btn btn-ghost" onClick={() => { setComposerOpen(false); setDraft(""); }}>
-                  Abbrechen
+              <div style={{ display: "flex", gap: 8, marginTop: 10, justifyContent: "space-between", alignItems: "center" }}>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  onClick={onPickComposerImage}
+                  disabled={pending}
+                  style={{ padding: "6px 10px", fontSize: 12.5 }}
+                >
+                  <ImageIcon /> Bild
                 </button>
-                <button className="btn btn-primary" onClick={onPost} disabled={pending || !draft.trim()}>
-                  {pending ? "Posten..." : "Posten"}
-                </button>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button className="btn btn-ghost" onClick={resetComposer}>
+                    Abbrechen
+                  </button>
+                  <button className="btn btn-primary" onClick={onPost} disabled={pending || (!draft.trim() && !composerImage)}>
+                    {pending ? "Posten..." : "Posten"}
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -173,10 +310,12 @@ export default function FeedPage() {
             </div>
           ) : (
             allPosts.map((p) => {
-              const liked = likedByMe(p);
-              const count = likeCount(p);
+              const isLiked = liked(p);
+              const count = likesNum(p);
               const replyCount = p.replies + (demoReplies[p.id]?.length ?? 0);
               const expanded = expandedPost === p.id;
+              const editing = editingPost === p.id;
+              const mine = isMyPost(p);
               return (
                 <div key={p.id} className="card" style={{ padding: 20 }}>
                   <div className="row">
@@ -185,12 +324,63 @@ export default function FeedPage() {
                       <div style={{ fontSize: 14, fontWeight: 500 }}>{p.author.first} {p.author.last}</div>
                       <div style={{ fontSize: 11.5, color: "var(--ink-3)" }}>
                         {p.author.role} · {p.author.company} · <span className="mono">{p.time}</span>
+                        {p.editedAt && <span style={{ color: "var(--ink-4)" }}> · bearbeitet</span>}
                       </div>
                     </div>
                     {p.tag && <span className="chip accent">{p.tag}</span>}
+                    {mine && !editing && (
+                      <PostMenu
+                        open={menuOpenFor === p.id}
+                        onToggle={(e) => {
+                          e.stopPropagation();
+                          setMenuOpenFor(menuOpenFor === p.id ? null : p.id);
+                        }}
+                        onEdit={() => { setEditingPost(p.id); setMenuOpenFor(null); }}
+                        onDelete={() => { setMenuOpenFor(null); onDeletePost(p); }}
+                      />
+                    )}
                   </div>
-                  <div className="serif" style={{ fontSize: 18, lineHeight: 1.4, marginTop: 14 }}>{p.body}</div>
-                  {p.meta && <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 10 }} className="mono">↳ {p.meta}</div>}
+
+                  {editing ? (
+                    <EditPostForm
+                      post={p}
+                      dataSource={dataSource}
+                      onCancel={() => setEditingPost(null)}
+                      onSavedLocal={(newBody) => {
+                        setLocalPosts((prev) =>
+                          prev.map((x) => (x.id === p.id ? { ...x, body: newBody, editedAt: new Date().toISOString() } : x)),
+                        );
+                        setEditingPost(null);
+                      }}
+                      onSavedLive={() => {
+                        setEditingPost(null);
+                        reload("posts");
+                      }}
+                    />
+                  ) : (
+                    <>
+                      <div className="serif" style={{ fontSize: 18, lineHeight: 1.4, marginTop: 14, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+                        {p.body}
+                      </div>
+                      {p.imageUrl && (
+                        <a
+                          href={p.imageUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{ display: "block", marginTop: 14, borderRadius: 10, overflow: "hidden", border: "1px solid var(--line)" }}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={p.imageUrl}
+                            alt="Post"
+                            style={{ display: "block", width: "100%", maxHeight: 520, objectFit: "cover" }}
+                          />
+                        </a>
+                      )}
+                      {p.meta && <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 10 }} className="mono">↳ {p.meta}</div>}
+                    </>
+                  )}
+
                   <div
                     style={{
                       display: "flex",
@@ -207,12 +397,13 @@ export default function FeedPage() {
                       style={{
                         padding: 0,
                         fontSize: 12,
-                        color: liked ? "var(--accent)" : "var(--ink-3)",
+                        color: isLiked ? "var(--accent)" : "var(--ink-3)",
                         cursor: "pointer",
-                        fontWeight: liked ? 500 : 400,
+                        fontWeight: isLiked ? 500 : 400,
+                        transition: "color 140ms ease",
                       }}
                     >
-                      {liked ? "↑ Interessant" : "↑ Interessant"} · {count}
+                      ↑ Interessant · {count}
                     </button>
                     <button
                       className="btn-text"
@@ -274,6 +465,161 @@ export default function FeedPage() {
             </div>
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function PostMenu({
+  open,
+  onToggle,
+  onEdit,
+  onDelete,
+}: {
+  open: boolean;
+  onToggle: (e: React.MouseEvent) => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        type="button"
+        onClick={onToggle}
+        aria-label="Post-Menü"
+        style={{
+          width: 30,
+          height: 30,
+          border: "none",
+          background: open ? "var(--bg-sunken)" : "transparent",
+          borderRadius: 6,
+          cursor: "pointer",
+          color: "var(--ink-3)",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 18,
+          lineHeight: 1,
+        }}
+      >
+        ⋯
+      </button>
+      {open && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          role="menu"
+          style={{
+            position: "absolute",
+            top: "calc(100% + 4px)",
+            right: 0,
+            zIndex: 20,
+            minWidth: 140,
+            background: "var(--bg-elevated)",
+            border: "1px solid var(--line)",
+            borderRadius: "var(--radius)",
+            boxShadow: "var(--shadow-lg)",
+            padding: 4,
+          }}
+        >
+          <button
+            type="button"
+            onClick={onEdit}
+            role="menuitem"
+            style={{
+              width: "100%",
+              textAlign: "left",
+              padding: "8px 10px",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              fontSize: 13,
+              borderRadius: 6,
+              color: "var(--ink)",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-sunken)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+          >
+            Bearbeiten
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            role="menuitem"
+            style={{
+              width: "100%",
+              textAlign: "left",
+              padding: "8px 10px",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              fontSize: 13,
+              borderRadius: 6,
+              color: "var(--danger)",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-sunken)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+          >
+            Löschen
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EditPostForm({
+  post,
+  dataSource,
+  onCancel,
+  onSavedLocal,
+  onSavedLive,
+}: {
+  post: Post;
+  dataSource: "live" | "demo";
+  onCancel: () => void;
+  onSavedLocal: (body: string) => void;
+  onSavedLive: () => void;
+}) {
+  const [body, setBody] = useState(post.body);
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const isLocal = post.id.startsWith("demo-") || post.id.startsWith("local-");
+
+  const onSave = async () => {
+    const trimmed = body.trim();
+    if (!trimmed) { setErr("Post darf nicht leer sein."); return; }
+    setErr(null);
+
+    if (dataSource !== "live" || isLocal) {
+      onSavedLocal(trimmed);
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const r = await updatePostAction(post.id, trimmed);
+      if (r.error) { setErr(r.error); return; }
+      onSavedLive();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: 14 }}>
+      <textarea
+        className="textarea"
+        value={body}
+        onChange={(e) => setBody(e.target.value)}
+        style={{ minHeight: 80 }}
+        autoFocus
+      />
+      {err && <div style={{ fontSize: 12, color: "var(--danger)", marginTop: 6 }}>{err}</div>}
+      <div style={{ display: "flex", gap: 8, marginTop: 10, justifyContent: "flex-end" }}>
+        <button className="btn btn-ghost" onClick={onCancel} disabled={saving}>Abbrechen</button>
+        <button className="btn btn-primary" onClick={onSave} disabled={saving || !body.trim()}>
+          {saving ? "Speichern..." : "Speichern"}
+        </button>
       </div>
     </div>
   );
@@ -414,4 +760,14 @@ function formatReplyTime(iso: string): string {
   if (hrs < 24) return `vor ${hrs} Std.`;
   const days = Math.floor(hrs / 24);
   return days === 1 ? "vor 1 Tag" : `vor ${days} Tagen`;
+}
+
+function ImageIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width={14} height={14} fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <circle cx="8.5" cy="8.5" r="1.5" />
+      <path d="M21 15l-5-5L5 21" />
+    </svg>
+  );
 }

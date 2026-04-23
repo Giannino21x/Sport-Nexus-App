@@ -405,6 +405,7 @@ export function useNotifications(meDbId: string | null) {
 export type Post = {
   id: string;
   author: Member;
+  authorDbId: string;
   body: string;
   kind: string;
   tag: string;
@@ -412,6 +413,8 @@ export type Post = {
   likes: number;
   replies: number;
   likedByMe: boolean;
+  imageUrl?: string;
+  editedAt?: string;
   time: string;
 };
 
@@ -470,6 +473,7 @@ export function usePosts(meDbId: string | null = null): { data: Post[]; loading:
         return {
           id,
           author,
+          authorDbId: String(r.author_id ?? ""),
           body: String(r.body),
           kind: String(r.kind ?? "share"),
           tag: String(r.tag ?? ""),
@@ -477,6 +481,8 @@ export function usePosts(meDbId: string | null = null): { data: Post[]; loading:
           likes: Number(r.likes ?? 0),
           replies: Number(r.replies ?? 0),
           likedByMe: likedSet.has(id),
+          imageUrl: r.image_url ? String(r.image_url) : undefined,
+          editedAt: r.edited_at ? String(r.edited_at) : undefined,
           time: formatRelativeTime(String(r.created_at)),
         };
       });
@@ -489,7 +495,7 @@ export function usePosts(meDbId: string | null = null): { data: Post[]; loading:
   if (!hydrated || dataSource === "demo") {
     const demo: Post[] = DEMO_POSTS_SEED.map((p, i) => {
       const author = MEMBERS.find((m) => m.id === p.authorSlug) ?? MEMBERS[0];
-      return { id: `demo-${i}`, author, body: p.body, kind: p.kind, tag: p.tag, meta: p.meta, likes: p.likes, replies: p.replies, likedByMe: false, time: p.time };
+      return { id: `demo-${i}`, author, authorDbId: author.id, body: p.body, kind: p.kind, tag: p.tag, meta: p.meta, likes: p.likes, replies: p.replies, likedByMe: false, time: p.time };
     });
     return { data: demo, loading: false, isDemo: true };
   }
