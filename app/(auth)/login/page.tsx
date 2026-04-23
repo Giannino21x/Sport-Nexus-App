@@ -2,7 +2,7 @@
 
 import { Suspense, useActionState, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { signInAction, signUpAction } from "@/app/actions/auth";
+import { signInAction, signUpAction, requestPasswordResetAction } from "@/app/actions/auth";
 import { Icon } from "@/components/icon";
 import { LogoWordmark } from "@/components/logo-wordmark";
 
@@ -33,11 +33,18 @@ const SANS = "var(--font-poppins), 'Poppins', -apple-system, BlinkMacSystemFont,
 function LoginInner() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/dashboard";
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const callbackError = searchParams.get("error");
+  const initialMode =
+    callbackError || searchParams.get("mode") === "forgot" ? "forgot" : "signin";
+  const [mode, setMode] = useState<"signin" | "signup" | "forgot">(initialMode);
   const [showPassword, setShowPassword] = useState(false);
 
   const [signInState, signInFormAction, signInPending] = useActionState(signInAction, undefined);
   const [signUpState, signUpFormAction, signUpPending] = useActionState(signUpAction, undefined);
+  const [forgotState, forgotFormAction, forgotPending] = useActionState(
+    requestPasswordResetAction,
+    undefined,
+  );
 
   const enterDemo = () => {
     document.cookie = "sn-mode=demo; path=/; max-age=31536000; samesite=lax";
@@ -151,7 +158,7 @@ function LoginInner() {
         }}
       >
         <div style={{ width: "100%", maxWidth: 380, fontFamily: SANS }}>
-          {mode === "signin" ? (
+          {mode === "signin" && (
             <>
               <div
                 style={{
@@ -199,7 +206,22 @@ function LoginInner() {
                 <div className="field">
                   <label className="field-label" style={{ ...labelStyle, display: "flex", justifyContent: "space-between" }}>
                     <span>Passwort</span>
-                    <a href="#" style={{ color: C.textDim, fontSize: 11.5 }}>Passwort vergessen?</a>
+                    <button
+                      type="button"
+                      onClick={() => setMode("forgot")}
+                      style={{
+                        color: C.textDim,
+                        fontSize: 11.5,
+                        background: "transparent",
+                        border: "none",
+                        padding: 0,
+                        cursor: "pointer",
+                        fontFamily: SANS,
+                        textDecoration: "underline",
+                      }}
+                    >
+                      Passwort vergessen?
+                    </button>
                   </label>
                   <div style={{ position: "relative" }}>
                     <input
@@ -265,7 +287,8 @@ function LoginInner() {
                 </button>
               </form>
             </>
-          ) : (
+          )}
+          {mode === "signup" && (
             <>
               <div
                 style={{
@@ -381,6 +404,115 @@ function LoginInner() {
               </form>
             </>
           )}
+          {mode === "forgot" && (
+            <>
+              <div
+                style={{
+                  fontSize: 10.5,
+                  fontWeight: 600,
+                  letterSpacing: "0.22em",
+                  textTransform: "uppercase",
+                  color: C.textDim,
+                  marginBottom: 14,
+                }}
+              >
+                Passwort vergessen
+              </div>
+              <h2
+                style={{
+                  fontFamily: SANS,
+                  fontWeight: 500,
+                  fontSize: 38,
+                  lineHeight: 1.1,
+                  letterSpacing: "-0.02em",
+                  marginBottom: 10,
+                  color: C.text,
+                }}
+              >
+                Link zum Zurücksetzen
+              </h2>
+              <div style={{ color: C.textDim, marginBottom: 32, fontSize: 14, fontFamily: SANS, fontWeight: 400 }}>
+                Wir senden dir eine E-Mail mit einem Link zum Festlegen eines neuen Passworts.
+              </div>
+
+              {callbackError && !forgotState?.info && (
+                <div
+                  style={{
+                    fontSize: 12,
+                    color: "var(--danger)",
+                    marginBottom: 12,
+                    padding: "8px 10px",
+                    background: "rgba(225,90,43,0.1)",
+                    borderRadius: 6,
+                  }}
+                >
+                  Der Reset-Link ist ungültig oder abgelaufen. Bitte fordere einen neuen an.
+                </div>
+              )}
+
+              <form action={forgotFormAction}>
+                <div className="field">
+                  <label className="field-label" style={labelStyle}>E-Mail</label>
+                  <input
+                    className="input"
+                    style={inputStyle}
+                    type="email"
+                    name="email"
+                    required
+                    autoFocus
+                    autoComplete="email"
+                  />
+                </div>
+                {forgotState?.error && (
+                  <div
+                    style={{
+                      fontSize: 12,
+                      color: "var(--danger)",
+                      marginBottom: 12,
+                      padding: "8px 10px",
+                      background: "rgba(225,90,43,0.1)",
+                      borderRadius: 6,
+                    }}
+                  >
+                    {forgotState.error}
+                  </div>
+                )}
+                {forgotState?.info && (
+                  <div
+                    style={{
+                      fontSize: 12.5,
+                      color: C.text,
+                      marginBottom: 12,
+                      padding: "10px 12px",
+                      background: "rgba(10,10,10,0.05)",
+                      border: "1px solid " + C.border,
+                      borderRadius: 6,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {forgotState.info}
+                  </div>
+                )}
+                <button
+                  type="submit"
+                  className="btn"
+                  style={{
+                    width: "100%",
+                    padding: "13px",
+                    marginTop: 6,
+                    background: C.btnBg,
+                    color: C.btnText,
+                    border: "none",
+                    fontFamily: SANS,
+                    fontWeight: 500,
+                  }}
+                  disabled={forgotPending}
+                >
+                  {forgotPending ? "Wird gesendet..." : "Reset-Link senden"} <Icon name="arrow" size={14} />
+                </button>
+              </form>
+            </>
+          )}
 
           <div style={{ margin: "24px 0", display: "flex", alignItems: "center", gap: 12, color: C.textSub, fontSize: 11.5 }}>
             <span style={{ flex: 1, height: 1, background: C.divider }} /> oder <span style={{ flex: 1, height: 1, background: C.divider }} />
@@ -406,7 +538,7 @@ function LoginInner() {
           </div>
 
           <div style={{ marginTop: 32, fontSize: 12.5, color: C.textDim, textAlign: "center" }}>
-            {mode === "signin" ? (
+            {mode === "signin" && (
               <>
                 Noch kein Mitglied?{" "}
                 <button
@@ -427,7 +559,8 @@ function LoginInner() {
                   Aufnahmeantrag stellen
                 </button>
               </>
-            ) : (
+            )}
+            {mode === "signup" && (
               <>
                 Bereits Mitglied?{" "}
                 <button
@@ -448,6 +581,25 @@ function LoginInner() {
                   Einloggen
                 </button>
               </>
+            )}
+            {mode === "forgot" && (
+              <button
+                type="button"
+                onClick={() => setMode("signin")}
+                style={{
+                  color: C.text,
+                  textDecoration: "underline",
+                  fontWeight: 500,
+                  background: "transparent",
+                  border: "none",
+                  padding: 0,
+                  cursor: "pointer",
+                  fontFamily: SANS,
+                  fontSize: "inherit",
+                }}
+              >
+                Zurück zum Login
+              </button>
             )}
           </div>
         </div>
