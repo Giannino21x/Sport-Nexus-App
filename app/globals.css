@@ -162,8 +162,10 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   display: grid;
   grid-template-columns: 252px 1fr;
   min-height: 100vh;
+  transition: grid-template-columns 180ms ease;
 }
 .app[data-mobile="true"] { grid-template-columns: 1fr; }
+.app[data-sidebar="collapsed"] { grid-template-columns: 68px 1fr; }
 
 .sidebar {
   background: var(--bg-sunken);
@@ -174,14 +176,89 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   height: 100vh;
   height: 100dvh;
   overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 2px;
+  scrollbar-width: none;
 }
+.sidebar::-webkit-scrollbar { display: none; }
+.app[data-sidebar="collapsed"] .sidebar { overflow: hidden; }
 .sidebar .brand {
   display: flex;
   align-items: center;
   padding: 4px 8px 2px;
+}
+
+/* Floating collapse button — vertically centered on the sidebar's right edge */
+.sidebar-collapse-btn {
+  position: fixed;
+  top: 50%;
+  left: calc(252px - 11px);
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  color: var(--ink-3);
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background 120ms, color 120ms, left 180ms ease;
+  z-index: 50;
+}
+.sidebar-collapse-btn:hover { background: var(--bg-sunken); color: var(--ink); }
+.app[data-sidebar="collapsed"] .sidebar-collapse-btn { left: calc(68px - 11px); }
+
+/* Logo: full wordmark expanded, only the N when collapsed */
+.sidebar .brand .brand-logo-wrap {
+  display: flex;
+  align-items: center;
+  height: 22px;
+}
+.sidebar .brand .brand-logo-n { display: none; }
+.app[data-sidebar="collapsed"] .sidebar .brand { justify-content: center; }
+.app[data-sidebar="collapsed"] .sidebar .brand .brand-logo-full { display: none !important; }
+.app[data-sidebar="collapsed"] .sidebar .brand .brand-logo-n { display: block; }
+
+/* ---- Collapsed sidebar ---- */
+.app[data-sidebar="collapsed"] .sidebar { padding: 18px 10px 0; }
+.app[data-sidebar="collapsed"] .sidebar .brand { padding: 4px 0 2px; }
+
+/* Hide label text but keep each element's vertical footprint so icons don't jump */
+.app[data-sidebar="collapsed"] .sidebar-label-area,
+.app[data-sidebar="collapsed"] .nav-section-label {
+  visibility: hidden;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+/* These sit inline inside nav rows — removing them doesn't shift vertical rhythm */
+.app[data-sidebar="collapsed"] .nav-label,
+.app[data-sidebar="collapsed"] .nav-beta,
+.app[data-sidebar="collapsed"] .nav-item .count-badge,
+.app[data-sidebar="collapsed"] .me-text { display: none; }
+
+.app[data-sidebar="collapsed"] .nav-item {
+  justify-content: center;
+  padding: 7px 0;
+  gap: 0;
+}
+.app[data-sidebar="collapsed"] .nav-item.active::before { left: -10px; }
+.app[data-sidebar="collapsed"] .sidebar-footer {
+  margin-left: -10px;
+  margin-right: -10px;
+}
+.app[data-sidebar="collapsed"] .sidebar .me {
+  justify-content: center;
+  margin-left: -10px;
+  margin-right: -10px;
+  padding-left: 10px;
+  padding-right: 10px;
 }
 
 .nav-section-label {

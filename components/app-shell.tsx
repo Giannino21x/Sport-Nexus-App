@@ -26,7 +26,23 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { data: members } = useMembers();
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("sn_sidebar_collapsed");
+      if (raw === "1") setSidebarCollapsed(true);
+    } catch {}
+  }, []);
+
+  const toggleSidebar = () => {
+    setSidebarCollapsed((v) => {
+      const next = !v;
+      try { localStorage.setItem("sn_sidebar_collapsed", next ? "1" : "0"); } catch {}
+      return next;
+    });
+  };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -97,13 +113,44 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="app" data-mobile={isMobile}>
+    <div className="app" data-mobile={isMobile} data-sidebar={sidebarCollapsed ? "collapsed" : "expanded"}>
+      {!isMobile && (
+        <button
+          type="button"
+          className="sidebar-collapse-btn"
+          onClick={toggleSidebar}
+          aria-label={sidebarCollapsed ? "Sidebar ausklappen" : "Sidebar einklappen"}
+          title={sidebarCollapsed ? "Sidebar ausklappen" : "Sidebar einklappen"}
+        >
+          <Icon
+            name="chevron"
+            size={12}
+            style={{
+              transform: sidebarCollapsed ? "rotate(0deg)" : "rotate(180deg)",
+              transition: "transform 160ms",
+            }}
+          />
+        </button>
+      )}
       {!isMobile && (
         <aside className="sidebar">
           <div className="brand">
-            <LogoWordmark height={22} invert={theme === "dark"} />
+            <div className="brand-logo-wrap brand-logo-full">
+              <LogoWordmark height={22} invert={theme === "dark"} />
+            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              className="brand-logo-n"
+              src={theme === "dark" ? "/logo-n-black.png" : "/logo-n.png"}
+              alt="SportNexus"
+              style={{
+                height: 24,
+                width: "auto",
+                filter: theme === "dark" ? "invert(1)" : "none",
+              }}
+            />
           </div>
-          <div className="upper-label" style={{ padding: "0 8px 12px", marginTop: 6, fontSize: 10.5 }}>Member Area</div>
+          <div className="upper-label sidebar-label-area" style={{ padding: "0 8px 12px", marginTop: 6, fontSize: 10.5 }}>Member Area</div>
 
           <div className="nav-section-label">Community</div>
           {navItems.map((item) => (
@@ -112,11 +159,12 @@ export function AppShell({ children }: { children: ReactNode }) {
               href={item.href}
               className={"nav-item" + (isActive(item.href) ? " active" : "")}
               onClick={() => { setMobileMenuOpen(false); setNotifsOpen(false); }}
+              title={sidebarCollapsed ? item.label : undefined}
             >
               <Icon name={item.icon} className="icon" />
-              <span>{item.label}</span>
+              <span className="nav-label">{item.label}</span>
               {item.beta && (
-                <span className="mono" style={{ fontSize: 9, padding: "1px 5px", background: "var(--accent-soft)", color: "var(--accent)", borderRadius: 4, marginLeft: "auto" }}>
+                <span className="mono nav-beta" style={{ fontSize: 9, padding: "1px 5px", background: "var(--accent-soft)", color: "var(--accent)", borderRadius: 4, marginLeft: "auto" }}>
                   BETA
                 </span>
               )}
@@ -125,17 +173,17 @@ export function AppShell({ children }: { children: ReactNode }) {
           ))}
 
           <div className="nav-section-label">Konto</div>
-          <Link href="/profile" className={"nav-item" + (pathname === "/profile" ? " active" : "")}>
-            <Icon name="edit" className="icon" /><span>Profil bearbeiten</span>
+          <Link href="/profile" className={"nav-item" + (pathname === "/profile" ? " active" : "")} title={sidebarCollapsed ? "Profil bearbeiten" : undefined}>
+            <Icon name="edit" className="icon" /><span className="nav-label">Profil bearbeiten</span>
           </Link>
-          <Link href="/settings" className={"nav-item" + (pathname === "/settings" ? " active" : "")}>
-            <Icon name="settings" className="icon" /><span>Einstellungen</span>
+          <Link href="/settings" className={"nav-item" + (pathname === "/settings" ? " active" : "")} title={sidebarCollapsed ? "Einstellungen" : undefined}>
+            <Icon name="settings" className="icon" /><span className="nav-label">Einstellungen</span>
           </Link>
-          <button className="nav-item" onClick={handleLogout}>
-            <Icon name="logout" className="icon" /><span>Abmelden</span>
+          <button className="nav-item" onClick={handleLogout} title={sidebarCollapsed ? "Abmelden" : undefined}>
+            <Icon name="logout" className="icon" /><span className="nav-label">Abmelden</span>
           </button>
 
-          <Link href="/profile" className="me" style={{ cursor: "pointer" }}>
+          <Link href="/profile" className="me" style={{ cursor: "pointer" }} title={sidebarCollapsed ? `${me.first} ${me.last}` : undefined}>
             <Avatar first={me.first} last={me.last} color={me.color} size={34} url={me.avatarUrl} />
             <div className="me-text" style={{ flex: 1, minWidth: 0 }}>
               <div className="me-name">{me.first} {me.last}</div>
