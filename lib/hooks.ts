@@ -53,6 +53,7 @@ function rowToMember(r: Row): Member {
   return {
     id: String(r.slug ?? r.id ?? ""),
     dbId: r.id ? String(r.id) : undefined,
+    isAdmin: Boolean(r.is_admin),
     first: rm(r.first),
     last: rm(r.last),
     company: rm(r.company),

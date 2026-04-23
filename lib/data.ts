@@ -1,6 +1,7 @@
 export type Member = {
   id: string;
   dbId?: string;
+  isAdmin?: boolean;
   first: string;
   last: string;
   company: string;

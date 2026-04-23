@@ -10,6 +10,9 @@ import { useSettings } from "@/components/settings-context";
 import { BRANCHES, type Member } from "@/lib/data";
 import { useMembers } from "@/lib/hooks";
 
+const isAdminExtra = (s: string | undefined | null) =>
+  (s ?? "").trim().toLowerCase() === "admin";
+
 export default function DirectoryPage() {
   const { layout, cardStyle } = useSettings();
   const { data: members, loading, isDemo } = useMembers();
@@ -265,9 +268,15 @@ function MemberCard({ m, cardStyle }: { m: Member; cardStyle: "default" | "photo
             {m.first[0]}{m.last[0]}
           </div>
           {m.extra && (
-            <span style={{ position: "absolute", top: 10, left: 10, fontSize: 10, padding: "3px 8px", background: "rgba(0,0,0,0.4)", color: "white", borderRadius: 999, backdropFilter: "blur(6px)" }}>
-              {m.extra}
-            </span>
+            isAdminExtra(m.extra) ? (
+              <span style={{ position: "absolute", top: 10, left: 10, fontSize: 10, padding: "3px 9px", background: "#2563EB", color: "#FFFFFF", borderRadius: 999, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                {m.extra}
+              </span>
+            ) : (
+              <span style={{ position: "absolute", top: 10, left: 10, fontSize: 10, padding: "3px 8px", background: "rgba(0,0,0,0.4)", color: "white", borderRadius: 999, backdropFilter: "blur(6px)" }}>
+                {m.extra}
+              </span>
+            )
           )}
         </div>
         <div style={{ padding: 14 }}>
@@ -311,7 +320,15 @@ function MemberCard({ m, cardStyle }: { m: Member; cardStyle: "default" | "photo
       </div>
       <div>
         <div style={{ fontSize: 13.5 }}>{m.company}</div>
-        {m.extra && <div style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 2, fontStyle: "italic" }}>{m.extra}</div>}
+        {m.extra && (
+          isAdminExtra(m.extra) ? (
+            <span style={{ display: "inline-block", marginTop: 4, fontSize: 10, padding: "2px 8px", background: "#2563EB", color: "#FFFFFF", borderRadius: 999, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+              {m.extra}
+            </span>
+          ) : (
+            <div style={{ fontSize: 11.5, color: "var(--ink-3)", marginTop: 2, fontStyle: "italic" }}>{m.extra}</div>
+          )
+        )}
       </div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: "auto" }}>
         <span className="chip branch">{m.branch}</span>
@@ -345,7 +362,13 @@ function MemberList({ members }: { members: Member[] }) {
               <div style={{ fontSize: 13, color: "var(--ink-3)" }}>{m.role} · {m.company}</div>
             </div>
             {m.extra && (
-              <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 2, fontStyle: "italic" }}>{m.extra}</div>
+              isAdminExtra(m.extra) ? (
+                <span style={{ display: "inline-block", marginTop: 4, fontSize: 10, padding: "2px 8px", background: "#2563EB", color: "#FFFFFF", borderRadius: 999, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
+                  {m.extra}
+                </span>
+              ) : (
+                <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 2, fontStyle: "italic" }}>{m.extra}</div>
+              )
             )}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8, alignItems: "center" }}>
               <span className="chip branch">{m.branch}</span>

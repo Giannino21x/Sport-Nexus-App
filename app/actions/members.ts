@@ -42,6 +42,35 @@ function parseSince(v?: string): string | null {
   return null;
 }
 
+export async function setMemberExtraAction(
+  memberDbId: string,
+  extra: string,
+): Promise<{ error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht eingeloggt." };
+
+  // Explicit admin check — DB-level RLS + trigger still enforce this, but fail
+  // earlier with a clearer message.
+  const { data: me } = await supabase
+    .from("members")
+    .select("is_admin")
+    .eq("auth_id", user.id)
+    .maybeSingle();
+  if (!me?.is_admin) return { error: "Keine Berechtigung." };
+
+  const trimmed = extra.trim();
+  const { error } = await supabase
+    .from("members")
+    .update({ extra: trimmed })
+    .eq("id", memberDbId);
+
+  if (error) return { error: error.message };
+  revalidatePath("/directory");
+  revalidatePath(`/directory/${memberDbId}`);
+  return {};
+}
+
 export async function updateProfileAction(input: ProfileInput): Promise<{ error?: string }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

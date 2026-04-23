@@ -2,16 +2,19 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
-import { useEvents, useMember } from "@/lib/hooks";
+import { reload, useEvents, useMe, useMember } from "@/lib/hooks";
+import { setMemberExtraAction } from "@/app/actions/members";
 
 export default function MemberDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const { data: m, loading } = useMember(id);
+  const { data: me } = useMe();
   const { data: events } = useEvents();
+  const isAdmin = Boolean(me?.isAdmin);
 
   if (loading) return <div style={{ padding: 40, color: "var(--ink-3)" }}>Lade...</div>;
   if (!m) {
@@ -88,11 +91,7 @@ export default function MemberDetailPage() {
             >
               {m.role} · {m.company}
             </div>
-            {m.extra && (
-              <div style={{ fontSize: 13, color: "var(--ink-3)", marginTop: 2, fontStyle: "italic" }}>
-                {m.extra}
-              </div>
-            )}
+            <ExtraTitle member={m} isAdmin={isAdmin} />
           </div>
           <div className="row" style={{ flexWrap: "wrap" }}>
             {m.email && (
@@ -241,6 +240,99 @@ function InfoRow({ label, value, mono }: { label: string; value: ReactNode | nul
     <div style={{ display: "grid", gridTemplateColumns: "130px 1fr", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--line)", alignItems: "baseline" }}>
       <div className="upper-label">{label}</div>
       <div className={mono ? "mono" : ""} style={{ fontSize: 13.5 }}>{value}</div>
+    </div>
+  );
+}
+
+function ExtraTitle({
+  member,
+  isAdmin,
+}: {
+  member: ReturnType<typeof useMember>["data"];
+  isAdmin: boolean;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(member?.extra ?? "");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  if (!member) return null;
+
+  const onSave = async () => {
+    if (!member.dbId) { setErr("Kein DB-ID für dieses Profil."); return; }
+    setErr(null);
+    setSaving(true);
+    try {
+      const r = await setMemberExtraAction(member.dbId, draft);
+      if (r.error) { setErr(r.error); return; }
+      setEditing(false);
+      reload("members");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <div style={{ marginTop: 6, display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+        <input
+          className="input"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          placeholder="z.B. Admin, SportNexus Co-Founder, Forbes 30U30"
+          style={{ flex: "1 1 240px", minWidth: 0, fontSize: 13 }}
+          autoFocus
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onSave(); } if (e.key === "Escape") setEditing(false); }}
+        />
+        <button className="btn btn-primary" onClick={onSave} disabled={saving} style={{ padding: "6px 12px", fontSize: 12.5 }}>
+          {saving ? "..." : "Speichern"}
+        </button>
+        <button className="btn btn-ghost" onClick={() => { setDraft(member.extra ?? ""); setEditing(false); }} disabled={saving} style={{ padding: "6px 12px", fontSize: 12.5 }}>
+          Abbrechen
+        </button>
+        {err && <div style={{ fontSize: 11.5, color: "var(--danger)", width: "100%" }}>{err}</div>}
+      </div>
+    );
+  }
+
+  const isAdminBadge = (member.extra ?? "").trim().toLowerCase() === "admin";
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: member.extra ? 4 : 6, flexWrap: "wrap" }}>
+      {member.extra ? (
+        isAdminBadge ? (
+          <span
+            style={{
+              fontSize: 11,
+              padding: "3px 9px",
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              background: "#2563EB",
+              color: "#FFFFFF",
+              borderRadius: 999,
+              display: "inline-block",
+              lineHeight: 1.4,
+            }}
+          >
+            Admin
+          </span>
+        ) : (
+          <div style={{ fontSize: 13, color: "var(--ink-3)", fontStyle: "italic" }}>
+            {member.extra}
+          </div>
+        )
+      ) : null}
+      {isAdmin && (
+        <button
+          className="btn-text"
+          onClick={() => { setDraft(member.extra ?? ""); setEditing(true); }}
+          style={{ padding: 0, fontSize: 11.5, color: "var(--ink-4)", cursor: "pointer" }}
+          title="Titel als Admin setzen"
+        >
+          {member.extra ? "· Titel bearbeiten" : "+ Titel setzen"}
+        </button>
+      )}
     </div>
   );
 }
