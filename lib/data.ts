@@ -1,5 +1,6 @@
 export type Member = {
   id: string;
+  dbId?: string;
   first: string;
   last: string;
   company: string;

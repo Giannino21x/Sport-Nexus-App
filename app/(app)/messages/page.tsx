@@ -59,8 +59,8 @@ function MessagesInner() {
     if (!memberBySlug) return convos[0]?.otherDbId ?? null;
     const existing = convos.find((c) => c.other.id === toParam);
     if (existing) return existing.otherDbId;
-    // New conversation — otherDbId is the live DB id or the slug in demo
-    return dataSource === "live" ? null : toParam;
+    // New conversation — resolve to DB uuid in live, or slug in demo
+    return dataSource === "live" ? memberBySlug.dbId ?? null : toParam;
   }, [convos, toParam, members, dataSource]);
 
   const [activeDbId, setActiveDbId] = useState<string | null>(initialDbId);

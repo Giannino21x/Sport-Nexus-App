@@ -52,6 +52,7 @@ const rm = (v: unknown): string => repairMojibake(String(v ?? ""));
 function rowToMember(r: Row): Member {
   return {
     id: String(r.slug ?? r.id ?? ""),
+    dbId: r.id ? String(r.id) : undefined,
     first: rm(r.first),
     last: rm(r.last),
     company: rm(r.company),
