@@ -203,17 +203,17 @@ function EventCard({ ev, past, isAdmin }: { ev: SnEvent; past?: boolean; isAdmin
   };
 
   return (
-    <Link href={`/events/${ev.id}`} className="card" style={{ padding: 0, overflow: "hidden", opacity: past ? 0.78 : 1, cursor: "pointer", display: "block", position: "relative" }}>
-      <div style={{ aspectRatio: "16/9", background: past ? "var(--ink-3)" : "var(--ink)", position: "relative", color: "var(--bg)", overflow: "hidden" }}>
+    <Link href={`/events/${ev.id}`} className="card" style={{ padding: 0, overflow: "hidden", opacity: past ? 0.78 : 1, cursor: "pointer", display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
+      <div style={{ aspectRatio: "16/9", background: past ? "var(--ink-3)" : "var(--ink)", position: "relative", color: "var(--bg)", overflow: "hidden", flexShrink: 0 }}>
         {ev.img && (
           <img
             src={ev.img}
             alt=""
             loading="lazy"
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: past ? "grayscale(0.3) brightness(0.8)" : "brightness(0.72)" }}
+            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", filter: past ? "grayscale(0.3) brightness(0.85)" : "none" }}
           />
         )}
-        <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.55) 100%)" }} />
+        <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.05) 35%, rgba(0,0,0,0.15) 60%, rgba(0,0,0,0.78) 100%)" }} />
         <div style={{ position: "absolute", inset: 0, padding: 16, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
           <div style={{ display: "flex", gap: 8 }}>
             {ev.featured && (
@@ -264,14 +264,15 @@ function EventCard({ ev, past, isAdmin }: { ev: SnEvent; past?: boolean; isAdmin
           </button>
         )}
       </div>
-      <div style={{ padding: 18 }}>
+      <div style={{ padding: 18, display: "flex", flexDirection: "column", flex: 1 }}>
         <div style={{ fontSize: 15, fontWeight: 500 }}>{ev.title}</div>
         <div className="serif" style={{ fontSize: 20, lineHeight: 1.2, marginTop: 3 }}>{ev.subtitle}</div>
         <div style={{ fontSize: 13, color: "var(--ink-3)", marginTop: 8, lineHeight: 1.5 }}>{ev.desc}</div>
         <div style={{ display: "flex", gap: 14, marginTop: 12, fontSize: 11.5, color: "var(--ink-4)" }}>
           <span>{ev.time}</span><span>{ev.venue}</span><span>~{ev.guests} Gäste</span>
         </div>
-        {!past && <span className="btn btn-primary" style={{ width: "100%", marginTop: 14 }}>Details & Registrieren →</span>}
+        <div style={{ flex: 1, minHeight: 14 }} aria-hidden="true" />
+        {!past && <span className="btn btn-primary" style={{ width: "100%" }}>Details & Registrieren →</span>}
       </div>
     </Link>
   );
