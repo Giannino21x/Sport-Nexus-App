@@ -50,42 +50,69 @@ console.log(`Guestoo: ${guestooEvents.length} Events.`);
 
 const { data: dbEvents } = await supabase
   .from("events")
-  .select("id, title, subtitle, date, guestoo_id");
+  .select("id, title, subtitle, date, city, venue, address, guests, guestoo_id");
 console.log(`Supabase: ${dbEvents?.length ?? 0} Events.`);
 
 const norm = (s) => (s ?? "").toLowerCase().replace(/[^a-z0-9äöüß ]/g, " ").replace(/\s+/g, " ").trim();
+const formatAddr = (a) => {
+  const street = [a?.street, a?.streetNumber].filter(Boolean).join(" ").trim();
+  const cityLine = [a?.postCode, a?.city].filter(Boolean).join(" ").trim();
+  return [street, cityLine].filter(Boolean).join(", ").trim();
+};
 
-let matched = 0;
+let matched = 0, updated = 0;
 const unmatched = [];
+
 for (const ev of dbEvents ?? []) {
-  if (ev.guestoo_id) { matched++; continue; }
   const isoDate = String(ev.date);
   const evTitle = norm(`${ev.title ?? ""} ${ev.subtitle ?? ""}`);
+  const evCity = norm(ev.city ?? "");
 
-  const candidate = guestooEvents.find((g) => {
-    const gDate = new Date(g.startDate).toISOString().slice(0, 10);
-    if (gDate !== isoDate) return false;
-    const gTitle = norm(g.displayName);
-    const aWords = evTitle.split(" ").filter((w) => w.length > 3);
-    const bWords = new Set(gTitle.split(" "));
-    return aWords.filter((w) => bWords.has(w)).length >= 2;
-  });
+  const candidate = ev.guestoo_id
+    ? guestooEvents.find((g) => g.id === ev.guestoo_id)
+    : guestooEvents.find((g) => {
+        const gDate = new Date(g.startDate).toISOString().slice(0, 10);
+        if (gDate !== isoDate) return false;
+        const gTitle = norm(g.displayName);
+        if (evCity) {
+          const inTitle = gTitle.includes(evCity);
+          const inCity = norm(g.address?.city ?? "").includes(evCity);
+          if (!inTitle && !inCity) return false;
+        }
+        const aWords = evTitle.split(" ").filter((w) => w.length > 3);
+        const bWords = new Set(gTitle.split(" "));
+        return aWords.filter((w) => bWords.has(w)).length >= 2;
+      });
 
-  if (candidate) {
-    const { error } = await supabase.from("events").update({ guestoo_id: candidate.id }).eq("id", ev.id);
-    if (!error) {
-      matched++;
-      console.log(`✓ ${ev.title} → ${candidate.id} (${candidate.displayName})`);
-    } else console.log(`✗ ${ev.title}: ${error.message}`);
-  } else {
-    unmatched.push({ id: ev.id, title: ev.title, date: isoDate });
-    console.log(`✗ Kein Match: ${ev.title} (${isoDate})`);
+  if (!candidate) {
+    if (!ev.guestoo_id) {
+      unmatched.push({ title: ev.title, date: isoDate });
+      console.log(`✗ Kein Match: ${ev.title} (${isoDate})`);
+    }
+    continue;
   }
+  matched++;
+
+  const updates = {};
+  if (!ev.guestoo_id) updates.guestoo_id = candidate.id;
+  if (typeof candidate.maxVisitor === "number" && candidate.maxVisitor !== ev.guests) {
+    updates.guests = candidate.maxVisitor;
+  }
+  if (candidate.address) {
+    const full = formatAddr(candidate.address);
+    if (full && full !== ev.address) updates.address = full;
+    if (candidate.address.locationName && candidate.address.locationName !== ev.venue) {
+      updates.venue = candidate.address.locationName;
+    }
+  }
+  if (Object.keys(updates).length === 0) {
+    console.log(`= ${ev.title} (in sync)`);
+    continue;
+  }
+  const { error } = await supabase.from("events").update(updates).eq("id", ev.id);
+  if (error) { console.log(`✗ ${ev.title}: ${error.message}`); continue; }
+  updated++;
+  console.log(`↻ ${ev.title} → updated: ${Object.keys(updates).join(", ")}`);
 }
 
-console.log(`\nMatched: ${matched}, unmatched: ${unmatched.length}`);
-console.log("Guestoo Events:");
-guestooEvents.forEach((g) => {
-  const d = new Date(g.startDate).toISOString().slice(0, 10);
-  console.log(`  ${d}  ${g.id}  ${g.displayName}`);
-});
+console.log(`\nMatched: ${matched} | Updated: ${updated} | Unmatched: ${unmatched.length}`);

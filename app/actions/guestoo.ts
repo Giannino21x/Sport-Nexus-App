@@ -40,13 +40,22 @@ export async function getEventAttendeesAction(
   }
 }
 
-// Admin-Action: gleicht alle SportNexus-Events in Supabase mit Guestoo-Events ab,
-// matched über Datum + Titel-Heuristik, und schreibt die Guestoo-UUID in die
-// `events.guestoo_id`-Spalte. Ein Einmal-Bootstrap für die schon vorhandenen
-// Seed-Events; danach würden neu erstellte Events gleich mit Guestoo-ID
-// angelegt werden.
+// Adresse aus Guestoo-Struktur: "Street Nr, PLZ City".
+type GuestooAddress = NonNullable<import("@/lib/guestoo").GuestooEvent["address"]>;
+function formatGuestooAddress(a: GuestooAddress): string {
+  const street = [a.street, a.streetNumber].filter(Boolean).join(" ").trim();
+  const cityLine = [a.postCode, a.city].filter(Boolean).join(" ").trim();
+  return [street, cityLine].filter(Boolean).join(", ").trim();
+}
+
+// Admin-Action: gleicht alle SportNexus-Events in Supabase mit Guestoo-Events ab.
+// Match über Datum + Stadt + Titel-Heuristik. Wenn ein Match existiert:
+//   - schreibt guestoo_id (sofern leer)
+//   - überschreibt guests, address, venue mit den Guestoo-Werten (Source of Truth)
+// Verhindert manuelle Drift zwischen unserer Anzeige und Guestoo.
 export async function syncGuestooIdsAction(): Promise<{
   matched?: number;
+  updated?: number;
   unmatched?: { id: string; title: string; date: string }[];
   error?: string;
 }> {
@@ -65,51 +74,63 @@ export async function syncGuestooIdsAction(): Promise<{
 
   const { data: dbEvents } = await supabase
     .from("events")
-    .select("id, title, subtitle, date, city, guestoo_id");
-  if (!dbEvents) return { matched: 0, unmatched: [] };
+    .select("id, title, subtitle, date, city, venue, address, guests, guestoo_id");
+  if (!dbEvents) return { matched: 0, updated: 0, unmatched: [] };
 
   const norm = (s: string) =>
     s.toLowerCase().replace(/[^a-z0-9äöüß ]/g, " ").replace(/\s+/g, " ").trim();
 
   const unmatched: { id: string; title: string; date: string }[] = [];
   let matched = 0;
+  let updated = 0;
 
   for (const ev of dbEvents) {
-    if (ev.guestoo_id) continue;
-
     const isoDate = String(ev.date);
     const evTitle = norm(`${ev.title ?? ""} ${ev.subtitle ?? ""}`);
     const evCity = norm(ev.city ?? "");
 
-    const candidate = guestooEvents.find((g) => {
-      const gDate = new Date(g.startDate).toISOString().slice(0, 10);
-      if (gDate !== isoDate) return false;
-      const gTitle = norm(g.displayName);
-      // Wenn unsere Stadt gesetzt ist, muss sie im Guestoo-Titel oder
-      // in der Guestoo-Adresse vorkommen — sonst ist es das falsche Event.
-      if (evCity) {
-        const inTitle = gTitle.includes(evCity);
-        const inCity = norm(g.address?.city ?? "").includes(evCity);
-        if (!inTitle && !inCity) return false;
-      }
-      const aWords = evTitle.split(" ").filter((w) => w.length > 3);
-      const bWords = new Set(gTitle.split(" "));
-      const overlap = aWords.filter((w) => bWords.has(w)).length;
-      return overlap >= 2;
-    });
+    // Wenn schon gemappt: das vorhandene Guestoo-Event holen, sonst matchen.
+    const candidate = ev.guestoo_id
+      ? guestooEvents.find((g) => g.id === ev.guestoo_id)
+      : guestooEvents.find((g) => {
+          const gDate = new Date(g.startDate).toISOString().slice(0, 10);
+          if (gDate !== isoDate) return false;
+          const gTitle = norm(g.displayName);
+          if (evCity) {
+            const inTitle = gTitle.includes(evCity);
+            const inCity = norm(g.address?.city ?? "").includes(evCity);
+            if (!inTitle && !inCity) return false;
+          }
+          const aWords = evTitle.split(" ").filter((w) => w.length > 3);
+          const bWords = new Set(gTitle.split(" "));
+          return aWords.filter((w) => bWords.has(w)).length >= 2;
+        });
 
-    if (candidate) {
-      const { error } = await supabase
-        .from("events")
-        .update({ guestoo_id: candidate.id })
-        .eq("id", ev.id);
-      if (!error) matched++;
-    } else {
-      unmatched.push({ id: String(ev.id), title: String(ev.title ?? ""), date: isoDate });
+    if (!candidate) {
+      if (!ev.guestoo_id) unmatched.push({ id: String(ev.id), title: String(ev.title ?? ""), date: isoDate });
+      continue;
+    }
+
+    matched++;
+
+    const updates: Record<string, unknown> = {};
+    if (!ev.guestoo_id) updates.guestoo_id = candidate.id;
+    if (typeof candidate.maxVisitor === "number" && candidate.maxVisitor !== ev.guests) {
+      updates.guests = candidate.maxVisitor;
+    }
+    if (candidate.address) {
+      const fullAddr = formatGuestooAddress(candidate.address);
+      if (fullAddr && fullAddr !== ev.address) updates.address = fullAddr;
+      const venue = candidate.address.locationName ?? null;
+      if (venue && venue !== ev.venue) updates.venue = venue;
+    }
+    if (Object.keys(updates).length > 0) {
+      const { error } = await supabase.from("events").update(updates).eq("id", ev.id);
+      if (!error) updated++;
     }
   }
 
   revalidatePath("/events");
   revalidatePath("/dashboard");
-  return { matched, unmatched };
+  return { matched, updated, unmatched };
 }
