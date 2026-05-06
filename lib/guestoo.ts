@@ -99,11 +99,13 @@ async function call<T>(path: string, init?: { method?: string; body?: unknown })
 export async function searchGuestooEvents(opts?: { archived?: "HIDE_ARCHIVED" | "SHOW_ALL" }) {
   type Resp = { items: GuestooEvent[]; totalItems?: number };
   const body = {
-    paging: { currentPage: 0, pages: [], perPage: 200, sort: "date" },
+    paging: { currentPage: 0, pages: [], perPage: 500, sort: "date" },
     tags: [],
     campaigns: [],
     visibilities: [],
-    archivedFilter: opts?.archived ?? "HIDE_ARCHIVED",
+    // Default SHOW_ALL — archivierte Past-Events behalten ihre Visitor-Daten
+    // und sind für unser Sync-Mapping wichtig.
+    archivedFilter: opts?.archived ?? "SHOW_ALL",
   };
   const data = await call<Resp>("/proxy/api/events/search", { method: "POST", body });
   return data.items ?? [];

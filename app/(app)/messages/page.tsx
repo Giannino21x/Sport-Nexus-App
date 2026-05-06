@@ -70,6 +70,7 @@ function MessagesInner() {
   useEffect(() => {
     // URL changed — reset user override and re-sync to the new target.
     userPickedRef.current = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- bewusste Sync-Source: URL-Param → Selection-State
     setActiveDbId(initialDbId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [toParam]);
@@ -85,6 +86,7 @@ function MessagesInner() {
 
   const [demoMsgs, setDemoMsgs] = useState<ChatMessage[]>([]);
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Demo-Konversation aus statischer Vorlage hydrieren
     if (dataSource !== "demo" || !activeConvo) { setDemoMsgs([]); return; }
     const otherId = activeConvo.otherDbId;
     setDemoMsgs([
@@ -131,6 +133,7 @@ function MessagesInner() {
 
   useEffect(() => {
     if (!plusOpen) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Popover-Positioning beim Öffnen
     setPlusPos(anchorAbove(MENU_H, MENU_W));
     const onReflow = () => setPlusPos(anchorAbove(MENU_H, MENU_W));
     window.addEventListener("resize", onReflow);
@@ -152,11 +155,11 @@ function MessagesInner() {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plusOpen]);
 
   useEffect(() => {
     if (!emojiOpen) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Popover-Positioning beim Öffnen
     setEmojiPos(anchorAbove(POPOVER_H, POPOVER_W));
     const onReflow = () => setEmojiPos(anchorAbove(POPOVER_H, POPOVER_W));
     window.addEventListener("resize", onReflow);
@@ -178,7 +181,6 @@ function MessagesInner() {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [emojiOpen]);
 
   const insertEmoji = (emoji: string) => {

@@ -61,6 +61,7 @@ export function CommandPalette({
   // Reset state each time the palette opens
   useEffect(() => {
     if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Open-Trigger reset
       setQuery("");
       setHighlighted(0);
       setTimeout(() => inputRef.current?.focus(), 10);
@@ -119,6 +120,7 @@ export function CommandPalette({
 
   // Clamp highlighted index when the list changes
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- prev-callback Index-Clamp ist idempotent
     setHighlighted((h) => Math.min(Math.max(0, h), Math.max(0, items.length - 1)));
   }, [items.length]);
 
@@ -218,7 +220,7 @@ export function CommandPalette({
         <div ref={listRef} style={{ overflowY: "auto", padding: 6 }}>
           {items.length === 0 ? (
             <div style={{ padding: 24, textAlign: "center", color: "var(--ink-3)", fontSize: 13 }}>
-              Keine Treffer für „{query}".
+              Keine Treffer für &bdquo;{query}&ldquo;.
             </div>
           ) : (
             items.map((item, i) => {

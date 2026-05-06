@@ -37,8 +37,8 @@ async function fetchGuestooEvents() {
       "X-XSRF-TOKEN": XSRF,
     },
     body: JSON.stringify({
-      paging: { currentPage: 0, pages: [], perPage: 200, sort: "date" },
-      tags: [], campaigns: [], visibilities: [], archivedFilter: "HIDE_ARCHIVED",
+      paging: { currentPage: 0, pages: [], perPage: 500, sort: "date" },
+      tags: [], campaigns: [], visibilities: [], archivedFilter: "SHOW_ALL",
     }),
   });
   if (!res.ok) throw new Error(`Guestoo ${res.status}: ${await res.text()}`);

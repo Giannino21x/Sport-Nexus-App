@@ -49,6 +49,7 @@ export default function EventDetailPage() {
   useEffect(() => {
     if (!ev?.guestooId) return;
     let cancelled = false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial-Reset des Error-States vor Async-Fetch
     setAttendeesError(null);
     getEventAttendeesAction(ev.guestooId).then((res) => {
       if (cancelled) return;

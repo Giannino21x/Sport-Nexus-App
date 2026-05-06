@@ -32,6 +32,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const raw = localStorage.getItem("sn_sidebar_collapsed");
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Hydration aus localStorage
       if (raw === "1") setSidebarCollapsed(true);
     } catch {}
   }, []);
@@ -83,13 +84,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     (pathname.startsWith("/directory/") ? "Member Detail" :
       pathname.startsWith("/events/") ? "Event" :
         pathname === "/profile" ? "Profil bearbeiten" : "Dashboard");
-
-  const navigate = (href: string) => {
-    router.push(href);
-    setMobileMenuOpen(false);
-    setNotifsOpen(false);
-    window.scrollTo(0, 0);
-  };
 
   const handleLogout = async () => {
     if (dataSource === "live") {

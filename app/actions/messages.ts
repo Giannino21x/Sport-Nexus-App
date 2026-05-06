@@ -2,6 +2,65 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { newMessageEmail, sendEmail } from "@/lib/email";
+
+type MessageSender = {
+  id: string;
+  slug: string | null;
+  first: string;
+  last: string;
+  role: string | null;
+  company: string | null;
+};
+
+type MessageRecipient = {
+  email: string | null;
+  first: string | null;
+};
+
+// Holt Sender + Empfänger fürs Email-Notification-Template (best-effort).
+async function loadMessageParties(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  meId: string,
+  recipientId: string,
+): Promise<{ sender: MessageSender | null; recipient: MessageRecipient | null }> {
+  const [{ data: sender }, { data: recipient }] = await Promise.all([
+    supabase.from("members").select("id, slug, first, last, role, company").eq("id", meId).maybeSingle(),
+    supabase.from("members").select("first, email").eq("id", recipientId).maybeSingle(),
+  ]);
+  return { sender: sender as MessageSender | null, recipient: recipient as MessageRecipient | null };
+}
+
+// Fire-and-forget E-Mail an den Empfänger (kein await im Aufrufer).
+async function notifyRecipient(args: {
+  supabase: Awaited<ReturnType<typeof createClient>>;
+  meId: string;
+  recipientId: string;
+  body: string;
+  hasAttachment?: boolean;
+}): Promise<void> {
+  try {
+    const { sender, recipient } = await loadMessageParties(args.supabase, args.meId, args.recipientId);
+    if (!sender || !recipient?.email) return;
+    if (!sender.slug) return; // ohne Slug kein Profil-Link → trotzdem senden, aber nicht ohne Identität
+    const tpl = newMessageEmail({
+      senderName: `${sender.first} ${sender.last}`,
+      sender: {
+        first: sender.first,
+        last: sender.last,
+        role: sender.role,
+        company: sender.company,
+        slug: sender.slug,
+      },
+      bodyPreview: args.body,
+      hasAttachment: args.hasAttachment,
+      recipientFirst: recipient.first,
+    });
+    await sendEmail({ to: recipient.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+  } catch (e) {
+    console.error("[messages] notifyRecipient error:", e instanceof Error ? e.message : e);
+  }
+}
 
 export async function sendMessageAction(recipientDbId: string, body: string): Promise<{ error?: string }> {
   const trimmed = body.trim();
@@ -20,6 +79,9 @@ export async function sendMessageAction(recipientDbId: string, body: string): Pr
     body: trimmed,
   });
   if (error) return { error: error.message };
+
+  // Email-Benachrichtigung — best effort, blockiert den Send-Path nicht.
+  void notifyRecipient({ supabase, meId: me.id, recipientId: recipientDbId, body: trimmed });
 
   revalidatePath("/messages");
   return {};
@@ -71,6 +133,8 @@ export async function sendMessageWithAttachmentAction(
     attachment_url: publicUrl,
   });
   if (error) return { error: error.message };
+
+  void notifyRecipient({ supabase, meId: me.id, recipientId: recipientDbId, body: body || "(Bild)", hasAttachment: true });
 
   revalidatePath("/messages");
   return {};

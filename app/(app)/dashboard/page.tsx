@@ -193,7 +193,7 @@ export default function DashboardPage() {
                   : `${matchSuggestions.length} Kontakte, die zu dir passen könnten`}
               </div>
               <div style={{ fontSize: 13, color: "var(--ink-3)", marginTop: 6 }}>
-                Basierend auf Branche, Sportinteressen und deiner „Suche".
+                Basierend auf Branche, Sportinteressen und deiner &bdquo;Suche&ldquo;.
               </div>
               <div className="col" style={{ gap: 10, marginTop: 16 }}>
                 {matchSuggestions.map((m) => (

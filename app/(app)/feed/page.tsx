@@ -43,6 +43,7 @@ export default function FeedPage() {
 
   // Clear like overrides once the posts refetch makes them redundant.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- prev-callback ist idempotent (returns prev wenn nichts ändert)
     setLikeOverride((prev) => {
       let changed = false;
       const next: Record<string, LikeOverride> = {};
@@ -66,7 +67,7 @@ export default function FeedPage() {
     return () => document.removeEventListener("click", close);
   }, [menuOpenFor]);
 
-  const allPosts = [...localPosts, ...posts];
+  const allPosts = useMemo(() => [...localPosts, ...posts], [localPosts, posts]);
 
   const trending = useMemo(() => {
     const counts = new Map<string, number>();

@@ -55,6 +55,7 @@ export default function ProfilePage() {
   const meId = me?.id ?? null;
   useEffect(() => {
     if (!me) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Form initial einmal aus me hydrieren (siehe oben)
     setForm({
       ...me,
       linkedin: me.linkedin ?? "",

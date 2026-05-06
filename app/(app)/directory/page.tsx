@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Avatar } from "@/components/avatar";
 import { Dropdown } from "@/components/dropdown";
 import { EmptyState } from "@/components/empty-state";
@@ -15,7 +15,7 @@ const isAdminExtra = (s: string | undefined | null) =>
 
 export default function DirectoryPage() {
   const { layout, cardStyle } = useSettings();
-  const { data: members, loading, isDemo } = useMembers();
+  const { data: members } = useMembers();
   const [q, setQ] = useState("");
   const [filters, setFilters] = useState({ branch: "", sub: "", work: "", home: "", role: "" });
   const [sort, setSort] = useState<"last" | "first" | "company">("last");
@@ -30,12 +30,15 @@ export default function DirectoryPage() {
   }, [filters.branch]);
 
   const deCollator = useMemo(() => new Intl.Collator("de-CH", { sensitivity: "base" }), []);
-  const uniqClean = (arr: string[]) =>
-    [...new Set(arr.map((v) => v?.trim()).filter((v): v is string => Boolean(v)))].sort(deCollator.compare);
+  const uniqClean = useCallback(
+    (arr: string[]) =>
+      [...new Set(arr.map((v) => v?.trim()).filter((v): v is string => Boolean(v)))].sort(deCollator.compare),
+    [deCollator],
+  );
 
-  const allWorkCities = useMemo(() => uniqClean(members.map((m) => m.work)), [members, deCollator]);
-  const allHomeCities = useMemo(() => uniqClean(members.map((m) => m.home)), [members, deCollator]);
-  const allRoles = useMemo(() => uniqClean(members.map((m) => m.role)), [members, deCollator]);
+  const allWorkCities = useMemo(() => uniqClean(members.map((m) => m.work)), [members, uniqClean]);
+  const allHomeCities = useMemo(() => uniqClean(members.map((m) => m.home)), [members, uniqClean]);
+  const allRoles = useMemo(() => uniqClean(members.map((m) => m.role)), [members, uniqClean]);
 
   const filtered = useMemo(() => {
     const qq = q.trim().toLowerCase();
@@ -59,6 +62,7 @@ export default function DirectoryPage() {
     return r;
   }, [q, filters, sort, members]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- bewusster Pagination-Reset bei Filter-Änderung
   useEffect(() => setPage(1), [q, filters, sort]);
   const visible = filtered.slice(0, page * pageSize);
   const activeFilterCount = Object.values(filters).filter(Boolean).length;
