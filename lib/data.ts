@@ -7,6 +7,7 @@ export type Member = {
   company: string;
   role: string;
   extra: string;
+  additional?: string;
   branch: string;
   sub: string;
   work: string;

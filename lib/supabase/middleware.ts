@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
 // Routes that require an authenticated user when in "live" mode.
-const PROTECTED_PREFIXES = ["/dashboard", "/directory", "/events", "/messages", "/feed", "/profile"];
+const PROTECTED_PREFIXES = ["/dashboard", "/directory", "/events", "/messages", "/feed", "/profile", "/settings"];
 
 function isProtected(pathname: string): boolean {
   return PROTECTED_PREFIXES.some((p) => pathname === p || pathname.startsWith(p + "/"));

@@ -5,11 +5,9 @@ import { Icon } from "@/components/icon";
 import { useSettings, type Settings } from "@/components/settings-context";
 
 const ACCENTS: { k: Settings["accent"]; c: string; l: string }[] = [
-  { k: "default", c: "#E15A2B", l: "Matchday Orange" },
-  { k: "navy", c: "#153D6E", l: "Deep Navy" },
-  { k: "green", c: "#1F6A4E", l: "Court Green" },
-  { k: "ochre", c: "#B86A1A", l: "Ochre" },
-  { k: "burgundy", c: "#8C2A36", l: "Burgundy" },
+  { k: "default", c: "#C3A75E", l: "Amber Glow" },
+  { k: "navy", c: "#006FB6", l: "SN Blau" },
+  { k: "mono", c: "#000000", l: "Schwarz" },
 ];
 
 export default function SettingsPage() {

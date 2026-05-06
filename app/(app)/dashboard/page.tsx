@@ -31,9 +31,32 @@ export default function DashboardPage() {
     "Gute Nacht";
 
   const upcoming = events.filter((e) => e.status === "upcoming").sort((a, b) => a.date.localeCompare(b.date));
-  const matchSuggestions = members.filter(
-    (m) => m.id !== me.id && (m.branch === me.branch || m.sports.some((s) => me.sports.includes(s))),
-  ).slice(0, 3);
+
+  // Matchmaking: score every other member by shared signals — Branche zählt am
+  // schwersten, dann Subbranche, geteilte Sportarten, gleicher Arbeitsort,
+  // gleicher Wohnort. Wer kein Profil ausgefüllt hat, sieht trotzdem Vorschläge
+  // (zufällige stabile Reihenfolge), damit das Modul nicht leer wirkt.
+  const meHasSignal = Boolean(me.branch || me.sub || me.work || me.home || (me.sports ?? []).length > 0);
+  const others = members.filter((m) => m.id !== me.id);
+  const scored = others
+    .map((m) => {
+      let s = 0;
+      if (me.branch && m.branch === me.branch) s += 3;
+      if (me.sub && m.sub === me.sub) s += 2;
+      const sharedSports = (m.sports ?? []).filter((sp) => (me.sports ?? []).includes(sp)).length;
+      s += sharedSports;
+      if (me.work && m.work === me.work) s += 1;
+      if (me.home && m.home === me.home) s += 1;
+      return { m, s };
+    })
+    .sort((a, b) => b.s - a.s || a.m.id.localeCompare(b.m.id));
+  const matchSuggestions = (
+    meHasSignal && scored.some((x) => x.s > 0)
+      ? scored.filter((x) => x.s > 0)
+      : scored
+  )
+    .slice(0, 3)
+    .map((x) => x.m);
 
   const branchCount = new Set(members.map((m) => m.branch).filter(Boolean)).size;
 
@@ -207,11 +230,18 @@ export default function DashboardPage() {
                 <span className="upper-label" style={{ color: "var(--accent)" }}>Beta · Matchmaking</span>
               </div>
               <div className="serif" style={{ fontSize: 20, marginTop: 8, lineHeight: 1.2 }}>
-                Noch keine Vorschläge
+                {meHasSignal ? "Noch keine Vorschläge" : "Profil vervollständigen für Vorschläge"}
               </div>
               <div style={{ fontSize: 13, color: "var(--ink-3)", marginTop: 6 }}>
-                Sobald mehr Mitglieder beigetreten sind, findest du hier passende Kontakte.
+                {meHasSignal
+                  ? "Sobald mehr Mitglieder beigetreten sind, findest du hier passende Kontakte."
+                  : 'Trag Branche, Sportinteressen und deine „Suche" ein — dann findest du hier passende Members.'}
               </div>
+              {!meHasSignal && (
+                <Link href="/profile" className="btn btn-primary" style={{ marginTop: 14, display: "inline-flex" }}>
+                  Profil bearbeiten →
+                </Link>
+              )}
             </div>
           )}
 

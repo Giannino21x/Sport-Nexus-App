@@ -119,7 +119,7 @@ export default function MemberDetailPage() {
             <div className="upper-label" style={{ marginBottom: 14 }}>Unternehmen & Angebot</div>
             <InfoRow label="Firma" value={m.company} />
             <InfoRow label="Rolle" value={m.role} />
-            <InfoRow label="Zusatzfunktionen" value={m.extra} />
+            <InfoRow label="Zusatzfunktionen" value={m.additional} />
             <InfoRow label="Angebot" value={m.offer} />
             <InfoRow label="Branche" value={`${m.branch}${m.sub ? " · " + m.sub : ""}`} />
             <InfoRow
@@ -176,19 +176,6 @@ export default function MemberDetailPage() {
                 <Icon name="phone" size={14} className="text-ink-3" />
                 <a href={`tel:${m.mobile.replace(/\s+/g, "")}`} style={{ color: "var(--accent)", textDecoration: "underline" }}>
                   {m.mobile}
-                </a>
-              </div>
-            )}
-            {m.web && (
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", fontSize: 13 }}>
-                <Icon name="globe" size={14} className="text-ink-3" />
-                <a
-                  href={m.web.startsWith("http") ? m.web : `https://${m.web}`}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ color: "var(--accent)", textDecoration: "underline" }}
-                >
-                  {m.web.replace(/^https?:\/\//, "").replace(/\/$/, "")}
                 </a>
               </div>
             )}

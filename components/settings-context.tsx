@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 
 export type Settings = {
   theme: "light" | "dark";
-  accent: "default" | "navy" | "green" | "ochre" | "burgundy";
+  accent: "default" | "navy" | "mono";
   layout: "grid" | "list" | "table";
   cardStyle: "default" | "photo" | "compact";
   dataSource: "demo" | "live";
@@ -56,6 +56,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       if (raw) {
         const parsed = JSON.parse(raw) as Partial<Settings>;
         next = { ...DEFAULTS, ...parsed };
+        // Migrate retired accent values to brand-aligned default
+        const validAccents: Settings["accent"][] = ["default", "navy", "mono"];
+        if (!validAccents.includes(next.accent)) next.accent = DEFAULTS.accent;
       }
     } catch {}
     // Cookie wins over localStorage for dataSource — the server (middleware) reads the cookie.

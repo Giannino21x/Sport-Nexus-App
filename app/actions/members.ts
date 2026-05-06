@@ -25,6 +25,7 @@ export type ProfileInput = {
   showEmail?: boolean;
   matchmaking?: boolean;
   color?: string;
+  additional?: string;
 };
 
 function parseSince(v?: string): string | null {
@@ -98,6 +99,7 @@ export async function updateProfileAction(input: ProfileInput): Promise<{ error?
       mobile: input.mobile ?? "",
       web: input.web ?? "",
       linkedin: input.linkedin ?? "",
+      additional_roles: input.additional ?? "",
       show_mobile: input.showMobile ?? true,
       show_email: input.showEmail ?? true,
       matchmaking: input.matchmaking ?? true,

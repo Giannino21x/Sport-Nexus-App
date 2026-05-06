@@ -9,8 +9,14 @@ import { type SnEvent } from "@/lib/data";
 import { reload, useEvents, useMe } from "@/lib/hooks";
 import { createEventAction, deleteEventAction, type EventInput } from "@/app/actions/events";
 
+// Guestoo bleibt das System of Record für Anmeldungen/Reminder/Verifikation.
+// Embedding via <iframe> ist nicht möglich (Guestoo schickt
+// X-Frame-Options: deny und frame-ancestors 'none'). Wir zeigen daher die per
+// Sync gespiegelten Events als native Cards an und schicken Members für die
+// Registrierung mit einem Klick auf Guestoo.
+const GUESTOO_EVENTS_URL = "https://app.guestoo.de/agency/events";
+
 export default function EventsPage() {
-  const [viewMode, setViewMode] = useState<"native" | "iframe">("native");
   const { data: events } = useEvents();
   const { data: me } = useMe();
   const isAdmin = Boolean(me?.isAdmin);
@@ -25,30 +31,22 @@ export default function EventsPage() {
         <div>
           <div className="upper-label">Events</div>
           <h1>Kommende Treffen</h1>
-          <div className="subtitle">Lunches, Dinners und exklusive Formate für Members.</div>
+          <div className="subtitle">Lunches, Dinners und exklusive Formate für Members. Anmeldung läuft über Guestoo.</div>
         </div>
         <div className="row">
           {isAdmin && (
-            <button className="btn btn-accent" onClick={() => setComposerOpen((v) => !v)}>
+            <button className="btn btn-ghost" onClick={() => setComposerOpen((v) => !v)}>
               <Icon name="plus" size={14} /> {composerOpen ? "Schließen" : "Neues Event"}
             </button>
           )}
-          <div style={{ display: "flex", border: "1px solid var(--line)", borderRadius: "var(--radius)", padding: 2, background: "var(--bg-elevated)" }}>
-            <button
-              onClick={() => setViewMode("native")}
-              className="btn-text"
-              style={{ padding: "6px 12px", fontSize: 12.5, background: viewMode === "native" ? "var(--bg-sunken)" : "transparent", borderRadius: 7 }}
-            >
-              Native
-            </button>
-            <button
-              onClick={() => setViewMode("iframe")}
-              className="btn-text"
-              style={{ padding: "6px 12px", fontSize: 12.5, background: viewMode === "iframe" ? "var(--bg-sunken)" : "transparent", borderRadius: 7 }}
-            >
-              Guestoo iFrame
-            </button>
-          </div>
+          <a
+            href={GUESTOO_EVENTS_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="btn btn-accent"
+          >
+            <Icon name="link" size={14} /> Guestoo öffnen ↗
+          </a>
         </div>
       </div>
 
@@ -56,36 +54,30 @@ export default function EventsPage() {
         <EventComposer onDone={() => { setComposerOpen(false); reload("events"); }} onCancel={() => setComposerOpen(false)} />
       )}
 
-      {viewMode === "iframe" ? (
-        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-          <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 10, fontSize: 12.5, color: "var(--ink-3)" }}>
-            <Icon name="link" size={13} />
-            <span className="mono">events.guestoo.de/sportnexus</span>
-            <span style={{ marginLeft: "auto" }} className="chip">iframe integration</span>
-          </div>
-          <div style={{ padding: 40, background: "repeating-linear-gradient(45deg, var(--bg) 0 10px, var(--bg-sunken) 10px 11px)", minHeight: 400, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", textAlign: "center", color: "var(--ink-3)" }}>
-            <Icon name="calendar" size={28} />
-            <div className="serif" style={{ fontSize: 22, color: "var(--ink)", marginTop: 10 }}>Guestoo Event-Kalender</div>
-            <div style={{ fontSize: 13, maxWidth: 440, marginTop: 8 }}>
-              Hier wird der Guestoo iFrame integriert. Registrierungen laufen direkt über Guestoo — Mitglieder sehen alle Termine und melden sich mit einem Klick an.
-            </div>
-            <code style={{ marginTop: 16, padding: "8px 12px", background: "var(--bg-elevated)", border: "1px solid var(--line)", borderRadius: 6, fontSize: 11, fontFamily: "var(--font-mono)" }}>
-              &lt;iframe src=&quot;https://events.guestoo.de/sportnexus&quot; /&gt;
-            </code>
-          </div>
-        </div>
-      ) : (
-        <>
-          <div className="upper-label" style={{ marginBottom: 12 }}>Upcoming · {upcoming.length}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))", gap: 16, marginBottom: 40 }}>
-            {upcoming.map((ev) => <EventCard key={ev.id} ev={ev} isAdmin={isAdmin} />)}
-          </div>
-          <div className="upper-label" style={{ marginBottom: 12 }}>Past · {past.length}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))", gap: 16 }}>
-            {past.map((ev) => <EventCard key={ev.id} ev={ev} past isAdmin={isAdmin} />)}
-          </div>
-        </>
-      )}
+      <div className="card" style={{ padding: "12px 16px", marginBottom: 18, display: "flex", alignItems: "center", gap: 12, fontSize: 12.5, color: "var(--ink-3)" }}>
+        <Icon name="link" size={14} />
+        <span style={{ flex: 1 }}>
+          Anmeldung, Verifikation und Reminder-Mails laufen weiter über Guestoo. Diese Übersicht spiegelt die synchronisierten Events.
+        </span>
+        <a
+          href={GUESTOO_EVENTS_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="btn btn-ghost"
+          style={{ padding: "5px 10px", fontSize: 12, flexShrink: 0 }}
+        >
+          Zu Guestoo ↗
+        </a>
+      </div>
+
+      <div className="upper-label" style={{ marginBottom: 12 }}>Upcoming · {upcoming.length}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))", gap: 16, marginBottom: 40 }}>
+        {upcoming.map((ev) => <EventCard key={ev.id} ev={ev} isAdmin={isAdmin} />)}
+      </div>
+      <div className="upper-label" style={{ marginBottom: 12 }}>Past · {past.length}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))", gap: 16 }}>
+        {past.map((ev) => <EventCard key={ev.id} ev={ev} past isAdmin={isAdmin} />)}
+      </div>
     </div>
   );
 }

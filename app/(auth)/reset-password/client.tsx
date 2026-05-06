@@ -7,17 +7,17 @@ import { Icon } from "@/components/icon";
 import { LogoWordmark } from "@/components/logo-wordmark";
 
 const C = {
-  bg: "#F1EBDC",
-  bgInput: "#FBF7EE",
-  border: "#D9D0BC",
-  text: "#0A0A0A",
-  textDim: "#6B6456",
-  textSub: "#9A9281",
-  btnBg: "#0A0A0A",
+  bg: "#FFFFFF",
+  bgInput: "#FFFFFF",
+  border: "#D9D9D9",
+  text: "#000000",
+  textDim: "#575757",
+  textSub: "#868686",
+  btnBg: "#000000",
   btnText: "#FFFFFF",
 } as const;
 
-const SANS = "var(--font-poppins), 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif";
+const SANS = "var(--font-manrope), 'Azo Sans', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif";
 
 export function ResetPasswordClient({ hasSession, email }: { hasSession: boolean; email: string }) {
   const [state, formAction, pending] = useActionState(updatePasswordAction, undefined);

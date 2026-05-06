@@ -71,12 +71,12 @@ function Callback() {
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
-        background: "#F1EBDC",
-        color: "#0A0A0A",
-        fontFamily: "var(--font-poppins), 'Poppins', sans-serif",
+        background: "#FFFFFF",
+        color: "#000000",
+        fontFamily: "var(--font-manrope), 'Manrope', sans-serif",
       }}
     >
-      <div style={{ fontSize: 14, color: "#6B6456" }}>{message}</div>
+      <div style={{ fontSize: 14, color: "#575757" }}>{message}</div>
     </div>
   );
 }

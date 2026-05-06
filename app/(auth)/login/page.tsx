@@ -14,21 +14,21 @@ export default function LoginPage() {
   );
 }
 
-// Palette locked to the handoff design — always light on login, independent of app theme.
+// Palette gemäss SN_Markenrichtlinien — weiss/farbneutral, Schwarz als Primär-Ink.
 const C = {
-  bg: "#F1EBDC",
-  bgInput: "#FBF7EE",
-  border: "#D9D0BC",
-  text: "#0A0A0A",
-  textDim: "#6B6456",
-  textSub: "#9A9281",
-  btnBg: "#0A0A0A",
+  bg: "#FFFFFF",
+  bgInput: "#FFFFFF",
+  border: "#D9D9D9",
+  text: "#000000",
+  textDim: "#575757",
+  textSub: "#868686",
+  btnBg: "#000000",
   btnText: "#FFFFFF",
-  ghostBg: "#FBF7EE",
-  divider: "#D9D0BC",
+  ghostBg: "#F4F4F4",
+  divider: "#ECECEC",
 } as const;
 
-const SANS = "var(--font-poppins), 'Poppins', -apple-system, BlinkMacSystemFont, sans-serif";
+const SANS = "var(--font-manrope), 'Azo Sans', 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif";
 
 function LoginInner() {
   const searchParams = useSearchParams();
@@ -541,23 +541,20 @@ function LoginInner() {
             {mode === "signin" && (
               <>
                 Noch kein Mitglied?{" "}
-                <button
-                  type="button"
-                  onClick={() => setMode("signup")}
+                <a
+                  href="https://www.sportnexus.ch/kontakt"
+                  target="_blank"
+                  rel="noreferrer"
                   style={{
                     color: C.text,
                     textDecoration: "underline",
                     fontWeight: 500,
-                    background: "transparent",
-                    border: "none",
-                    padding: 0,
-                    cursor: "pointer",
                     fontFamily: SANS,
                     fontSize: "inherit",
                   }}
                 >
-                  Aufnahmeantrag stellen
-                </button>
+                  Nimm Kontakt mit uns auf
+                </a>
               </>
             )}
             {mode === "signup" && (

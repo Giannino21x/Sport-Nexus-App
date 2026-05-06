@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
+import { ImagePreview } from "@/components/image-preview";
 import { useSettings } from "@/components/settings-context";
 import { reload, useConversations, useMe, useMembers, useThreadMessages, type ChatMessage, type Conversation } from "@/lib/hooks";
 import { markThreadReadAction, sendMessageAction, sendMessageWithAttachmentAction } from "@/app/actions/messages";
@@ -373,7 +374,7 @@ function MessagesInner() {
             <div className="messages-thread">
               {activeMember ? (
                 <>
-                  <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                     {isMobile && (
                       <button
                         className="icon-btn"
@@ -412,7 +413,7 @@ function MessagesInner() {
                       {isMobile ? "Profil" : "Profil ansehen"}
                     </Link>
                   </div>
-                  <div style={{ flex: 1, padding: isMobile ? 14 : 24, background: "var(--bg-sunken)", overflowY: "auto" }}>
+                  <div style={{ flex: 1, minHeight: 0, padding: isMobile ? 14 : 24, background: "var(--bg-sunken)", overflowY: "auto" }}>
                     {msgs.length === 0 ? (
                       <div style={{ textAlign: "center", color: "var(--ink-3)", fontSize: 13, marginTop: 40 }}>
                         Noch keine Nachrichten. Schreib den ersten Gruß!
@@ -430,7 +431,7 @@ function MessagesInner() {
                       ))
                     )}
                   </div>
-                  <div style={{ padding: 12, borderTop: "1px solid var(--line)", display: "flex", gap: 10, flexDirection: "column", position: "relative" }}>
+                  <div style={{ padding: 12, borderTop: "1px solid var(--line)", display: "flex", gap: 10, flexDirection: "column", position: "relative", flexShrink: 0, background: "var(--bg-elevated)" }}>
                     {sendError && <div style={{ fontSize: 12, color: "var(--danger)" }}>{sendError}</div>}
                     <input
                       ref={fileInputRef}
@@ -682,12 +683,8 @@ function Msg({
       {align === "left" && avatar && <Avatar first={avatar.first} last={avatar.last} color={avatar.color} size={28} url={avatar.avatarUrl} />}
       <div style={{ maxWidth: 440 }}>
         {attachmentUrl && (
-          <a
-            href={attachmentUrl}
-            target="_blank"
-            rel="noreferrer"
+          <div
             style={{
-              display: "block",
               borderRadius: 14,
               borderTopLeftRadius: align === "left" ? 4 : 14,
               borderTopRightRadius: align === "right" ? 4 : 14,
@@ -697,13 +694,13 @@ function Msg({
               background: "var(--bg-sunken)",
             }}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <ImagePreview
               src={attachmentUrl}
               alt="Anhang"
-              style={{ display: "block", width: "100%", maxHeight: 360, objectFit: "cover" }}
+              rounded={false}
+              thumbnailStyle={{ borderRadius: 0 }}
             />
-          </a>
+          </div>
         )}
         {hasText && (
           <div

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
+import { ImagePreview } from "@/components/image-preview";
 import { useSettings } from "@/components/settings-context";
 import { reload, useMe, usePosts, usePostReplies, type Post, type PostReply } from "@/lib/hooks";
 import {
@@ -363,19 +364,14 @@ export default function FeedPage() {
                         {p.body}
                       </div>
                       {p.imageUrl && (
-                        <a
-                          href={p.imageUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          style={{ display: "block", marginTop: 14, borderRadius: 10, overflow: "hidden", border: "1px solid var(--line)" }}
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
+                        <div style={{ marginTop: 14, borderRadius: 10, overflow: "hidden", border: "1px solid var(--line)" }}>
+                          <ImagePreview
                             src={p.imageUrl}
                             alt="Post"
-                            style={{ display: "block", width: "100%", maxHeight: 520, objectFit: "cover" }}
+                            rounded={false}
+                            thumbnailStyle={{ maxHeight: 520, borderRadius: 0 }}
                           />
-                        </a>
+                        </div>
                       )}
                       {p.meta && <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 10 }} className="mono">↳ {p.meta}</div>}
                     </>

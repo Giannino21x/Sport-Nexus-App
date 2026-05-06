@@ -1,16 +1,16 @@
 import type { Metadata } from "next";
-import { Fraunces, DM_Sans, JetBrains_Mono, Poppins } from "next/font/google";
+import { Bricolage_Grotesque, Manrope, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
+const bricolage = Bricolage_Grotesque({
+  variable: "--font-bricolage",
   subsets: ["latin"],
-  axes: ["opsz", "SOFT"],
+  axes: ["opsz", "wdth"],
   display: "swap",
 });
 
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
+const manrope = Manrope({
+  variable: "--font-manrope",
   subsets: ["latin"],
   display: "swap",
 });
@@ -18,13 +18,6 @@ const dmSans = DM_Sans({
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
   subsets: ["latin"],
-  display: "swap",
-});
-
-const poppins = Poppins({
-  variable: "--font-poppins",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700"],
   display: "swap",
 });
 
@@ -41,7 +34,7 @@ export default function RootLayout({
   return (
     <html
       lang="de"
-      className={`${fraunces.variable} ${dmSans.variable} ${jetbrainsMono.variable} ${poppins.variable}`}
+      className={`${bricolage.variable} ${manrope.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
       <body>{children}</body>

@@ -15,19 +15,24 @@ import {
   type ProfileInput,
 } from "@/app/actions/members";
 
-type Form = Member & { linkedin: string; showMobile: boolean; showEmail: boolean; matchmaking: boolean };
+type Form = Member & { linkedin: string; additional: string; showMobile: boolean; showEmail: boolean; matchmaking: boolean };
 
+// Banner palette — anchored to the brand (Amber Glow + SN Blau + neutral grays),
+// extended with a few muted complementary tones so members can express identity
+// without falling back to off-brand colors.
 const COLOR_SWATCHES = [
-  "#C7916A", // Terracotta
-  "#B8876B", // Warm Taupe
+  "#C3A75E", // SN Amber Glow (Akzent)
+  "#006FB6", // SN Blau (Sekundär)
+  "#000000", // Schwarz
+  "#575757", // SN Schwarz 80%
+  "#338CC4", // SN Blau 80%
+  "#66A8D3", // SN Blau 60%
+  "#1F6A4E", // Forest
+  "#8C2A36", // Burgundy
   "#6B8AA8", // Steel Blue
-  "#6B9A9E", // Teal
   "#7A9B7A", // Sage
   "#A67A9E", // Dusty Mauve
-  "#8C7396", // Aubergine
-  "#9E8A6B", // Khaki
-  "#C36060", // Coral
-  "#4A6670", // Slate
+  "#B8876B", // Warm Taupe
 ];
 
 export default function ProfilePage() {
@@ -43,17 +48,24 @@ export default function ProfilePage() {
   const [localAvatarUrl, setLocalAvatarUrl] = useState<string | null>(null);
   const [sportDraft, setSportDraft] = useState("");
 
+  // Initialize the form once when `me` first becomes available, and reset on
+  // identity change. Subsequent updates to `me` (e.g. after upload) must not
+  // clobber `localAvatarUrl` — that's the source of truth for the displayed
+  // image, including optimistic preview before the server confirms.
+  const meId = me?.id ?? null;
   useEffect(() => {
     if (!me) return;
     setForm({
       ...me,
       linkedin: me.linkedin ?? "",
+      additional: me.additional ?? "",
       showMobile: true,
       showEmail: true,
       matchmaking: true,
     });
     setLocalAvatarUrl(me.avatarUrl ?? null);
-  }, [me]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [meId]);
 
   if (!me || !form) return null;
 
@@ -79,25 +91,33 @@ export default function ProfilePage() {
       return;
     }
 
-    if (isDemo) {
-      const url = URL.createObjectURL(file);
-      setLocalAvatarUrl(url);
-      return;
-    }
+    // Optimistic preview — user sees the picture instantly, even while the
+    // upload is in flight. Same path in demo and live; live just swaps to the
+    // public URL once the server confirms.
+    setAvatarError(null);
+    const previousUrl = localAvatarUrl;
+    const previewUrl = URL.createObjectURL(file);
+    setLocalAvatarUrl(previewUrl);
+
+    if (isDemo) return;
 
     setAvatarPending(true);
-    setAvatarError(null);
     const fd = new FormData();
     fd.append("file", file);
     const r = await uploadAvatarAction(fd);
     setAvatarPending(false);
+    URL.revokeObjectURL(previewUrl);
     if (r.error) {
       setAvatarError(r.error);
+      setLocalAvatarUrl(previousUrl); // rollback
       return;
     }
-    if (r.url) setLocalAvatarUrl(r.url);
+    if (r.url) {
+      // Cache-bust so a re-upload doesn't show the previously cached image.
+      const sep = r.url.includes("?") ? "&" : "?";
+      setLocalAvatarUrl(`${r.url}${sep}v=${Date.now()}`);
+    }
     reload("members");
-    router.refresh();
   };
 
   const onRemoveAvatar = async () => {
@@ -145,6 +165,7 @@ export default function ProfilePage() {
         mobile: form.mobile,
         web: form.web,
         linkedin: form.linkedin,
+        additional: form.additional,
         showMobile: form.showMobile,
         showEmail: form.showEmail,
         matchmaking: form.matchmaking,
@@ -242,6 +263,21 @@ export default function ProfilePage() {
                 placeholder="TT.MM.JJJJ"
               />
             </div>
+          </div>
+
+          <div className="card" style={{ padding: 24 }}>
+            <div className="upper-label" style={{ marginBottom: 14 }}>Zusätzliche Funktionen / Unternehmen</div>
+            <div style={{ fontSize: 12.5, color: "var(--ink-3)", marginBottom: 12, lineHeight: 1.5 }}>
+              Verwaltungsräte, Stiftungsmandate, weitere Firmen — kommagetrennt oder pro Zeile.
+            </div>
+            <textarea
+              className="textarea"
+              value={form.additional || ""}
+              onChange={(e) => set("additional", e.target.value)}
+              placeholder="z.B. VR Alpine Equity, Stiftungsrat XY, Co-Founder ABC GmbH"
+              style={{ minHeight: 70 }}
+              maxLength={500}
+            />
           </div>
 
           <div className="card" style={{ padding: 24 }}>
@@ -428,22 +464,30 @@ export default function ProfilePage() {
 
           <div className="card" style={{ padding: 20 }}>
             <div className="upper-label" style={{ marginBottom: 10 }}>Banner-Farbe</div>
-            <div style={{ fontSize: 12.5, color: "var(--ink-3)", marginBottom: 12, lineHeight: 1.5 }}>
-              Wird als Hintergrund für dein Banner und deinen Avatar verwendet.
+            <div style={{ fontSize: 12.5, color: "var(--ink-3)", marginBottom: 14, lineHeight: 1.5 }}>
+              Hintergrund für dein Banner und deinen Avatar.
             </div>
             <div
               style={{
-                height: 70,
-                borderRadius: "var(--radius)",
+                height: 88,
+                borderRadius: "var(--radius-lg)",
                 background: `linear-gradient(135deg, ${form.color} 0%, var(--ink) 140%)`,
-                marginBottom: 12,
+                marginBottom: 16,
                 position: "relative",
                 overflow: "hidden",
+                boxShadow: "var(--shadow-sm)",
               }}
             >
               <div aria-hidden="true" className="avatar-stripes" />
             </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(6, 1fr)",
+                gap: 8,
+                marginBottom: 14,
+              }}
+            >
               {COLOR_SWATCHES.map((c) => {
                 const active = form.color?.toLowerCase() === c.toLowerCase();
                 return (
@@ -451,21 +495,46 @@ export default function ProfilePage() {
                     key={c}
                     type="button"
                     onClick={() => set("color", c)}
-                    aria-label={c}
+                    aria-label={`Banner-Farbe ${c}`}
+                    aria-pressed={active}
                     style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: "50%",
-                      background: c,
+                      aspectRatio: "1 / 1",
+                      borderRadius: 10,
+                      background: `linear-gradient(135deg, ${c} 0%, ${c} 100%)`,
                       cursor: "pointer",
-                      border: active ? "2px solid var(--ink)" : "2px solid transparent",
-                      outline: "1px solid var(--line)",
+                      border: "none",
                       padding: 0,
+                      outline: active ? "2px solid var(--ink)" : "1px solid var(--line)",
+                      outlineOffset: active ? 2 : 0,
+                      boxShadow: active ? "var(--shadow-sm)" : "none",
+                      transition: "transform 120ms, outline-offset 120ms",
+                      transform: active ? "scale(1.04)" : "scale(1)",
                     }}
                   />
                 );
               })}
             </div>
+            <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 12, color: "var(--ink-3)" }}>
+              <span>Eigene Farbe</span>
+              <input
+                type="color"
+                value={form.color || "#C3A75E"}
+                onChange={(e) => set("color", e.target.value)}
+                aria-label="Eigene Banner-Farbe"
+                style={{
+                  width: 36,
+                  height: 28,
+                  padding: 0,
+                  border: "1px solid var(--line)",
+                  borderRadius: 6,
+                  background: "transparent",
+                  cursor: "pointer",
+                }}
+              />
+              <span className="mono" style={{ marginLeft: "auto", fontSize: 11, color: "var(--ink-4)" }}>
+                {(form.color || "#C3A75E").toUpperCase()}
+              </span>
+            </label>
           </div>
 
           <div className="card" style={{ padding: 20 }}>
