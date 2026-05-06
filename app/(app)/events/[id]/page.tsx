@@ -22,6 +22,7 @@ export default function EventDetailPage() {
   const [registered, setRegistered] = useState<boolean | null>(null);
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [attendeesOpen, setAttendeesOpen] = useState(false);
 
   useEffect(() => {
     if (dataSource !== "live" || !id) return;
@@ -183,18 +184,40 @@ export default function EventDetailPage() {
           )}
 
           <div className="card" style={{ padding: 24 }}>
-            <div className="upper-label" style={{ marginBottom: 14 }}>{past ? "Das war dabei" : "Wer kommt"}</div>
-            <div style={{ display: "flex", marginBottom: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, gap: 10 }}>
+              <div className="upper-label">{past ? "Das war dabei" : "Wer kommt"}</div>
+              <button
+                type="button"
+                onClick={() => setAttendeesOpen((v) => !v)}
+                className="btn-text"
+                style={{ padding: "4px 10px", fontSize: 12, color: "var(--ink-3)" }}
+                aria-expanded={attendeesOpen}
+              >
+                {attendeesOpen ? "Liste ausblenden" : "Liste anzeigen"}
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => setAttendeesOpen((v) => !v)}
+              aria-label={attendeesOpen ? "Anmeldungen ausblenden" : "Anmeldungen anzeigen"}
+              style={{
+                display: "flex",
+                marginBottom: 10,
+                background: "transparent",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+              }}
+            >
               {attending.map((m, i) => (
-                <Link
+                <span
                   key={m.id}
-                  href={`/directory/${m.id}`}
-                  style={{ marginLeft: i === 0 ? 0 : -10, cursor: "pointer", border: "2px solid var(--bg-elevated)", borderRadius: "50%", display: "inline-flex" }}
+                  style={{ marginLeft: i === 0 ? 0 : -10, border: "2px solid var(--bg-elevated)", borderRadius: "50%", display: "inline-flex" }}
                 >
                   <Avatar first={m.first} last={m.last} color={m.color} size={40} url={m.avatarUrl} />
-                </Link>
+                </span>
               ))}
-              <div
+              <span
                 style={{
                   marginLeft: -10,
                   width: 40,
@@ -211,13 +234,49 @@ export default function EventDetailPage() {
                 }}
               >
                 +{Math.max(0, ev.guests - attending.length)}
-              </div>
-            </div>
+              </span>
+            </button>
             <div style={{ fontSize: 12.5, color: "var(--ink-3)" }}>
               {past
                 ? `${ev.guests} Mitglieder & Gäste waren dabei.`
                 : `${ev.guests} Plätze · bisher ${attending.length + Math.floor(ev.guests * 0.4)} Anmeldungen`}
             </div>
+            {attendeesOpen && (
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--line)", display: "flex", flexDirection: "column", gap: 2 }}>
+                {attending.map((m) => (
+                  <Link
+                    key={m.id}
+                    href={`/directory/${m.id}`}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: "8px 6px",
+                      borderRadius: 8,
+                      transition: "background 120ms",
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-sunken)"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                  >
+                    <Avatar first={m.first} last={m.last} color={m.color} size={32} url={m.avatarUrl} />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {m.first} {m.last}
+                      </div>
+                      <div style={{ fontSize: 11.5, color: "var(--ink-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {m.role}{m.company ? ` · ${m.company}` : ""}
+                      </div>
+                    </div>
+                    <Icon name="arrow" size={14} className="text-ink-3" />
+                  </Link>
+                ))}
+                {ev.guests > attending.length && (
+                  <div style={{ fontSize: 11.5, color: "var(--ink-4)", padding: "8px 6px 0" }}>
+                    +{ev.guests - attending.length} weitere Anmeldungen über Guestoo.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
