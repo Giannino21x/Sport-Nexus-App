@@ -11,6 +11,7 @@ import { useSettings } from "@/components/settings-context";
 import { useEvent, useMembers } from "@/lib/hooks";
 import { createClient } from "@/lib/supabase/client";
 import { registerEventAction } from "@/app/actions/events";
+import { getEventAttendeesAction, type EventAttendee } from "@/app/actions/guestoo";
 
 export default function EventDetailPage() {
   const params = useParams<{ id: string }>();
@@ -23,6 +24,8 @@ export default function EventDetailPage() {
   const [registerError, setRegisterError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [attendeesOpen, setAttendeesOpen] = useState(false);
+  const [attendees, setAttendees] = useState<EventAttendee[] | null>(null);
+  const [attendeesError, setAttendeesError] = useState<string | null>(null);
 
   useEffect(() => {
     if (dataSource !== "live" || !id) return;
@@ -42,6 +45,19 @@ export default function EventDetailPage() {
     })();
   }, [dataSource, id]);
 
+  // Echte Anmeldungen aus Guestoo laden, sobald das Event eine guestooId hat.
+  useEffect(() => {
+    if (!ev?.guestooId) return;
+    let cancelled = false;
+    setAttendeesError(null);
+    getEventAttendeesAction(ev.guestooId).then((res) => {
+      if (cancelled) return;
+      if (res.error) setAttendeesError(res.error);
+      else setAttendees(res.items ?? []);
+    });
+    return () => { cancelled = true; };
+  }, [ev?.guestooId]);
+
   if (loading) return <div style={{ padding: 40, color: "var(--ink-3)" }}>Lade...</div>;
   if (!ev) {
     return (
@@ -58,8 +74,32 @@ export default function EventDetailPage() {
 
   const d = new Date(ev.date);
   const past = ev.status === "past";
-  const attendingCount = Math.min(8, Math.max(4, Math.floor(ev.guests / 10)));
-  const attending = members.slice(0, attendingCount);
+  // Wenn das Event mit Guestoo verknüpft ist, ziehen wir die echten Anmeldungen
+  // live; sonst Fallback auf eine Members-Vorschau (nur für Demo-Daten ohne
+  // Guestoo-Verknüpfung).
+  const attendeeCount = attendees?.length ?? null;
+  const attendingPreview = (attendees && attendees.length > 0
+    ? attendees.slice(0, Math.min(8, attendees.length)).map((a) => ({
+        id: `gst-${a.guestooId}`,
+        first: a.firstName,
+        last: a.lastName,
+        company: a.company ?? "",
+        role: "",
+        color: "#6B8AA8",
+        avatarUrl: undefined as string | undefined,
+        memberSlug: null as string | null,
+      }))
+    : members.slice(0, Math.min(8, Math.max(4, Math.floor(ev.guests / 10)))).map((m) => ({
+        id: m.id,
+        first: m.first,
+        last: m.last,
+        company: m.company,
+        role: m.role,
+        color: m.color,
+        avatarUrl: m.avatarUrl,
+        memberSlug: m.id,
+      })));
+  const totalAttendees = attendeeCount ?? ev.guests;
 
   const onRegister = () => {
     setRegisterError(null);
@@ -209,7 +249,7 @@ export default function EventDetailPage() {
                 cursor: "pointer",
               }}
             >
-              {attending.map((m, i) => (
+              {attendingPreview.map((m, i) => (
                 <span
                   key={m.id}
                   style={{ marginLeft: i === 0 ? 0 : -10, border: "2px solid var(--bg-elevated)", borderRadius: "50%", display: "inline-flex" }}
@@ -233,20 +273,27 @@ export default function EventDetailPage() {
                   color: "var(--ink-2)",
                 }}
               >
-                +{Math.max(0, ev.guests - attending.length)}
+                +{Math.max(0, totalAttendees - attendingPreview.length)}
               </span>
             </button>
             <div style={{ fontSize: 12.5, color: "var(--ink-3)" }}>
               {past
-                ? `${ev.guests} Mitglieder & Gäste waren dabei.`
-                : `${ev.guests} Plätze · bisher ${attending.length + Math.floor(ev.guests * 0.4)} Anmeldungen`}
+                ? `${totalAttendees} Mitglieder & Gäste waren dabei.`
+                : attendees
+                  ? `${ev.guests} Plätze · ${attendees.length} bestätigte Anmeldungen via Guestoo`
+                  : `${ev.guests} Plätze`}
             </div>
+            {attendeesError && (
+              <div style={{ fontSize: 11.5, color: "var(--danger)", marginTop: 6 }}>
+                Anmeldungen konnten nicht geladen werden ({attendeesError}).
+              </div>
+            )}
             {attendeesOpen && (
               <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--line)", display: "flex", flexDirection: "column", gap: 2 }}>
-                {attending.map((m) => (
+                {attendingPreview.map((m) => m.memberSlug ? (
                   <Link
                     key={m.id}
-                    href={`/directory/${m.id}`}
+                    href={`/directory/${m.memberSlug}`}
                     style={{
                       display: "flex",
                       alignItems: "center",
@@ -269,10 +316,33 @@ export default function EventDetailPage() {
                     </div>
                     <Icon name="arrow" size={14} className="text-ink-3" />
                   </Link>
+                ) : (
+                  <div
+                    key={m.id}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      padding: "8px 6px",
+                      borderRadius: 8,
+                    }}
+                  >
+                    <Avatar first={m.first} last={m.last} color={m.color} size={32} url={m.avatarUrl} />
+                    <div style={{ minWidth: 0, flex: 1 }}>
+                      <div style={{ fontSize: 13.5, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {m.first} {m.last}
+                      </div>
+                      {m.company && (
+                        <div style={{ fontSize: 11.5, color: "var(--ink-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {m.company}
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 ))}
-                {ev.guests > attending.length && (
+                {totalAttendees > attendingPreview.length && (
                   <div style={{ fontSize: 11.5, color: "var(--ink-4)", padding: "8px 6px 0" }}>
-                    +{ev.guests - attending.length} weitere Anmeldungen über Guestoo.
+                    +{totalAttendees - attendingPreview.length} weitere Anmeldungen{attendees ? "" : " über Guestoo"}.
                   </div>
                 )}
               </div>

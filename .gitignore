@@ -56,3 +56,8 @@ next-env.d.ts
 # Local dev artifacts (server log, lint dumps)
 .dev.log
 .eslint.out
+
+# Playwright scrape profile + outputs (local, contains session cookies)
+.playwright-profile/
+.playwright-storage.json
+scripts/guestoo-out/

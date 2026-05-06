@@ -102,6 +102,7 @@ function rowToEvent(r: Row): SnEvent {
     speakers: (r.speakers as SnEvent["speakers"]) ?? [],
     agenda: (r.agenda as SnEvent["agenda"]) ?? [],
     long: rm(r.long_description),
+    guestooId: r.guestoo_id ? String(r.guestoo_id) : undefined,
   };
 }
 

@@ -45,6 +45,7 @@ export type SnEvent = {
   speakers: EventSpeaker[];
   agenda: EventAgendaItem[];
   long: string;
+  guestooId?: string;
 };
 
 export const BRANCHES: Record<string, string[]> = {
