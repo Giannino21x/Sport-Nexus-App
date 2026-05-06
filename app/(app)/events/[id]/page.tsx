@@ -267,13 +267,35 @@ export default function EventDetailPage() {
             <DetailRow icon="users" label="Gäste" value={`~${ev.guests} Teilnehmende`} />
           </div>
 
-          <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-            <div style={{ aspectRatio: "4/3", background: "repeating-linear-gradient(45deg, var(--bg-sunken) 0 10px, var(--bg) 10px 11px)", position: "relative", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", color: "var(--ink-3)", gap: 6 }}>
-              <Icon name="map" size={22} />
-              <div className="mono" style={{ fontSize: 10.5, textTransform: "uppercase", letterSpacing: "0.12em" }}>Map placeholder</div>
-              <div style={{ fontSize: 11, textAlign: "center", padding: "0 20px" }}>{ev.address}</div>
-            </div>
-          </div>
+          {(ev.address || ev.venue) && (() => {
+            // Google Maps Embed ohne API-Key: ?q=<query>&output=embed.
+            // Wir kombinieren Venue + Adresse für möglichst präzise Geocodierung.
+            const q = [ev.venue, ev.address].filter(Boolean).join(", ");
+            const enc = encodeURIComponent(q);
+            const embed = `https://www.google.com/maps?q=${enc}&output=embed`;
+            const open = `https://www.google.com/maps/search/?api=1&query=${enc}`;
+            return (
+              <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+                <iframe
+                  title={`Karte: ${q}`}
+                  src={embed}
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  style={{ width: "100%", aspectRatio: "4/3", border: "none", display: "block" }}
+                />
+                <a
+                  href={open}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", borderTop: "1px solid var(--line)", fontSize: 12.5, color: "var(--ink-2)" }}
+                >
+                  <Icon name="map" size={14} />
+                  <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{q}</span>
+                  <span style={{ color: "var(--ink-3)" }}>In Google Maps öffnen ↗</span>
+                </a>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>
