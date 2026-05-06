@@ -9,14 +9,15 @@ import { type SnEvent } from "@/lib/data";
 import { reload, useEvents, useMe } from "@/lib/hooks";
 import { createEventAction, deleteEventAction, type EventInput } from "@/app/actions/events";
 
-// Guestoo bleibt das System of Record für Anmeldungen/Reminder/Verifikation.
-// Embedding via <iframe> ist nicht möglich (Guestoo schickt
-// X-Frame-Options: deny und frame-ancestors 'none'). Wir zeigen daher die per
-// Sync gespiegelten Events als native Cards an und schicken Members für die
-// Registrierung mit einem Klick auf Guestoo.
-const GUESTOO_EVENTS_URL = "https://app.guestoo.de/agency/events";
+// Guestoo bleibt das System of Record für Anmeldung, Verifikation und
+// Reminder-Mails. events.guestoo.de/sportnexus ist die öffentliche
+// Übersichtsseite der Agency — embedfähig (kein X-Frame-Options gesetzt) und
+// auch als Direktlink ohne Login aufrufbar. /agency/events ist NICHT der
+// richtige Ziel-Link (das ist das Admin-Dashboard hinter Login).
+const GUESTOO_PUBLIC_URL = "https://events.guestoo.de/sportnexus";
 
 export default function EventsPage() {
+  const [viewMode, setViewMode] = useState<"iframe" | "native">("iframe");
   const { data: events } = useEvents();
   const { data: me } = useMe();
   const isAdmin = Boolean(me?.isAdmin);
@@ -34,50 +35,78 @@ export default function EventsPage() {
           <div className="subtitle">Lunches, Dinners und exklusive Formate für Members. Anmeldung läuft über Guestoo.</div>
         </div>
         <div className="row">
-          {isAdmin && (
+          {isAdmin && viewMode === "native" && (
             <button className="btn btn-ghost" onClick={() => setComposerOpen((v) => !v)}>
               <Icon name="plus" size={14} /> {composerOpen ? "Schließen" : "Neues Event"}
             </button>
           )}
-          <a
-            href={GUESTOO_EVENTS_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="btn btn-accent"
-          >
-            <Icon name="link" size={14} /> Guestoo öffnen ↗
-          </a>
+          <div style={{ display: "flex", border: "1px solid var(--line)", borderRadius: "var(--radius)", padding: 2, background: "var(--bg-elevated)" }}>
+            <button
+              onClick={() => setViewMode("iframe")}
+              className="btn-text"
+              style={{ padding: "6px 12px", fontSize: 12.5, background: viewMode === "iframe" ? "var(--bg-sunken)" : "transparent", borderRadius: 7 }}
+            >
+              Guestoo
+            </button>
+            <button
+              onClick={() => setViewMode("native")}
+              className="btn-text"
+              style={{ padding: "6px 12px", fontSize: 12.5, background: viewMode === "native" ? "var(--bg-sunken)" : "transparent", borderRadius: 7 }}
+            >
+              Native
+            </button>
+          </div>
         </div>
       </div>
 
-      {isAdmin && composerOpen && (
+      {isAdmin && composerOpen && viewMode === "native" && (
         <EventComposer onDone={() => { setComposerOpen(false); reload("events"); }} onCancel={() => setComposerOpen(false)} />
       )}
 
-      <div className="card" style={{ padding: "12px 16px", marginBottom: 18, display: "flex", alignItems: "center", gap: 12, fontSize: 12.5, color: "var(--ink-3)" }}>
-        <Icon name="link" size={14} />
-        <span style={{ flex: 1 }}>
-          Anmeldung, Verifikation und Reminder-Mails laufen weiter über Guestoo. Diese Übersicht spiegelt die synchronisierten Events.
-        </span>
-        <a
-          href={GUESTOO_EVENTS_URL}
-          target="_blank"
-          rel="noreferrer"
-          className="btn btn-ghost"
-          style={{ padding: "5px 10px", fontSize: 12, flexShrink: 0 }}
-        >
-          Zu Guestoo ↗
-        </a>
-      </div>
-
-      <div className="upper-label" style={{ marginBottom: 12 }}>Upcoming · {upcoming.length}</div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))", gap: 16, marginBottom: 40 }}>
-        {upcoming.map((ev) => <EventCard key={ev.id} ev={ev} isAdmin={isAdmin} />)}
-      </div>
-      <div className="upper-label" style={{ marginBottom: 12 }}>Past · {past.length}</div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))", gap: 16 }}>
-        {past.map((ev) => <EventCard key={ev.id} ev={ev} past isAdmin={isAdmin} />)}
-      </div>
+      {viewMode === "iframe" ? (
+        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+          <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 10, fontSize: 12.5, color: "var(--ink-3)" }}>
+            <Icon name="link" size={13} />
+            <span className="mono">events.guestoo.de/sportnexus</span>
+            <span style={{ marginLeft: "auto" }}>
+              <a
+                href={GUESTOO_PUBLIC_URL}
+                target="_blank"
+                rel="noreferrer"
+                className="btn btn-ghost"
+                style={{ padding: "5px 10px", fontSize: 12 }}
+              >
+                In neuem Tab öffnen ↗
+              </a>
+            </span>
+          </div>
+          <iframe
+            title="SportNexus Events (Guestoo)"
+            src={GUESTOO_PUBLIC_URL}
+            style={{
+              width: "100%",
+              height: "calc(100dvh - 220px)",
+              minHeight: 600,
+              border: "none",
+              display: "block",
+              background: "var(--bg-elevated)",
+            }}
+            referrerPolicy="no-referrer-when-downgrade"
+            loading="lazy"
+          />
+        </div>
+      ) : (
+        <>
+          <div className="upper-label" style={{ marginBottom: 12 }}>Upcoming · {upcoming.length}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))", gap: 16, marginBottom: 40 }}>
+            {upcoming.map((ev) => <EventCard key={ev.id} ev={ev} isAdmin={isAdmin} />)}
+          </div>
+          <div className="upper-label" style={{ marginBottom: 12 }}>Past · {past.length}</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))", gap: 16 }}>
+            {past.map((ev) => <EventCard key={ev.id} ev={ev} past isAdmin={isAdmin} />)}
+          </div>
+        </>
+      )}
     </div>
   );
 }
