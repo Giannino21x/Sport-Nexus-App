@@ -119,20 +119,28 @@ export default function ProfilePage() {
     setAvatarPending(true);
     const fd = new FormData();
     fd.append("file", file);
-    const r = await uploadAvatarAction(fd);
-    setAvatarPending(false);
-    URL.revokeObjectURL(previewUrl);
-    if (r.error) {
-      setAvatarError(r.error);
-      setLocalAvatarUrl(previousUrl); // rollback
-      return;
+    try {
+      const r = await uploadAvatarAction(fd);
+      if (r.error) {
+        setAvatarError(r.error);
+        setLocalAvatarUrl(previousUrl); // rollback
+        return;
+      }
+      if (r.url) {
+        // Cache-bust so a re-upload doesn't show the previously cached image.
+        const sep = r.url.includes("?") ? "&" : "?";
+        setLocalAvatarUrl(`${r.url}${sep}v=${Date.now()}`);
+      }
+      reload("members");
+    } catch (err) {
+      // Server Action threw (network/timeout/unhandled). Without this catch
+      // avatarPending stays true and the Save button is stuck on "Bild lädt...".
+      setAvatarError(err instanceof Error ? err.message : "Upload fehlgeschlagen.");
+      setLocalAvatarUrl(previousUrl);
+    } finally {
+      setAvatarPending(false);
+      URL.revokeObjectURL(previewUrl);
     }
-    if (r.url) {
-      // Cache-bust so a re-upload doesn't show the previously cached image.
-      const sep = r.url.includes("?") ? "&" : "?";
-      setLocalAvatarUrl(`${r.url}${sep}v=${Date.now()}`);
-    }
-    reload("members");
   };
 
   const onRemoveAvatar = async () => {
@@ -144,15 +152,20 @@ export default function ProfilePage() {
       return;
     }
     setAvatarPending(true);
-    const r = await removeAvatarAction();
-    setAvatarPending(false);
-    if (r.error) {
-      setAvatarError(r.error);
-      return;
+    try {
+      const r = await removeAvatarAction();
+      if (r.error) {
+        setAvatarError(r.error);
+        return;
+      }
+      setLocalAvatarUrl(null);
+      reload("members");
+      router.refresh();
+    } catch (err) {
+      setAvatarError(err instanceof Error ? err.message : "Entfernen fehlgeschlagen.");
+    } finally {
+      setAvatarPending(false);
     }
-    setLocalAvatarUrl(null);
-    reload("members");
-    router.refresh();
   };
 
   const onSave = () => {
