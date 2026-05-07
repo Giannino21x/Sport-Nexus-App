@@ -6,7 +6,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
 import { useSettings } from "@/components/settings-context";
-import { reload, useMe } from "@/lib/hooks";
+import { reload, useMe, writeDemoAvatar } from "@/lib/hooks";
 import { BRANCHES, LOCATIONS, ROLES, SPORTS, type Member } from "@/lib/data";
 import {
   removeAvatarAction,
@@ -100,7 +100,21 @@ export default function ProfilePage() {
     const previewUrl = URL.createObjectURL(file);
     setLocalAvatarUrl(previewUrl);
 
-    if (isDemo) return;
+    if (isDemo) {
+      // Demo: no server upload — persist a downscaled data URL in localStorage
+      // so the avatar survives navigation and reloads.
+      try {
+        const dataUrl = await resizeImageToDataUrl(file, 320);
+        setLocalAvatarUrl(dataUrl);
+        writeDemoAvatar(dataUrl);
+        URL.revokeObjectURL(previewUrl);
+        reload("members");
+      } catch {
+        setAvatarError("Bild konnte nicht verarbeitet werden.");
+        setLocalAvatarUrl(previousUrl);
+      }
+      return;
+    }
 
     setAvatarPending(true);
     const fd = new FormData();
@@ -125,6 +139,8 @@ export default function ProfilePage() {
     setAvatarError(null);
     if (isDemo) {
       setLocalAvatarUrl(null);
+      writeDemoAvatar(null);
+      reload("members");
       return;
     }
     setAvatarPending(true);
@@ -194,8 +210,8 @@ export default function ProfilePage() {
         </div>
         <div className="row">
           <Link href="/dashboard" className="btn btn-ghost">Abbrechen</Link>
-          <button className="btn btn-primary" onClick={onSave} disabled={pending}>
-            <Icon name="check" size={14} /> {pending ? "Speichern..." : "Speichern"}
+          <button className="btn btn-primary" onClick={onSave} disabled={pending || avatarPending}>
+            <Icon name="check" size={14} /> {pending ? "Speichern..." : avatarPending ? "Bild lädt..." : "Speichern"}
           </button>
         </div>
       </div>
@@ -781,4 +797,31 @@ function Toggle({ label, value, onChange }: { label: string; value: boolean; onC
       </span>
     </label>
   );
+}
+
+// Demo-Mode: das Original kann mehrere MB gross sein und sprengt das
+// localStorage-Quota. Wir skalieren auf max. 320px und exportieren als JPEG —
+// reicht für den Avatar und passt sicher rein.
+async function resizeImageToDataUrl(file: File, maxDim: number): Promise<string> {
+  const sourceUrl = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const i = new Image();
+      i.onload = () => resolve(i);
+      i.onerror = () => reject(new Error("image load failed"));
+      i.src = sourceUrl;
+    });
+    const ratio = Math.min(maxDim / img.width, maxDim / img.height, 1);
+    const w = Math.max(1, Math.round(img.width * ratio));
+    const h = Math.max(1, Math.round(img.height * ratio));
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("canvas 2d context unavailable");
+    ctx.drawImage(img, 0, 0, w, h);
+    return canvas.toDataURL("image/jpeg", 0.85);
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
 }

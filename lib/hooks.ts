@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSettings } from "@/components/settings-context";
 import { createClient } from "@/lib/supabase/client";
-import { EVENTS, MEMBERS, getMe, type Member, type SnEvent } from "@/lib/data";
+import { EVENTS, ME_ID, MEMBERS, getMe, type Member, type SnEvent } from "@/lib/data";
 
 // ---------- refetch bus ----------
 // Lightweight pub/sub so server actions can trigger client-side re-fetches.
@@ -18,6 +18,39 @@ const listeners: Record<ReloadKey, Set<() => void>> = {
 
 export function reload(key: ReloadKey) {
   listeners[key].forEach((l) => l());
+}
+
+// Demo-mode avatar persistence: hardcoded MEMBERS have no avatar, so we mirror
+// the user's choice into localStorage and merge it back when reading.
+export const DEMO_AVATAR_KEY = "sn_demo_avatar";
+
+function readDemoAvatar(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(DEMO_AVATAR_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function writeDemoAvatar(dataUrl: string | null) {
+  if (typeof window === "undefined") return;
+  try {
+    if (dataUrl) window.localStorage.setItem(DEMO_AVATAR_KEY, dataUrl);
+    else window.localStorage.removeItem(DEMO_AVATAR_KEY);
+  } catch {
+    // Quota — silently ignore; the in-memory state still shows the avatar
+    // for the current session.
+  }
+}
+
+function useDemoAvatar(): string | null {
+  const tick = useReloadTick("members");
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    setUrl(readDemoAvatar());
+  }, [tick]);
+  return url;
 }
 
 function useReloadTick(key: ReloadKey): number {
@@ -126,7 +159,13 @@ export function useMembers() {
     return () => { cancelled = true; };
   }, [dataSource, hydrated, tick]);
 
-  if (!hydrated || dataSource === "demo") return { data: MEMBERS, loading: false, isDemo: true };
+  const demoAvatar = useDemoAvatar();
+  if (!hydrated || dataSource === "demo") {
+    const merged = demoAvatar
+      ? MEMBERS.map((m) => (m.id === ME_ID ? { ...m, avatarUrl: demoAvatar } : m))
+      : MEMBERS;
+    return { data: merged, loading: false, isDemo: true };
+  }
   return { data: live ?? [], loading, isDemo: false };
 }
 
@@ -204,7 +243,16 @@ export function useMe(): { data: Member | null; loading: boolean; isDemo: boolea
     return () => { cancelled = true; };
   }, [dataSource, hydrated, tick]);
 
-  if (!hydrated || dataSource === "demo") return { data: getMe(), loading: false, isDemo: true, dbId: null };
+  const demoAvatar = useDemoAvatar();
+  if (!hydrated || dataSource === "demo") {
+    const me = getMe();
+    return {
+      data: demoAvatar ? { ...me, avatarUrl: demoAvatar } : me,
+      loading: false,
+      isDemo: true,
+      dbId: null,
+    };
+  }
   return { data: liveMember, loading, isDemo: false, dbId: liveDbId };
 }
 
