@@ -574,14 +574,6 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .messages-composer {
   padding: 12px;
 }
-@media (max-width: 780px) {
-  /* iPhone: untere Tabbar überlappt sonst die Sendezeile — wir holen den
-     Safe-Area-Inset zurück und packen ihn als zusätzliches Bottom-Padding drauf,
-     so dass Input + Send-Button immer sichtbar bleiben. */
-  .messages-composer {
-    padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
-  }
-}
 .messages-inner {
   padding: 28px 40px 40px;
   max-width: 1600px;
@@ -615,7 +607,10 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 @media (max-width: 780px) {
   .topbar { padding: 0 16px; }
   .topbar .search-global { display: none; }
-  .content { padding: 20px 16px 100px; }
+  /* Bottom-Tabbar ist ~62px hoch plus safe-area-inset-bottom (Home-Indicator).
+     Wir reservieren entsprechend mehr Platz, damit auf neueren iPhones mit
+     grossem Home-Indicator nichts hinter der Tabbar verschwindet. */
+  .content { padding: 20px 16px calc(80px + env(safe-area-inset-bottom)); }
   .page-header h1 { font-size: 38px; }
   .page-header { flex-direction: column; align-items: flex-start; gap: 12px; margin-bottom: 20px; padding-bottom: 14px; }
 
@@ -629,22 +624,40 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
     flex-direction: column;
   }
 
+  /* iPhone: statt fragile calc auf 100dvh, nutzen wir Flex-Layout. Der Wrap
+     erstreckt sich vom Topbar-Boden bis zur Tab-Bar-Oberkante. Innerhalb
+     drückt das Grid mit flex:1 den Composer immer an die Wrap-Unterkante.
+     content { padding-bottom: 100px } reserviert bereits den Platz für die
+     Tab-Bar — also lassen wir das margin-bottom des Wraps auf 0 (nicht
+     mehr -100px), damit der Composer NICHT unter der Tab-Bar landet. */
   .messages-wrap {
-    margin: -20px -16px -100px;
+    margin: -20px -16px 0;
+    display: flex;
+    flex-direction: column;
   }
   .messages-inner {
-    padding: 16px 16px 24px;
+    padding: 16px 16px 16px;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
   }
   .messages-grid {
     grid-template-columns: 1fr;
-    /* Bottom-Tabbar ist ~62px + safe-area-inset-bottom hoch. Damit der Composer
-       nicht unter der Tabbar verschwindet, ziehen wir das vom verfügbaren
-       Viewport ab. Vorher: fix 180 — auf iPhone war der untere Bereich verdeckt. */
-    height: calc(100dvh - 180px - env(safe-area-inset-bottom));
-    min-height: 360px;
+    /* Höhe aus Flex statt aus dvh-Calc — robust gegen wechselnde
+       Browser-Chrome-Höhen, Safari Address-Bar Show/Hide, Notch-Variationen. */
+    height: auto;
+    flex: 1;
+    min-height: 320px;
   }
   .messages-list {
     border-right: none;
+  }
+  /* Falls die Bottom-Tabbar mit Safe-Area höher als die im content reservierten
+     100px ist (z. B. iPhones mit grossem Home-Indicator), drücken wir den
+     Composer zusätzlich nach oben. */
+  .messages-composer {
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
   }
   .tweaks-body {
     max-height: none;

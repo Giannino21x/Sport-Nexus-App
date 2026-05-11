@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Manrope, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
@@ -24,6 +24,16 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "SportNexus — Memberbereich",
   description: "Der exklusive Memberbereich von SportNexus — Directory, Events, Verbindungen. Nur für Mitglieder.",
+};
+
+// Viewport-Meta — ohne diesen rendert Mobile-Browser die Seite in
+// Desktop-Breite (980px) und skaliert runter. `viewportFit: cover` reicht den
+// Safe-Area-Inset ins CSS durch, damit env(safe-area-inset-*) für Notch/Home-
+// Indicator korrekt aufgelöst wird.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
