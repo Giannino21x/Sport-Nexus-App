@@ -117,18 +117,41 @@ function formatDate(iso: string): string {
   return m ? `${m[3]}.${m[2]}.${m[1]}` : iso;
 }
 
+// Demo-Daten haben hardcoded status — wir leiten ihn dynamisch aus dem Datum
+// ab, damit Events nach Ablauf nicht weiter als "upcoming" gezeigt werden.
+// Der Schnappschuss `_demoNow` wird einmal pro Modul-Lifecycle berechnet
+// (statt jedes Render), das hält die Hook-Returns stabil & render-pure.
+const _demoNow = (() => {
+  if (typeof window === "undefined") return Date.now();
+  return Date.now();
+})();
+function demoEventsWithDerivedStatus(): SnEvent[] {
+  return EVENTS.map((e) => {
+    const end = e.date ? new Date(e.date + "T23:59:59").getTime() : 0;
+    const status: SnEvent["status"] = end && end < _demoNow ? "past" : "upcoming";
+    return status === e.status ? e : { ...e, status };
+  });
+}
+
 function rowToEvent(r: Row): SnEvent {
+  const dateStr = String(r.date ?? "");
+  // Status dynamisch aus Datum ableiten — der DB-Wert wird nur einmal bei
+  // Event-Anlage gesetzt und altert nicht mit. Pascal sah deshalb vergangene
+  // Events im Native-Tab unter "Upcoming". Wir nehmen Tagesende 23:59:59 lokal
+  // damit ein Event nicht mittags am Event-Tag schon "past" wird.
+  const eventEnd = dateStr ? new Date(dateStr + "T23:59:59").getTime() : 0;
+  const status: SnEvent["status"] = eventEnd && eventEnd < Date.now() ? "past" : "upcoming";
   return {
     id: String(r.id ?? ""),
     title: rm(r.title),
     subtitle: rm(r.subtitle),
-    date: String(r.date ?? ""),
+    date: dateStr,
     time: rm(r.time),
     city: rm(r.city),
     venue: rm(r.venue),
     address: rm(r.address),
     guests: Number(r.guests ?? 0),
-    status: r.status === "past" ? "past" : "upcoming",
+    status,
     featured: Boolean(r.featured),
     desc: rm(r.description),
     img: String(r.image_url ?? ""),
@@ -193,7 +216,7 @@ export function useEvents() {
     return () => { cancelled = true; };
   }, [dataSource, hydrated, tick]);
 
-  if (!hydrated || dataSource === "demo") return { data: EVENTS, loading: false, isDemo: true };
+  if (!hydrated || dataSource === "demo") return { data: demoEventsWithDerivedStatus(), loading: false, isDemo: true };
   return { data: live ?? [], loading, isDemo: false };
 }
 
