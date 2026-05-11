@@ -306,21 +306,37 @@ function MessagesInner() {
     el.scrollTo({ top: el.scrollHeight, behavior });
   };
 
-  // Beim Öffnen einer Konversation immer ans Ende springen.
+  // Beim Öffnen einer Konversation immer ans Ende springen. Mehrere Versuche
+  // über ~600ms, weil msgs async geladen werden, Bilder das Layout später
+  // reflowen, und der Scroll-Container teils erst nach Members-Load existiert.
+  // Ein einzelner requestAnimationFrame trifft das Ende deshalb nicht
+  // zuverlässig — Pascal sah die Konversation oben statt unten.
   useEffect(() => {
     if (!activeDbId) return;
-    const id = requestAnimationFrame(() => {
+    const timers: number[] = [];
+    const goBottom = () => {
       scrollToBottom("auto");
       wasAtBottomRef.current = true;
       setShowJumpDown(false);
-    });
-    return () => cancelAnimationFrame(id);
+    };
+    // sofort + nach RAF + nach kurzen Delays für Async-Load / Bild-Reflow
+    goBottom();
+    timers.push(window.setTimeout(goBottom, 50));
+    timers.push(window.setTimeout(goBottom, 200));
+    timers.push(window.setTimeout(goBottom, 600));
+    return () => timers.forEach((t) => window.clearTimeout(t));
   }, [activeDbId]);
 
-  // Bei neuen Nachrichten nur runter scrollen, wenn der Nutzer ohnehin am Ende war.
+  // Bei neuen Nachrichten:
+  //  - Initialer Load (prev=0 → now>0): immer scrollen, egal wo der Nutzer war.
+  //  - Folgende Updates: nur scrollen, wenn der Nutzer ohnehin am Ende ist.
+  const prevMsgsLenRef = useRef(0);
   useEffect(() => {
+    const prev = prevMsgsLenRef.current;
+    prevMsgsLenRef.current = msgs.length;
     if (msgs.length === 0) return;
-    if (!wasAtBottomRef.current) return;
+    const isInitialLoad = prev === 0;
+    if (!isInitialLoad && !wasAtBottomRef.current) return;
     const id = requestAnimationFrame(() => scrollToBottom("auto"));
     return () => cancelAnimationFrame(id);
   }, [msgs.length]);
