@@ -255,21 +255,28 @@ export default function ProfilePage() {
                 options={ROLES}
                 placeholder="z.B. CEO, Gründerin, oder beliebig"
               />
-              <SelectField
+              <ComboField
                 label="Branche"
                 value={form.branch}
                 onChange={(v) => {
                   set("branch", v);
-                  if (!BRANCHES[v]?.includes(form.sub)) set("sub", "");
+                  // Subbranche nur leeren, wenn die alte zu einer bekannten Branche gehörte
+                  // und die neue Branche eine andere Liste hat. Freitext-Subbranchen bleiben.
+                  const oldList = BRANCHES[form.branch] ?? [];
+                  const newList = BRANCHES[v] ?? [];
+                  if (oldList.includes(form.sub) && !newList.includes(form.sub)) {
+                    set("sub", "");
+                  }
                 }}
                 options={Object.keys(BRANCHES)}
+                placeholder="z.B. Finanzen, oder beliebig"
               />
-              <SelectField
+              <ComboField
                 label="Subbranche"
                 value={form.sub}
                 onChange={(v) => set("sub", v)}
                 options={BRANCHES[form.branch] ?? []}
-                disabled={!form.branch}
+                placeholder="z.B. Asset Management, oder beliebig"
               />
               <ComboField
                 label="Arbeitsort"
@@ -745,37 +752,6 @@ function ComboField({
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function SelectField({
-  label,
-  value,
-  onChange,
-  options,
-  disabled,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: string[];
-  disabled?: boolean;
-}) {
-  return (
-    <div className="field" style={{ marginBottom: 0 }}>
-      <label className="field-label">{label}</label>
-      <select
-        className="input"
-        value={value || ""}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-      >
-        <option value="">— auswählen —</option>
-        {options.map((o) => (
-          <option key={o} value={o}>{o}</option>
-        ))}
-      </select>
     </div>
   );
 }

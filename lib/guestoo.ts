@@ -60,8 +60,12 @@ function readAuth() {
   const cookieHeader = process.env.GUESTOO_COOKIE_HEADER;
   const xsrfToken = process.env.GUESTOO_XSRF_TOKEN;
   if (!cookieHeader || !xsrfToken) {
+    // Bewusst Environment-agnostische Botschaft — die App läuft lokal (.env.local)
+    // und auf Vercel (Project Settings → Environment Variables). Beide Stellen
+    // brauchen GUESTOO_COOKIE_HEADER + GUESTOO_XSRF_TOKEN, sonst können wir die
+    // Visitors-API nicht abfragen. Refresh-Skript: `npm run guestoo:refresh`.
     throw new Error(
-      "Guestoo-Credentials fehlen — GUESTOO_COOKIE_HEADER und GUESTOO_XSRF_TOKEN in .env.local setzen.",
+      "Guestoo-Credentials fehlen — GUESTOO_COOKIE_HEADER und GUESTOO_XSRF_TOKEN als Environment Variable setzen (lokal .env.local, Production via Vercel-Settings).",
     );
   }
   return { cookieHeader, xsrfToken };

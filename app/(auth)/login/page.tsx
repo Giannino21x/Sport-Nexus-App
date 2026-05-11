@@ -139,9 +139,9 @@ function LoginInner() {
               fontWeight: 500,
             }}
           >
-            <span>Since 2024</span>
+            <span>Since 2026</span>
             <span style={{ opacity: 0.5 }}>·</span>
-            <span>Zürich · Basel · Bern</span>
+            <span>Zürich · Basel</span>
           </div>
         </div>
       </div>

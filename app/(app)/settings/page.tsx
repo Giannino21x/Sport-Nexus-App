@@ -1,8 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState, useTransition } from "react";
 import { Icon } from "@/components/icon";
 import { useSettings, type Settings } from "@/components/settings-context";
+import { getAuthEmailAction, updateAuthEmailAction } from "@/app/actions/auth";
+import { useMe } from "@/lib/hooks";
 
 const ACCENTS: { k: Settings["accent"]; c: string; l: string }[] = [
   { k: "default", c: "#C3A75E", l: "Amber Glow" },
@@ -15,6 +18,7 @@ export default function SettingsPage() {
     theme, accent, cardStyle, dataSource,
     setTheme, setAccent, setCardStyle, setDataSource,
   } = useSettings();
+  const { data: me } = useMe();
 
   return (
     <div>
@@ -28,6 +32,8 @@ export default function SettingsPage() {
       </div>
 
       <div style={{ display: "grid", gap: 18, maxWidth: 720 }}>
+        {dataSource === "live" && <AccountEmailCard profileEmail={me?.email ?? null} />}
+
         <div className="card" style={{ padding: 24 }}>
           <div className="upper-label" style={{ marginBottom: 14 }}>Erscheinungsbild</div>
 
@@ -102,6 +108,121 @@ export default function SettingsPage() {
         </div>
 
       </div>
+    </div>
+  );
+}
+
+function AccountEmailCard({ profileEmail }: { profileEmail: string | null }) {
+  const [authEmail, setAuthEmail] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [info, setInfo] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    let cancelled = false;
+    getAuthEmailAction().then((r) => {
+      if (cancelled) return;
+      setAuthEmail(r.email ?? null);
+      setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  const startEdit = () => {
+    setDraft(authEmail ?? "");
+    setEditing(true);
+    setInfo(null);
+    setErr(null);
+  };
+
+  const onSave = () => {
+    const v = draft.trim();
+    if (!v) { setErr("E-Mail erforderlich."); return; }
+    startTransition(async () => {
+      const r = await updateAuthEmailAction(v);
+      if (r.error) { setErr(r.error); return; }
+      setInfo(r.info ?? "Bestätigungs-Mail gesendet.");
+      setEditing(false);
+    });
+  };
+
+  // Wenn die Profil-E-Mail vom Auth-E-Mail abweicht, wird das im Hinweistext
+  // erwähnt — das ist relevant, sobald HubSpot Accounts automatisch anlegt:
+  // dort ist die HubSpot-E-Mail = Login-E-Mail + Profil-E-Mail (gleich), kann
+  // aber später unabhängig geändert werden.
+  const differs = profileEmail && authEmail && profileEmail.trim().toLowerCase() !== authEmail.toLowerCase();
+
+  return (
+    <div className="card" style={{ padding: 24 }}>
+      <div className="upper-label" style={{ marginBottom: 14 }}>Konto</div>
+      <Row
+        label="Login-E-Mail"
+        hint="Mit dieser Adresse meldest du dich an. Sie ist nur für dich und das SportNexus-Team sichtbar — nicht für andere Members."
+      >
+        {loading ? (
+          <span style={{ fontSize: 13, color: "var(--ink-3)" }}>Wird geladen...</span>
+        ) : editing ? (
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <input
+              className="input"
+              type="email"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              placeholder="neue@adresse.ch"
+              style={{ minWidth: 240 }}
+              autoFocus
+            />
+            <button className="btn btn-primary" onClick={onSave} disabled={pending} style={{ padding: "6px 12px", fontSize: 12.5 }}>
+              {pending ? "..." : "Speichern"}
+            </button>
+            <button
+              className="btn btn-ghost"
+              onClick={() => { setEditing(false); setErr(null); }}
+              disabled={pending}
+              style={{ padding: "6px 12px", fontSize: 12.5 }}
+            >
+              Abbrechen
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <span style={{ fontSize: 13.5 }}>{authEmail || "—"}</span>
+            <button className="btn btn-ghost" onClick={startEdit} style={{ padding: "5px 10px", fontSize: 12 }}>
+              <Icon name="edit" size={12} /> Ändern
+            </button>
+          </div>
+        )}
+      </Row>
+
+      {info && (
+        <div style={{ marginTop: 8, fontSize: 12.5, color: "var(--ink-2)", padding: "8px 12px", background: "var(--bg-sunken)", borderRadius: 8, lineHeight: 1.5 }}>
+          {info}
+        </div>
+      )}
+      {err && (
+        <div style={{ marginTop: 8, fontSize: 12.5, color: "var(--danger)", padding: "8px 12px", background: "rgba(225,90,43,0.08)", borderRadius: 8 }}>
+          {err}
+        </div>
+      )}
+
+      <Row
+        label="Profil-E-Mail"
+        hint={
+          differs
+            ? "Aktuell weicht deine Profil-E-Mail von der Login-E-Mail ab. Du kannst sie unter „Profil bearbeiten“ ändern."
+            : "Diese Adresse zeigen wir in deinem Member-Profil (sofern du Sichtbarkeit aktiviert hast). Sie kann unabhängig von der Login-E-Mail bearbeitet werden."
+        }
+      >
+        <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ fontSize: 13.5 }}>{profileEmail || "—"}</span>
+          <Link href="/profile" className="btn btn-ghost" style={{ padding: "5px 10px", fontSize: 12 }}>
+            <Icon name="edit" size={12} /> In Profil bearbeiten
+          </Link>
+        </div>
+      </Row>
     </div>
   );
 }

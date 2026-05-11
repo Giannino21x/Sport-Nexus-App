@@ -101,6 +101,35 @@ export async function requestPasswordResetAction(
   };
 }
 
+// Liefert die aktuelle Auth-E-Mail (= Login-E-Mail) des eingeloggten Users.
+// Wird in /settings angezeigt, damit Member sehen, mit welcher Adresse sie sich
+// einloggen — getrennt von der Profil-E-Mail, die für andere Members sichtbar ist.
+export async function getAuthEmailAction(): Promise<{ email?: string; error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht eingeloggt." };
+  return { email: user.email ?? "" };
+}
+
+// Aktualisiert die Auth-E-Mail (Login). Supabase schickt anschliessend
+// Bestätigungs-Mails an alte UND neue Adresse. Der Wechsel wird erst aktiv,
+// sobald die neue Adresse bestätigt ist.
+export async function updateAuthEmailAction(newEmail: string): Promise<{ info?: string; error?: string }> {
+  const email = newEmail.trim().toLowerCase();
+  if (!email) return { error: "E-Mail erforderlich." };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht eingeloggt." };
+  if (user.email?.toLowerCase() === email) {
+    return { error: "Das ist bereits deine aktuelle Adresse." };
+  }
+  const { error } = await supabase.auth.updateUser({ email });
+  if (error) return { error: error.message };
+  return {
+    info: "Bestätigungs-Link an die neue Adresse geschickt. Der Wechsel wird aktiv, sobald du den Link klickst.",
+  };
+}
+
 export async function updatePasswordAction(
   prevState: { error?: string } | undefined,
   formData: FormData,

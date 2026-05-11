@@ -72,6 +72,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     { k: "events", href: "/events", label: "Events", icon: "calendar", badge: upcoming.length },
     { k: "messages", href: "/messages", label: "Messages", icon: "message" },
     { k: "feed", href: "/feed", label: "Community Feed", icon: "feed", beta: true },
+    ...(me?.isAdmin
+      ? ([{ k: "table-wishes", href: "/admin/table-wishes", label: "Tischwünsche", icon: "trophy" }] as NavItem[])
+      : []),
   ];
 
   const isActive = (href: string) => {

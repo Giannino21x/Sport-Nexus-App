@@ -433,7 +433,7 @@ function MessagesInner() {
                       ))
                     )}
                   </div>
-                  <div style={{ padding: 12, borderTop: "1px solid var(--line)", display: "flex", gap: 10, flexDirection: "column", position: "relative", flexShrink: 0, background: "var(--bg-elevated)" }}>
+                  <div className="messages-composer" style={{ borderTop: "1px solid var(--line)", display: "flex", gap: 10, flexDirection: "column", position: "relative", flexShrink: 0, background: "var(--bg-elevated)" }}>
                     {sendError && <div style={{ fontSize: 12, color: "var(--danger)" }}>{sendError}</div>}
                     <input
                       ref={fileInputRef}

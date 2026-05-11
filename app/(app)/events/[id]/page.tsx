@@ -4,46 +4,27 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 import { Avatar } from "@/components/avatar";
 import { Icon, type IconName } from "@/components/icon";
-import { useSettings } from "@/components/settings-context";
 import { useEvent, useMembers } from "@/lib/hooks";
-import { createClient } from "@/lib/supabase/client";
-import { registerEventAction } from "@/app/actions/events";
 import { getEventAttendeesAction, type EventAttendee } from "@/app/actions/guestoo";
+
+// Solange Guestoo das System of Record für Anmeldungen ist, leiten wir
+// Registration-Klicks zur Guestoo-Übersichtsseite. Wenn das Event eine
+// guestooId hat, hängen wir sie als Query-Param dran, damit Guestoo (sofern
+// unterstützt) direkt auf das richtige Event scrollt.
+const GUESTOO_PUBLIC_URL = "https://events.guestoo.de/sportnexus";
 
 export default function EventDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const { data: ev, loading } = useEvent(id);
   const { data: members } = useMembers();
-  const { dataSource } = useSettings();
 
-  const [registered, setRegistered] = useState<boolean | null>(null);
-  const [registerError, setRegisterError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
   const [attendeesOpen, setAttendeesOpen] = useState(false);
   const [attendees, setAttendees] = useState<EventAttendee[] | null>(null);
   const [attendeesError, setAttendeesError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (dataSource !== "live" || !id) return;
-    const supabase = createClient();
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data: me } = await supabase.from("members").select("id").eq("auth_id", user.id).maybeSingle();
-      if (!me) return;
-      const { data: reg } = await supabase
-        .from("event_registrations")
-        .select("event_id")
-        .eq("event_id", id)
-        .eq("member_id", me.id)
-        .maybeSingle();
-      setRegistered(Boolean(reg));
-    })();
-  }, [dataSource, id]);
 
   // Echte Anmeldungen aus Guestoo laden, sobald das Event eine guestooId hat.
   useEffect(() => {
@@ -102,18 +83,12 @@ export default function EventDetailPage() {
       })));
   const totalAttendees = attendeeCount ?? ev.guests;
 
-  const onRegister = () => {
-    setRegisterError(null);
-    if (dataSource !== "live") {
-      setRegistered(true);
-      return;
-    }
-    startTransition(async () => {
-      const r = await registerEventAction(ev.id);
-      if (r.error) setRegisterError(r.error);
-      else setRegistered(r.registered ?? false);
-    });
-  };
+  // Guestoo bleibt vorerst das System of Record für Registrationen. Wenn das
+  // Event eine guestooId hat, hängen wir sie als Query-Param an die Public-URL,
+  // sonst fällt der Link auf die Übersichts-Seite zurück.
+  const guestooRegisterUrl = ev.guestooId
+    ? `${GUESTOO_PUBLIC_URL}?eventId=${encodeURIComponent(ev.guestooId)}`
+    : GUESTOO_PUBLIC_URL;
 
   const onAddToCalendar = () => {
     const ics = buildIcs(ev);
@@ -355,25 +330,20 @@ export default function EventDetailPage() {
           <div className="card" style={{ padding: 22 }}>
             {!past ? (
               <>
-                <div className="upper-label" style={{ marginBottom: 10 }}>
-                  {registered ? "Du bist registriert" : "Registrieren"}
-                </div>
+                <div className="upper-label" style={{ marginBottom: 10 }}>Registrieren</div>
                 <div style={{ fontSize: 13, color: "var(--ink-3)", marginBottom: 16 }}>
-                  {registered
-                    ? `Platz reserviert · ${ev.time} im ${ev.venue}.`
-                    : "Sichere dir deinen Platz mit einem Klick."}
+                  Die Anmeldung läuft über Guestoo — dort bekommst du auch
+                  Bestätigung und Reminder-Mails.
                 </div>
-                {registerError && (
-                  <div style={{ fontSize: 12, color: "var(--danger)", marginBottom: 8 }}>{registerError}</div>
-                )}
-                <button
-                  className={registered ? "btn btn-ghost" : "btn btn-accent"}
-                  style={{ width: "100%", padding: "12px" }}
-                  onClick={onRegister}
-                  disabled={pending}
+                <a
+                  href={guestooRegisterUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn btn-accent"
+                  style={{ width: "100%", padding: "12px", justifyContent: "center" }}
                 >
-                  {pending ? "..." : registered ? "Abmelden" : "Jetzt registrieren"} <Icon name="arrow" size={14} />
-                </button>
+                  Über Guestoo anmelden <Icon name="arrow" size={14} />
+                </a>
                 <button className="btn btn-ghost" style={{ width: "100%", marginTop: 8 }} onClick={onAddToCalendar}>
                   <Icon name="calendar" size={14} /> Zum Kalender hinzufügen
                 </button>

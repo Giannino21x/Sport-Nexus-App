@@ -11,6 +11,13 @@ type MessageSender = {
   last: string;
   role: string | null;
   company: string | null;
+  email: string | null;
+  mobile: string | null;
+  linkedin: string | null;
+  show_email: boolean | null;
+  show_mobile: boolean | null;
+  branch: string | null;
+  work: string | null;
 };
 
 type MessageRecipient = {
@@ -19,13 +26,20 @@ type MessageRecipient = {
 };
 
 // Holt Sender + Empfänger fürs Email-Notification-Template (best-effort).
+// Der Sender liefert zusätzlich Kontaktdaten (Email, Mobile, LinkedIn) — die
+// schicken wir mit, wenn der Sender Sichtbarkeit erlaubt hat. So kann der
+// Empfänger direkt extern weitermachen, ohne erst in die App zurück zu müssen.
 async function loadMessageParties(
   supabase: Awaited<ReturnType<typeof createClient>>,
   meId: string,
   recipientId: string,
 ): Promise<{ sender: MessageSender | null; recipient: MessageRecipient | null }> {
   const [{ data: sender }, { data: recipient }] = await Promise.all([
-    supabase.from("members").select("id, slug, first, last, role, company").eq("id", meId).maybeSingle(),
+    supabase
+      .from("members")
+      .select("id, slug, first, last, role, company, email, mobile, linkedin, show_email, show_mobile, branch, work")
+      .eq("id", meId)
+      .maybeSingle(),
     supabase.from("members").select("first, email").eq("id", recipientId).maybeSingle(),
   ]);
   return { sender: sender as MessageSender | null, recipient: recipient as MessageRecipient | null };
@@ -51,6 +65,14 @@ async function notifyRecipient(args: {
         role: sender.role,
         company: sender.company,
         slug: sender.slug,
+        // Kontaktdaten nur weiterreichen, wenn der Sender sie freigegeben hat
+        // (Sichtbarkeits-Toggles im Profil) — damit das Email-Template eine
+        // verlässliche Vorlage liefert und keine privaten Daten leakt.
+        email: sender.show_email ? sender.email : null,
+        mobile: sender.show_mobile ? sender.mobile : null,
+        linkedin: sender.linkedin,
+        branch: sender.branch,
+        work: sender.work,
       },
       bodyPreview: args.body,
       hasAttachment: args.hasAttachment,

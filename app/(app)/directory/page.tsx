@@ -22,19 +22,26 @@ export default function DirectoryPage() {
   const [page, setPage] = useState(1);
   const pageSize = 12;
 
-  const subOptions = useMemo(() => {
-    // Without a branch selected, sub-branches from different branches are mixed
-    // together and not meaningful — show nothing so the dropdown stays disabled.
-    if (!filters.branch) return [];
-    return BRANCHES[filters.branch] ?? [];
-  }, [filters.branch]);
-
   const deCollator = useMemo(() => new Intl.Collator("de-CH", { sensitivity: "base" }), []);
   const uniqClean = useCallback(
     (arr: string[]) =>
       [...new Set(arr.map((v) => v?.trim()).filter((v): v is string => Boolean(v)))].sort(deCollator.compare),
     [deCollator],
   );
+
+  // Branche/Subbranche: dynamisch aus Membern (HubSpot-Freitext) + BRANCHES-Fallback,
+  // damit Filter auch greift, wenn Members Branchen ausserhalb der vordefinierten
+  // Liste haben.
+  const allBranches = useMemo(
+    () => uniqClean([...Object.keys(BRANCHES), ...members.map((m) => m.branch)]),
+    [members, uniqClean],
+  );
+  const subOptions = useMemo(() => {
+    if (!filters.branch) return [];
+    const fromBranchesDict = BRANCHES[filters.branch] ?? [];
+    const fromMembers = members.filter((m) => m.branch === filters.branch).map((m) => m.sub);
+    return uniqClean([...fromBranchesDict, ...fromMembers]);
+  }, [filters.branch, members, uniqClean]);
 
   const allWorkCities = useMemo(() => uniqClean(members.map((m) => m.work)), [members, uniqClean]);
   const allHomeCities = useMemo(() => uniqClean(members.map((m) => m.home)), [members, uniqClean]);
@@ -138,10 +145,11 @@ export default function DirectoryPage() {
         <Dropdown
           label="Branche"
           value={filters.branch}
-          options={Object.keys(BRANCHES)}
+          options={allBranches}
           onChange={(v) => setFilters((f) => ({ ...f, branch: v, sub: "" }))}
+          searchable
         />
-        <Dropdown label="Subbranche" value={filters.sub} options={subOptions} onChange={(v) => setFilters((f) => ({ ...f, sub: v }))} />
+        <Dropdown label="Subbranche" value={filters.sub} options={subOptions} onChange={(v) => setFilters((f) => ({ ...f, sub: v }))} searchable />
         <Dropdown label="Arbeitsort" value={filters.work} options={allWorkCities} onChange={(v) => setFilters((f) => ({ ...f, work: v }))} searchable />
         <Dropdown label="Wohnort" value={filters.home} options={allHomeCities} onChange={(v) => setFilters((f) => ({ ...f, home: v }))} searchable />
         <Dropdown label="Rolle" value={filters.role} options={allRoles} onChange={(v) => setFilters((f) => ({ ...f, role: v }))} searchable />

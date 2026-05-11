@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "@/components/icon";
 import { type SnEvent } from "@/lib/data";
 import { reload, useEvents, useMe } from "@/lib/hooks";
@@ -16,8 +16,23 @@ import { createEventAction, deleteEventAction, type EventInput } from "@/app/act
 // richtige Ziel-Link (das ist das Admin-Dashboard hinter Login).
 const GUESTOO_PUBLIC_URL = "https://events.guestoo.de/sportnexus";
 
+// localStorage-Key: damit nach Besuch eines Event-Details die Zurück-Navigation
+// wieder auf der zuletzt gewählten Ansicht (native vs. iframe) landet — Pascals
+// Feedback 2.
+const VIEW_MODE_KEY = "sn:events:viewMode";
+
 export default function EventsPage() {
-  const [viewMode, setViewMode] = useState<"iframe" | "native">("iframe");
+  const [viewMode, setViewModeState] = useState<"iframe" | "native">("iframe");
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const saved = window.localStorage.getItem(VIEW_MODE_KEY);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- einmaliges Restore aus localStorage nach Hydration
+    if (saved === "native" || saved === "iframe") setViewModeState(saved);
+  }, []);
+  const setViewMode = (m: "iframe" | "native") => {
+    setViewModeState(m);
+    if (typeof window !== "undefined") window.localStorage.setItem(VIEW_MODE_KEY, m);
+  };
   const { data: events } = useEvents();
   const { data: me } = useMe();
   const isAdmin = Boolean(me?.isAdmin);

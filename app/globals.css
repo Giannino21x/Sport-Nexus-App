@@ -517,9 +517,70 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 }
 .swatch.active { border-color: var(--ink); }
 
+/* ---------- Notifications popover ---------- */
+/* Desktop: klassisches Popover, an Bell-Button gedockt.
+   Mobile: Bottom-Sheet, das vom unteren Bildschirmrand hochkommt — damit auf
+   iPhone nichts vom oberen Topbar oder dem unteren Tab-Bar abgeschnitten wird. */
+.notif-backdrop { display: none; }
+.notif-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 360px;
+  max-width: calc(100vw - 24px);
+  background: var(--bg-elevated);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 200;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.notif-popover .notif-list {
+  max-height: 380px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 780px) {
+  .notif-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 199;
+  }
+  .notif-popover {
+    position: fixed;
+    inset: auto 12px calc(70px + env(safe-area-inset-bottom)) 12px;
+    width: auto;
+    max-width: none;
+    top: auto;
+    right: auto;
+    max-height: calc(100dvh - 140px - env(safe-area-inset-bottom));
+  }
+  .notif-popover .notif-list {
+    max-height: none;
+    flex: 1;
+    overflow-y: auto;
+  }
+}
+
 /* ---------- Messages layout ---------- */
 .messages-wrap {
   margin: -36px -40px -120px;
+}
+.messages-composer {
+  padding: 12px;
+}
+@media (max-width: 780px) {
+  /* iPhone: untere Tabbar überlappt sonst die Sendezeile — wir holen den
+     Safe-Area-Inset zurück und packen ihn als zusätzliches Bottom-Padding drauf,
+     so dass Input + Send-Button immer sichtbar bleiben. */
+  .messages-composer {
+    padding: 12px 12px calc(12px + env(safe-area-inset-bottom));
+  }
 }
 .messages-inner {
   padding: 28px 40px 40px;
@@ -576,7 +637,10 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   }
   .messages-grid {
     grid-template-columns: 1fr;
-    height: calc(100dvh - 180px);
+    /* Bottom-Tabbar ist ~62px + safe-area-inset-bottom hoch. Damit der Composer
+       nicht unter der Tabbar verschwindet, ziehen wir das vom verfügbaren
+       Viewport ab. Vorher: fix 180 — auf iPhone war der untere Bereich verdeckt. */
+    height: calc(100dvh - 180px - env(safe-area-inset-bottom));
     min-height: 360px;
   }
   .messages-list {

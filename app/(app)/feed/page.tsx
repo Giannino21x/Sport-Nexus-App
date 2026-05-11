@@ -214,6 +214,9 @@ export default function FeedPage() {
         </button>
       </div>
 
+      <PostGuidelines />
+
+
       {composerOpen && me && (
         <div className="card" style={{ padding: 18, marginBottom: 18 }}>
           <div className="row" style={{ alignItems: "flex-start" }}>
@@ -463,6 +466,72 @@ export default function FeedPage() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function PostGuidelines() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div
+      className="card"
+      style={{
+        padding: "12px 16px",
+        marginBottom: 14,
+        background: "var(--bg-sunken)",
+        borderColor: "var(--line)",
+      }}
+    >
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 10,
+          background: "transparent",
+          border: "none",
+          padding: 0,
+          cursor: "pointer",
+          textAlign: "left",
+          color: "var(--ink-2)",
+          fontSize: 12.5,
+          fontWeight: 500,
+        }}
+        aria-expanded={open}
+      >
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <span aria-hidden="true" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 18, height: 18, borderRadius: "50%", border: "1.4px solid currentColor", fontSize: 11, fontWeight: 600, lineHeight: 1, fontStyle: "italic", color: "var(--accent)" }}>i</span>
+          Postrichtlinien — kurz lesen, bevor du postest
+        </span>
+        <span aria-hidden="true" style={{ color: "var(--ink-4)", fontSize: 12 }}>
+          {open ? "Ausblenden" : "Anzeigen"}
+        </span>
+      </button>
+      {open && (
+        <div
+          style={{
+            marginTop: 10,
+            fontSize: 12.5,
+            color: "var(--ink-2)",
+            lineHeight: 1.55,
+          }}
+        >
+          <div style={{ marginBottom: 8 }}>
+            Willkommen im Community Feed von SportNexus. Damit der Austausch für alle wertvoll bleibt, beachte bitte folgende Grundsätze:
+          </div>
+          <ul style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 4 }}>
+            <li>Teile Inhalte mit echtem Mehrwert für die Community</li>
+            <li>Respektvoller und konstruktiver Umgang miteinander</li>
+            <li>Keine Werbung, Spam oder reine Verkaufsbeiträge</li>
+            <li>Events oder Networking-Angebote sind willkommen</li>
+            <li>Empfehlungen, Erfahrungen und Fragen aus dem Sport- und Businessumfeld sind erwünscht</li>
+            <li>Inhalte mit diskriminierendem, beleidigendem oder irreführendem Charakter werden entfernt</li>
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

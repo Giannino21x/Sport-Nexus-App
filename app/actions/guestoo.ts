@@ -40,6 +40,32 @@ export async function getEventAttendeesAction(
   }
 }
 
+// Holt für mehrere Events parallel die bestätigten Anmeldungen — wird im
+// Dashboard verwendet, um neben dem Platz-Maximum die tatsächlichen
+// Anmeldungszahlen aus Guestoo anzuzeigen. Fehler pro Event blockieren nicht
+// den gesamten Aufruf, sondern werden zu null im Counts-Map.
+export async function getEventAttendeeCountsAction(
+  guestooEventIds: string[],
+): Promise<{ counts: Record<string, number | null>; error?: string }> {
+  const counts: Record<string, number | null> = {};
+  if (guestooEventIds.length === 0) return { counts };
+  const unique = Array.from(new Set(guestooEventIds.filter(Boolean)));
+  await Promise.all(
+    unique.map(async (id) => {
+      try {
+        const visitors = await searchGuestooVisitors(id, {
+          statuses: ["CONFIRMED", "APPEARED"],
+          perPage: 200,
+        });
+        counts[id] = visitors.length;
+      } catch {
+        counts[id] = null;
+      }
+    }),
+  );
+  return { counts };
+}
+
 // Adresse aus Guestoo-Struktur: "Street Nr, PLZ City".
 type GuestooAddress = NonNullable<import("@/lib/guestoo").GuestooEvent["address"]>;
 function formatGuestooAddress(a: GuestooAddress): string {

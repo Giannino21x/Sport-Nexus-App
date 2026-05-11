@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
 import { useEvents, useMe, useMembers } from "@/lib/hooks";
+import { getEventAttendeeCountsAction } from "@/app/actions/guestoo";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -20,6 +21,32 @@ export default function DashboardPage() {
     return () => clearInterval(t);
   }, []);
 
+  // Hooks müssen unbedingt VOR dem early-return stehen — Rules of Hooks. Wir
+  // berechnen `upcoming` daher hier oben (auch wenn `me` evtl. noch fehlt),
+  // damit `useMemo`/`useState`/`useEffect` stabil sind.
+  const upcoming = events.filter((e) => e.status === "upcoming").sort((a, b) => a.date.localeCompare(b.date));
+
+  // Echtzeit-Anmeldungen aus Guestoo für die Top-3 — Pascals F1-Wunsch, dass
+  // Gästeanzahl pro Event im Memberbereich angezeigt wird. Best-effort: wenn
+  // ein Event keine guestooId hat oder Guestoo nicht erreichbar ist, fallen wir
+  // auf die statische ev.guests-Kapazität zurück.
+  const top3GuestooIds = useMemo(
+    () => upcoming.slice(0, 3).map((e) => e.guestooId).filter((id): id is string => Boolean(id)),
+    [upcoming],
+  );
+  const [guestooCounts, setGuestooCounts] = useState<Record<string, number | null>>({});
+  const guestooKey = top3GuestooIds.join(",");
+  useEffect(() => {
+    if (top3GuestooIds.length === 0) return;
+    let cancelled = false;
+    getEventAttendeeCountsAction(top3GuestooIds).then((r) => {
+      if (cancelled) return;
+      setGuestooCounts(r.counts);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Stabilisiert via guestooKey, sonst Endlosschleife durch neue Array-Identität
+  }, [guestooKey]);
+
   if (!me) return null;
 
   const hour = now.getHours();
@@ -29,8 +56,6 @@ export default function DashboardPage() {
     hour < 17 ? "Guten Tag" :
     hour < 22 ? "Guten Abend" :
     "Gute Nacht";
-
-  const upcoming = events.filter((e) => e.status === "upcoming").sort((a, b) => a.date.localeCompare(b.date));
 
   // Matchmaking: score every other member by shared signals — Branche zählt am
   // schwersten, dann Subbranche, geteilte Sportarten, gleicher Arbeitsort,
@@ -137,6 +162,11 @@ export default function DashboardPage() {
             )}
             {upcoming.slice(0, 3).map((ev, i) => {
               const d = new Date(ev.date);
+              const liveCount = ev.guestooId ? guestooCounts[ev.guestooId] : undefined;
+              const attendeesLabel =
+                liveCount !== undefined && liveCount !== null
+                  ? `${liveCount} angemeldet${ev.guests ? ` · ${ev.guests} Plätze` : ""}`
+                  : `~${ev.guests} Gäste`;
               return (
                 <div
                   key={ev.id}
@@ -160,8 +190,8 @@ export default function DashboardPage() {
                   <div>
                     <div style={{ fontWeight: 500, fontSize: 15 }}>{ev.title} — {ev.city}</div>
                     <div style={{ fontSize: 13, color: "var(--ink-3)", marginTop: 2 }}>{ev.subtitle}</div>
-                    <div style={{ fontSize: 11.5, color: "var(--ink-4)", marginTop: 4, display: "flex", gap: 12 }}>
-                      <span>{ev.time}</span><span>{ev.venue}</span><span>~{ev.guests} Gäste</span>
+                    <div style={{ fontSize: 11.5, color: "var(--ink-4)", marginTop: 4, display: "flex", gap: 12, flexWrap: "wrap" }}>
+                      <span>{ev.time}</span><span>{ev.venue}</span><span>{attendeesLabel}</span>
                     </div>
                   </div>
                   <button
@@ -169,7 +199,7 @@ export default function DashboardPage() {
                     style={{ padding: "7px 12px", fontSize: 12.5 }}
                     onClick={(e) => { e.stopPropagation(); router.push(`/events/${ev.id}`); }}
                   >
-                    Registrieren
+                    Details
                   </button>
                 </div>
               );

@@ -43,6 +43,18 @@ Auf der Dev-Maschine wöchentlich:
 ```
 Vercel-Production: nach Refresh die env-Variablen via `vercel env add` aktualisieren oder Vercel API-Token für automatischen Sync hinterlegen.
 
+### Fehler "Guestoo-Credentials fehlen" auf der Live-App
+Tritt auf, wenn `GUESTOO_COOKIE_HEADER` und/oder `GUESTOO_XSRF_TOKEN` auf der Zielumgebung nicht gesetzt sind. Vorgehen:
+
+1. Lokal `npm run guestoo:refresh` ausführen → schreibt frische Werte in `.env.local`.
+2. Die beiden Variablen kopieren und in Vercel hinterlegen:
+   - **Vercel → Project sport-nexus-app → Settings → Environment Variables**
+   - Beide Variablen für **Production** (und optional Preview) hinzufügen.
+3. **Redeploy auslösen** (Trigger Deploy oder neuen Push) — Env-Updates greifen nicht bei laufenden Functions.
+4. Auf `/events/{id}` die "Wer kommt"-Liste prüfen — sollte jetzt Anmeldungen anzeigen.
+
+Die Cookie-Session läuft alle ~7 Tage ab — danach Schritt 1–3 wiederholen oder den Cron auf einer Dev-Maschine laufen lassen, die per Vercel-API-Token die Env-Variablen automatisch nachzieht.
+
 ## Bekannte Felder pro Event in der DB
 | Spalte | Quelle |
 |---|---|

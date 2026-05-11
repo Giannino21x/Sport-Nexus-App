@@ -2,11 +2,16 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, useTransition, type ReactNode } from "react";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
+import { useSettings } from "@/components/settings-context";
 import { reload, useEvents, useMe, useMember } from "@/lib/hooks";
 import { setMemberExtraAction } from "@/app/actions/members";
+import {
+  getMyTableWishesAction,
+  toggleTableWishAction,
+} from "@/app/actions/table-wishes";
 
 export default function MemberDetailPage() {
   const params = useParams<{ id: string }>();
@@ -102,6 +107,9 @@ export default function MemberDetailPage() {
             <Link href={`/messages?to=${m.id}`} className="btn btn-accent">
               <Icon name="message" size={14} /> Nachricht
             </Link>
+            {me && m.dbId && me.id !== m.id && (
+              <TableWishButton targetMemberDbId={m.dbId} />
+            )}
           </div>
         </div>
       </div>
@@ -218,6 +226,61 @@ export default function MemberDetailPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function TableWishButton({ targetMemberDbId }: { targetMemberDbId: string }) {
+  const { dataSource } = useSettings();
+  const [wished, setWished] = useState<boolean | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (dataSource !== "live") {
+      // Demo: state nur lokal halten, kein Server-Roundtrip.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- bewusster Reset auf Demo
+      setWished(false);
+      return;
+    }
+    let cancelled = false;
+    getMyTableWishesAction().then((r) => {
+      if (cancelled) return;
+      setWished(r.items.some((w) => w.targetId === targetMemberDbId));
+    });
+    return () => { cancelled = true; };
+  }, [dataSource, targetMemberDbId]);
+
+  const onToggle = () => {
+    if (dataSource !== "live") {
+      setWished((v) => !v);
+      return;
+    }
+    startTransition(async () => {
+      const r = await toggleTableWishAction(targetMemberDbId);
+      if (r.error) {
+        alert(r.error);
+        return;
+      }
+      setWished(Boolean(r.wished));
+    });
+  };
+
+  if (wished === null) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      disabled={pending}
+      className={wished ? "btn btn-primary" : "btn btn-ghost"}
+      title={
+        wished
+          ? "Du hast diese Person als Tischwunsch für das nächste Event markiert."
+          : "An einem Event an den gleichen Tisch — Admin berücksichtigt das bei der Tischzuweisung."
+      }
+    >
+      <Icon name={wished ? "check" : "users"} size={14} />
+      {wished ? "Tischwunsch gemeldet" : "Tischwunsch melden"}
+    </button>
   );
 }
 
