@@ -759,7 +759,13 @@ function Msg({
   return (
     <div style={{ display: "flex", gap: 8, justifyContent: align === "right" ? "flex-end" : "flex-start", marginBottom: 14 }}>
       {align === "left" && avatar && <Avatar first={avatar.first} last={avatar.last} color={avatar.color} size={28} url={avatar.avatarUrl} />}
-      <div style={{ maxWidth: 440, width: "fit-content", minWidth: 0 }}>
+      <div style={{
+        maxWidth: 440,
+        minWidth: 0,
+        display: "flex",
+        flexDirection: "column",
+        alignItems: align === "right" ? "flex-end" : "flex-start",
+      }}>
         {attachmentUrl && (
           <div
             style={{
@@ -770,6 +776,7 @@ function Msg({
               marginBottom: hasText ? 4 : 0,
               border: "1px solid var(--line)",
               background: "var(--bg-sunken)",
+              maxWidth: "100%",
             }}
           >
             <ImagePreview
@@ -786,6 +793,8 @@ function Msg({
               padding: "10px 14px",
               background: align === "right" ? "var(--ink)" : "var(--bg-elevated)",
               color: align === "right" ? "var(--bg)" : "var(--ink)",
+              width: "fit-content",
+              maxWidth: "100%",
               borderRadius: 14,
               borderTopLeftRadius: align === "left" && !attachmentUrl ? 4 : 14,
               borderTopRightRadius: align === "right" && !attachmentUrl ? 4 : 14,
