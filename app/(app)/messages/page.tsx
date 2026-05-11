@@ -757,18 +757,13 @@ function Msg({
 }) {
   const hasText = Boolean(text && text.trim());
   return (
-    <div style={{ display: "flex", gap: 8, justifyContent: align === "right" ? "flex-end" : "flex-start", marginBottom: 14 }}>
+    <div style={{ display: "flex", gap: 8, alignItems: "flex-end", justifyContent: align === "right" ? "flex-end" : "flex-start", marginBottom: 14 }}>
       {align === "left" && avatar && <Avatar first={avatar.first} last={avatar.last} color={avatar.color} size={28} url={avatar.avatarUrl} />}
-      <div style={{
-        maxWidth: 440,
-        minWidth: 0,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: align === "right" ? "flex-end" : "flex-start",
-      }}>
+      <div style={{ maxWidth: 440, minWidth: 0, textAlign: align === "right" ? "right" : "left" }}>
         {attachmentUrl && (
           <div
             style={{
+              display: "inline-block",
               borderRadius: 14,
               borderTopLeftRadius: align === "left" ? 4 : 14,
               borderTopRightRadius: align === "right" ? 4 : 14,
@@ -790,10 +785,10 @@ function Msg({
         {hasText && (
           <div
             style={{
-              padding: "10px 14px",
+              display: "inline-block",
+              padding: "8px 12px",
               background: align === "right" ? "var(--ink)" : "var(--bg-elevated)",
               color: align === "right" ? "var(--bg)" : "var(--ink)",
-              width: "fit-content",
               maxWidth: "100%",
               borderRadius: 14,
               borderTopLeftRadius: align === "left" && !attachmentUrl ? 4 : 14,
@@ -803,6 +798,7 @@ function Msg({
               border: align === "left" ? "1px solid var(--line)" : "none",
               whiteSpace: "pre-wrap",
               overflowWrap: "anywhere",
+              textAlign: "left",
             }}
           >
             {text}
