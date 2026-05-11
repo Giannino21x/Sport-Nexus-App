@@ -357,6 +357,7 @@ export type ChatMessage = {
   body: string;
   createdAt: string;
   attachmentUrl?: string;
+  readAt?: string | null;
 };
 
 export function useThreadMessages(meDbId: string | null, otherDbId: string | null) {
@@ -376,7 +377,7 @@ export function useThreadMessages(meDbId: string | null, otherDbId: string | nul
     (async () => {
       const { data } = await supabase
         .from("messages")
-        .select("id, sender_id, recipient_id, body, created_at, attachment_url")
+        .select("id, sender_id, recipient_id, body, created_at, attachment_url, read_at")
         .or(`and(sender_id.eq.${meDbId},recipient_id.eq.${otherDbId}),and(sender_id.eq.${otherDbId},recipient_id.eq.${meDbId})`)
         .order("created_at", { ascending: true });
       if (cancelled) return;
@@ -388,6 +389,7 @@ export function useThreadMessages(meDbId: string | null, otherDbId: string | nul
           body: String(r.body),
           createdAt: String(r.created_at),
           attachmentUrl: r.attachment_url ? String(r.attachment_url) : undefined,
+          readAt: r.read_at ? String(r.read_at) : null,
         })),
       );
       setLoading(false);

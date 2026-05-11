@@ -90,11 +90,11 @@ function MessagesInner() {
     if (dataSource !== "demo" || !activeConvo) { setDemoMsgs([]); return; }
     const otherId = activeConvo.otherDbId;
     setDemoMsgs([
-      demoMsg(otherId, "me", "Hi! Danke für den Kontakt letzte Woche beim Lunch — war ein spannender Talk.", -1.5 * 3600_000),
-      demoMsg("me", otherId, "Absolut, Andy Schmid hat was ausgelöst. Ich dachte an deine Suche nach Co-Investoren — wir sollten uns austauschen.", -1.3 * 3600_000),
-      demoMsg(otherId, "me", "Sehr gerne. Hast du Zeit nächste Woche für einen kurzen Call?", -2 * 60_000),
-      demoMsg("me", otherId, "Dienstag 10:00 oder Mittwoch 16:00?", -1 * 60_000),
-      demoMsg(otherId, "me", activeConvo.last, -30 * 1000),
+      demoMsg(otherId, "me", "Hi! Danke für den Kontakt letzte Woche beim Lunch — war ein spannender Talk.", -1.5 * 3600_000, true),
+      demoMsg("me", otherId, "Absolut, Andy Schmid hat was ausgelöst. Ich dachte an deine Suche nach Co-Investoren — wir sollten uns austauschen.", -1.3 * 3600_000, true),
+      demoMsg(otherId, "me", "Sehr gerne. Hast du Zeit nächste Woche für einen kurzen Call?", -2 * 60_000, true),
+      demoMsg("me", otherId, "Dienstag 10:00 oder Mittwoch 16:00?", -1 * 60_000, false),
+      demoMsg(otherId, "me", activeConvo.last, -30 * 1000, true),
     ]);
   }, [dataSource, activeConvo]);
 
@@ -296,6 +296,44 @@ function MessagesInner() {
     return () => window.removeEventListener("resize", h);
   }, []);
 
+  const threadScrollRef = useRef<HTMLDivElement>(null);
+  const [showJumpDown, setShowJumpDown] = useState(false);
+  const wasAtBottomRef = useRef(true);
+
+  const scrollToBottom = (behavior: ScrollBehavior = "auto") => {
+    const el = threadScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior });
+  };
+
+  // Beim Öffnen einer Konversation immer ans Ende springen.
+  useEffect(() => {
+    if (!activeDbId) return;
+    const id = requestAnimationFrame(() => {
+      scrollToBottom("auto");
+      wasAtBottomRef.current = true;
+      setShowJumpDown(false);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [activeDbId]);
+
+  // Bei neuen Nachrichten nur runter scrollen, wenn der Nutzer ohnehin am Ende war.
+  useEffect(() => {
+    if (msgs.length === 0) return;
+    if (!wasAtBottomRef.current) return;
+    const id = requestAnimationFrame(() => scrollToBottom("auto"));
+    return () => cancelAnimationFrame(id);
+  }, [msgs.length]);
+
+  const onThreadScroll = () => {
+    const el = threadScrollRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    const atBottom = distanceFromBottom < 40;
+    wasAtBottomRef.current = atBottom;
+    setShowJumpDown(distanceFromBottom > 120);
+  };
+
   if (!me) return null;
 
   const showList = !isMobile || !activeDbId;
@@ -373,7 +411,7 @@ function MessagesInner() {
             </div>
           )}
           {showThread && (
-            <div className="messages-thread">
+            <div className="messages-thread" style={{ position: "relative" }}>
               {activeMember ? (
                 <>
                   <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
@@ -415,24 +453,59 @@ function MessagesInner() {
                       {isMobile ? "Profil" : "Profil ansehen"}
                     </Link>
                   </div>
-                  <div style={{ flex: 1, minHeight: 0, padding: isMobile ? 14 : 24, background: "var(--bg-sunken)", overflowY: "auto" }}>
+                  <div
+                    ref={threadScrollRef}
+                    onScroll={onThreadScroll}
+                    style={{ flex: 1, minHeight: 0, padding: isMobile ? 14 : 24, background: "var(--bg-sunken)", overflowY: "auto", position: "relative" }}
+                  >
                     {msgs.length === 0 ? (
                       <div style={{ textAlign: "center", color: "var(--ink-3)", fontSize: 13, marginTop: 40 }}>
                         Noch keine Nachrichten. Schreib den ersten Gruß!
                       </div>
                     ) : (
-                      msgs.map((m) => (
-                        <Msg
-                          key={m.id}
-                          align={m.senderDbId === (dataSource === "live" ? meDbId : "me") ? "right" : "left"}
-                          avatar={m.senderDbId === (dataSource === "live" ? meDbId : "me") ? undefined : activeMember}
-                          text={m.body}
-                          time={formatMessageTime(m.createdAt)}
-                          attachmentUrl={m.attachmentUrl}
-                        />
-                      ))
+                      msgs.map((m) => {
+                        const isOwn = m.senderDbId === (dataSource === "live" ? meDbId : "me");
+                        return (
+                          <Msg
+                            key={m.id}
+                            align={isOwn ? "right" : "left"}
+                            avatar={isOwn ? undefined : activeMember}
+                            text={m.body}
+                            time={formatMessageTime(m.createdAt)}
+                            attachmentUrl={m.attachmentUrl}
+                            ownStatus={isOwn ? (m.readAt ? "read" : "sent") : undefined}
+                          />
+                        );
+                      })
                     )}
                   </div>
+                  {showJumpDown && (
+                    <button
+                      type="button"
+                      onClick={() => scrollToBottom("smooth")}
+                      aria-label="Zum Ende springen"
+                      title="Zum Ende springen"
+                      style={{
+                        position: "absolute",
+                        right: 18,
+                        bottom: 92,
+                        width: 38,
+                        height: 38,
+                        borderRadius: "50%",
+                        border: "1px solid var(--line)",
+                        background: "var(--bg-elevated)",
+                        color: "var(--ink-2)",
+                        boxShadow: "var(--shadow)",
+                        cursor: "pointer",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        zIndex: 10,
+                      }}
+                    >
+                      <Icon name="chevronDown" size={18} />
+                    </button>
+                  )}
                   <div className="messages-composer" style={{ borderTop: "1px solid var(--line)", display: "flex", gap: 10, flexDirection: "column", position: "relative", flexShrink: 0, background: "var(--bg-elevated)" }}>
                     {sendError && <div style={{ fontSize: 12, color: "var(--danger)" }}>{sendError}</div>}
                     <input
@@ -647,13 +720,14 @@ function demoConvoFor(idx: number, last: string, time: string, unread: number): 
   return { other: m, otherDbId: m.id, last, time, unread };
 }
 
-function demoMsg(senderDbId: string, recipientDbId: string, body: string, msOffset: number): ChatMessage {
+function demoMsg(senderDbId: string, recipientDbId: string, body: string, msOffset: number, read = true): ChatMessage {
   return {
     id: `${senderDbId}-${msOffset}`,
     senderDbId,
     recipientDbId,
     body,
     createdAt: new Date(Date.now() + msOffset).toISOString(),
+    readAt: read ? new Date(Date.now() + msOffset + 1000).toISOString() : null,
   };
 }
 
@@ -672,18 +746,20 @@ function Msg({
   time,
   avatar,
   attachmentUrl,
+  ownStatus,
 }: {
   align: "left" | "right";
   text: string;
   time: string;
   avatar?: Member;
   attachmentUrl?: string;
+  ownStatus?: "sent" | "read";
 }) {
   const hasText = Boolean(text && text.trim());
   return (
     <div style={{ display: "flex", gap: 8, justifyContent: align === "right" ? "flex-end" : "flex-start", marginBottom: 14 }}>
       {align === "left" && avatar && <Avatar first={avatar.first} last={avatar.last} color={avatar.color} size={28} url={avatar.avatarUrl} />}
-      <div style={{ maxWidth: 440 }}>
+      <div style={{ maxWidth: 440, width: "fit-content", minWidth: 0 }}>
         {attachmentUrl && (
           <div
             style={{
@@ -725,12 +801,42 @@ function Msg({
         )}
         <div
           className="mono"
-          style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 4, textAlign: align === "right" ? "right" : "left" }}
+          style={{
+            fontSize: 10.5,
+            color: "var(--ink-4)",
+            marginTop: 4,
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            justifyContent: align === "right" ? "flex-end" : "flex-start",
+          }}
         >
-          {time}
+          <span>{time}</span>
+          {ownStatus && <DoubleCheck read={ownStatus === "read"} />}
         </div>
       </div>
     </div>
+  );
+}
+
+function DoubleCheck({ read }: { read: boolean }) {
+  // WhatsApp-Stil: grau = zugestellt, accent = gelesen.
+  const color = read ? "var(--accent)" : "var(--ink-4)";
+  return (
+    <svg
+      viewBox="0 0 18 12"
+      width={14}
+      height={10}
+      fill="none"
+      stroke={color}
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-label={read ? "Gelesen" : "Zugestellt"}
+    >
+      <path d="M1 6.5L4.5 10L11 2" />
+      <path d="M7 10L13.5 2" />
+    </svg>
   );
 }
 
