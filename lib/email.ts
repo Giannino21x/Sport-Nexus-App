@@ -1,19 +1,32 @@
-// Server-only Email-Helper. Verwendet Resend, fällt aber graceful auf no-op
-// zurück wenn RESEND_API_KEY nicht gesetzt ist (z. B. lokal ohne Key oder in
-// Demo-Modus). Kein Throw — Email ist Best-Effort, darf den eigentlichen
-// Server-Action-Flow nicht blockieren.
+// Server-only Email-Helper. Nutzt SMTP via Nodemailer — selbe Hostpoint-
+// Credentials wie Supabase Auth (asmtp.mail.hostpoint.ch:587 mit
+// no-reply@sport-nexus.ch), nur dass wir sie hier aus ENV holen statt aus
+// Supabase. Fehlt SMTP_PASS, fällt sendEmail auf no-op zurück (kein Throw,
+// damit der Send-Action-Flow nicht blockiert).
 
-import { Resend } from "resend";
+import nodemailer, { type Transporter } from "nodemailer";
 
-const FROM = process.env.RESEND_FROM ?? "SportNexus <no-reply@sport-nexus.ch>";
+const SMTP_HOST = process.env.SMTP_HOST ?? "asmtp.mail.hostpoint.ch";
+const SMTP_PORT = Number(process.env.SMTP_PORT ?? "587");
+const SMTP_USER = process.env.SMTP_USER ?? "no-reply@sport-nexus.ch";
+const SMTP_FROM = process.env.SMTP_FROM ?? `SportNexus <${SMTP_USER}>`;
 const APP_URL = process.env.APP_URL ?? "https://sport-nexus.ch";
 
-let client: Resend | null = null;
-function getClient(): Resend | null {
-  const key = process.env.RESEND_API_KEY;
-  if (!key) return null;
-  if (!client) client = new Resend(key);
-  return client;
+let transporter: Transporter | null = null;
+function getTransporter(): Transporter | null {
+  const pass = process.env.SMTP_PASS;
+  if (!pass) return null;
+  if (!transporter) {
+    transporter = nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: SMTP_PORT,
+      // 587 = STARTTLS (secure: false + requireTLS), 465 = implicit TLS.
+      secure: SMTP_PORT === 465,
+      requireTLS: SMTP_PORT === 587,
+      auth: { user: SMTP_USER, pass },
+    });
+  }
+  return transporter;
 }
 
 export type EmailPayload = {
@@ -24,16 +37,16 @@ export type EmailPayload = {
 };
 
 export async function sendEmail(p: EmailPayload): Promise<{ ok: true } | { ok: false; reason: string }> {
-  const resend = getClient();
-  if (!resend) {
+  const tx = getTransporter();
+  if (!tx) {
     if (process.env.NODE_ENV === "development") {
-      console.log("[email] (dev no-op)", p.to, "—", p.subject);
+      console.log("[email] (dev no-op — SMTP_PASS missing)", p.to, "—", p.subject);
     }
-    return { ok: false, reason: "RESEND_API_KEY missing" };
+    return { ok: false, reason: "SMTP_PASS missing" };
   }
   try {
-    await resend.emails.send({
-      from: FROM,
+    await tx.sendMail({
+      from: SMTP_FROM,
       to: p.to,
       subject: p.subject,
       html: p.html,
