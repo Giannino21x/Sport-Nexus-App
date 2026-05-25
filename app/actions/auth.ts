@@ -4,6 +4,7 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
+import { passwordResetEmail, sendEmail } from "@/lib/email";
 
 async function appOrigin() {
   const h = await headers();
@@ -88,14 +89,48 @@ export async function requestPasswordResetAction(
   if (!email) return { error: "E-Mail erforderlich." };
 
   const origin = await appOrigin();
-  const supabase = await createClient();
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${origin}/auth/callback?next=/reset-password`,
-  });
 
-  // Don't leak which addresses are registered — same response either way.
-  if (error) console.error("[resetPasswordForEmail]", error.message);
+  // Wir generieren den Recovery-Link via Admin-API und versenden ihn ueber
+  // unseren Hostpoint-Nodemailer (lib/email.ts) — NICHT ueber den
+  // Supabase-Auth-internen SMTP. Grund: Pascals Reset-Mail kam nicht an
+  // (Free-Plan-Rate-Limit ~4/h, plus moegliche Config-Drift im Dashboard).
+  // Selbe SMTP-Credentials, aber der Pfad ueber unseren Nodemailer ist
+  // erwiesenermassen zuverlaessig (App-Notification-Mails laufen darueber).
+  try {
+    const admin = adminClient();
+    const { data, error: linkErr } = await admin.auth.admin.generateLink({
+      type: "recovery",
+      email,
+      options: { redirectTo: `${origin}/auth/callback?next=/reset-password` },
+    });
 
+    if (!linkErr && data?.properties?.action_link) {
+      let recipientFirst: string | null = null;
+      if (data.user?.id) {
+        const { data: m } = await admin
+          .from("members")
+          .select("first")
+          .eq("auth_id", data.user.id)
+          .maybeSingle();
+        recipientFirst = m?.first || null;
+      }
+      const tpl = passwordResetEmail({
+        recoveryUrl: data.properties.action_link,
+        recipientFirst,
+      });
+      await sendEmail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+    } else if (linkErr) {
+      // "User not found" ist hier der einzig erwartete Fall — bewusst still.
+      const msg = linkErr.message.toLowerCase();
+      if (!msg.includes("not found") && !msg.includes("user")) {
+        console.error("[generateLink:recovery]", linkErr.message);
+      }
+    }
+  } catch (e) {
+    console.error("[requestPasswordResetAction]", e instanceof Error ? e.message : e);
+  }
+
+  // Antwort bleibt info-neutral — keine User-Enumeration.
   return {
     info: "Falls ein Account mit dieser E-Mail existiert, haben wir dir einen Link zum Zurücksetzen geschickt. Prüfe auch den Spam-Ordner.",
   };

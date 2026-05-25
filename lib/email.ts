@@ -166,3 +166,47 @@ export function newMessageEmail(opts: {
 
   return { subject, html, text };
 }
+
+// Template: Passwort-Reset. Wird ueber unseren Hostpoint-Nodemailer verschickt
+// statt ueber den Supabase-internen SMTP, weil dort ein Rate-Limit greift
+// (Free-Plan: ~4 Reset-Mails/h) und Pascal seine Mail nicht erhalten hat.
+export function passwordResetEmail(opts: {
+  recoveryUrl: string;
+  recipientFirst?: string | null;
+}): { subject: string; html: string; text: string } {
+  const greeting = opts.recipientFirst ? `Hallo ${opts.recipientFirst},` : "Hallo,";
+  const subject = "SportNexus · Passwort zurücksetzen";
+
+  const html = `<!doctype html><html><body style="margin:0; padding:0; background:#F7F7F7; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; color:#000;">
+  <div style="max-width:560px; margin:24px auto; padding:32px; background:#FFFFFF; border-radius:8px;">
+    <div style="font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:#868686;">SportNexus · Passwort-Reset</div>
+    <h1 style="font-size:22px; font-weight:600; margin:14px 0 6px; color:#000;">${greeting}</h1>
+    <p style="margin:0 0 18px; font-size:15px; line-height:1.5; color:#000;">
+      Klicke auf den Button unten, um ein neues Passwort fuer deinen SportNexus-Account zu setzen. Der Link ist eine Stunde gueltig.
+    </p>
+    <div style="margin:24px 0;">
+      <a href="${opts.recoveryUrl}" style="display:inline-block; background:#000; color:#fff; padding:11px 18px; border-radius:6px; text-decoration:none; font-size:14px; font-weight:500;">Neues Passwort setzen</a>
+    </div>
+    <p style="margin:18px 0 0; font-size:12.5px; line-height:1.5; color:#575757;">
+      Falls der Button nicht funktioniert, kopiere diesen Link in den Browser:<br>
+      <span style="word-break:break-all; color:#006FB6;">${opts.recoveryUrl}</span>
+    </p>
+    <hr style="margin:32px 0; border:none; border-top:1px solid #ECECEC;">
+    <p style="font-size:11px; color:#868686; margin:0; line-height:1.5;">
+      Du hast diesen Reset nicht angefordert? Dann ignoriere diese Mail — dein Passwort bleibt unveraendert.
+    </p>
+  </div>
+</body></html>`;
+
+  const text = [
+    greeting,
+    ``,
+    `Klicke auf den Link unten, um ein neues Passwort zu setzen (eine Stunde gueltig):`,
+    ``,
+    opts.recoveryUrl,
+    ``,
+    `Du hast diesen Reset nicht angefordert? Dann ignoriere diese Mail.`,
+  ].join("\n");
+
+  return { subject, html, text };
+}
