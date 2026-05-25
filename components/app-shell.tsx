@@ -72,18 +72,24 @@ export function AppShell({ children }: { children: ReactNode }) {
     { k: "events", href: "/events", label: "Events", icon: "calendar", badge: upcoming.length },
     { k: "messages", href: "/messages", label: "Messages", icon: "message" },
     { k: "feed", href: "/feed", label: "Community Feed", icon: "feed", beta: true },
-    ...(me?.isAdmin
-      ? ([{ k: "table-wishes", href: "/admin/table-wishes", label: "Tischwünsche", icon: "trophy" }] as NavItem[])
-      : []),
   ];
 
+  const adminItems: NavItem[] = me?.isAdmin
+    ? [
+        { k: "admin-overview", href: "/admin", label: "Übersicht", icon: "dashboard" },
+        { k: "table-wishes", href: "/admin/table-wishes", label: "Tischwünsche", icon: "trophy" },
+      ]
+    : [];
+
   const isActive = (href: string) => {
-    if (href === "/dashboard") return pathname === "/dashboard";
+    // Exact-match-only paths: parents that would otherwise stay highlighted
+    // while sub-routes are open (e.g. /admin would highlight on /admin/table-wishes).
+    if (href === "/dashboard" || href === "/admin") return pathname === href;
     return pathname === href || pathname.startsWith(href + "/");
   };
 
   const currentNavLabel =
-    navItems.find((n) => isActive(n.href))?.label ||
+    [...navItems, ...adminItems].find((n) => isActive(n.href))?.label ||
     (pathname.startsWith("/directory/") ? "Member Detail" :
       pathname.startsWith("/events/") ? "Event" :
         pathname === "/profile" ? "Profil bearbeiten" : "Dashboard");
@@ -168,6 +174,24 @@ export function AppShell({ children }: { children: ReactNode }) {
               {typeof item.badge === "number" && item.badge > 0 && <span className="count-badge">{item.badge}</span>}
             </Link>
           ))}
+
+          {adminItems.length > 0 && (
+            <>
+              <div className="nav-section-label">Admin</div>
+              {adminItems.map((item) => (
+                <Link
+                  key={item.k}
+                  href={item.href}
+                  className={"nav-item" + (isActive(item.href) ? " active" : "")}
+                  onClick={() => { setMobileMenuOpen(false); setNotifsOpen(false); }}
+                  title={sidebarCollapsed ? item.label : undefined}
+                >
+                  <Icon name={item.icon} className="icon" />
+                  <span className="nav-label">{item.label}</span>
+                </Link>
+              ))}
+            </>
+          )}
 
           <div className="nav-section-label">Konto</div>
           <Link href="/profile" className={"nav-item" + (pathname === "/profile" ? " active" : "")} title={sidebarCollapsed ? "Profil bearbeiten" : undefined}>
@@ -306,6 +330,22 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {typeof item.badge === "number" && item.badge > 0 && <span className="count-badge">{item.badge}</span>}
               </Link>
             ))}
+            {adminItems.length > 0 && (
+              <>
+                <div className="nav-section-label">Admin</div>
+                {adminItems.map((item) => (
+                  <Link
+                    key={item.k}
+                    href={item.href}
+                    className={"nav-item" + (isActive(item.href) ? " active" : "")}
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    <Icon name={item.icon} className="icon" />
+                    <span>{item.label}</span>
+                  </Link>
+                ))}
+              </>
+            )}
             <Link href="/profile" className="nav-item" onClick={() => setMobileMenuOpen(false)}>
               <Icon name="edit" className="icon" /><span>Profil bearbeiten</span>
             </Link>
