@@ -16,7 +16,7 @@ import {
 export default function MemberDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
-  const { data: m, loading } = useMember(id);
+  const { data: m, loading, isDemo } = useMember(id);
   const { data: me } = useMe();
   const { data: events } = useEvents();
   const isAdmin = Boolean(me?.isAdmin);
@@ -107,8 +107,8 @@ export default function MemberDetailPage() {
             <Link href={`/messages?to=${m.id}`} className="btn btn-accent">
               <Icon name="message" size={14} /> Nachricht
             </Link>
-            {me && m.dbId && me.id !== m.id && (
-              <TableWishButton targetMemberDbId={m.dbId} />
+            {me && me.id !== m.id && (isDemo || m.dbId) && (
+              <TableWishButton targetMemberDbId={m.dbId ?? m.id} />
             )}
           </div>
         </div>
