@@ -54,10 +54,18 @@ next-env.d.ts
 .claude/
 
 # Local dev artifacts (server log, lint dumps)
+dev.log
 .dev.log
 .eslint.out
 
 # Playwright scrape profile + outputs (local, contains session cookies)
 .playwright-profile/
+.playwright-hubspot/
 .playwright-storage.json
 scripts/guestoo-out/
+scripts/hs-shots/
+scripts/hs-report.json
+scripts/hs-accounts.json
+
+# Generated PDFs from docs/ (regenerated via scripts/md-to-pdf.mjs)
+pdfs/
