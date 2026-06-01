@@ -123,8 +123,10 @@ export default function EventDetailPage() {
   // Guestoo bleibt vorerst das System of Record für Registrationen. Wenn das
   // Event eine guestooId hat, hängen wir sie als Query-Param an die Public-URL,
   // sonst fällt der Link auf die Übersichts-Seite zurück.
+  // Deep-Link auf die spezifische öffentliche Event-/Anmeldeseite (nicht die
+  // Übersicht) — Format aus der Guestoo-Public-Page: app.guestoo.de/public/event/{id}.
   const guestooRegisterUrl = ev.guestooId
-    ? `${GUESTOO_PUBLIC_URL}?eventId=${encodeURIComponent(ev.guestooId)}`
+    ? `https://app.guestoo.de/public/event/${encodeURIComponent(ev.guestooId)}?lang=de`
     : GUESTOO_PUBLIC_URL;
 
   const reg = isRegistered(ev.id);
