@@ -11,6 +11,7 @@ export type TableWish = {
 };
 
 export type AdminTableWish = TableWish & {
+  consideredAt: string | null;
   requester: {
     slug: string | null;
     first: string;
@@ -110,6 +111,7 @@ export async function listAllTableWishesAction(): Promise<{ items: AdminTableWis
       requester_id,
       target_id,
       created_at,
+      considered_at,
       requester:members!table_wishes_requester_id_fkey (slug, first, last, company, role),
       target:members!table_wishes_target_id_fkey (slug, first, last, company, role)
     `,
@@ -123,6 +125,7 @@ export async function listAllTableWishesAction(): Promise<{ items: AdminTableWis
     requester_id: string;
     target_id: string;
     created_at: string;
+    considered_at: string | null;
     requester: { slug: string | null; first: string; last: string; company: string | null; role: string | null } | null;
     target: { slug: string | null; first: string; last: string; company: string | null; role: string | null } | null;
   };
@@ -132,8 +135,38 @@ export async function listAllTableWishesAction(): Promise<{ items: AdminTableWis
     requesterId: r.requester_id,
     targetId: r.target_id,
     createdAt: r.created_at,
+    consideredAt: r.considered_at ?? null,
     requester: r.requester ?? { slug: null, first: "?", last: "", company: null, role: null },
     target: r.target ?? { slug: null, first: "?", last: "", company: null, role: null },
   }));
   return { items };
+}
+
+// Admin-only: Tischwunsch als "berücksichtigt" markieren (oder zurücksetzen).
+// Setzt considered_at auf jetzt bzw. NULL.
+export async function setTableWishConsideredAction(
+  wishId: string,
+  considered: boolean,
+): Promise<{ consideredAt?: string | null; error?: string }> {
+  if (!wishId) return { error: "Kein Tischwunsch übergeben." };
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht eingeloggt." };
+  const { data: me } = await supabase
+    .from("members")
+    .select("is_admin")
+    .eq("auth_id", user.id)
+    .maybeSingle();
+  if (!me?.is_admin) return { error: "Keine Berechtigung." };
+
+  const consideredAt = considered ? new Date().toISOString() : null;
+  const { error } = await supabase
+    .from("table_wishes")
+    .update({ considered_at: consideredAt })
+    .eq("id", wishId);
+  if (error) return { error: error.message };
+
+  revalidatePath("/admin/table-wishes");
+  return { consideredAt };
 }

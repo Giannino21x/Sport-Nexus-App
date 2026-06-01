@@ -3,41 +3,39 @@
 /* eslint-disable @next/next/no-img-element */
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/icon";
 import { type SnEvent } from "@/lib/data";
 import { reload, useEvents, useMe } from "@/lib/hooks";
+import { useMyRegistrations } from "@/lib/registrations";
 import { createEventAction, deleteEventAction, type EventInput } from "@/app/actions/events";
-
-// Guestoo bleibt das System of Record für Anmeldung, Verifikation und
-// Reminder-Mails. events.guestoo.de/sportnexus ist die öffentliche
-// Übersichtsseite der Agency — embedfähig (kein X-Frame-Options gesetzt) und
-// auch als Direktlink ohne Login aufrufbar. /agency/events ist NICHT der
-// richtige Ziel-Link (das ist das Admin-Dashboard hinter Login).
-const GUESTOO_PUBLIC_URL = "https://events.guestoo.de/sportnexus";
-
-// localStorage-Key: damit nach Besuch eines Event-Details die Zurück-Navigation
-// wieder auf der zuletzt gewählten Ansicht (native vs. iframe) landet — Pascals
-// Feedback 2.
-const VIEW_MODE_KEY = "sn:events:viewMode";
+import { getEventAttendeeCountsAction } from "@/app/actions/guestoo";
 
 export default function EventsPage() {
-  const [viewMode, setViewModeState] = useState<"iframe" | "native">("iframe");
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const saved = window.localStorage.getItem(VIEW_MODE_KEY);
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- einmaliges Restore aus localStorage nach Hydration
-    if (saved === "native" || saved === "iframe") setViewModeState(saved);
-  }, []);
-  const setViewMode = (m: "iframe" | "native") => {
-    setViewModeState(m);
-    if (typeof window !== "undefined") window.localStorage.setItem(VIEW_MODE_KEY, m);
-  };
   const { data: events } = useEvents();
   const { data: me } = useMe();
+  const { isRegistered } = useMyRegistrations();
   const isAdmin = Boolean(me?.isAdmin);
   const upcoming = events.filter((e) => e.status === "upcoming");
   const past = events.filter((e) => e.status === "past");
+
+  // Verlässliche Anmeldezahlen pro kommendem Event über die öffentliche Guestoo-
+  // API (kein Login, läuft nicht ab).
+  const upcomingGuestooIds = useMemo(
+    () => upcoming.map((e) => e.guestooId).filter((id): id is string => Boolean(id)),
+    [upcoming],
+  );
+  const [counts, setCounts] = useState<Record<string, number | null>>({});
+  const countsKey = upcomingGuestooIds.join(",");
+  useEffect(() => {
+    if (upcomingGuestooIds.length === 0) return;
+    let cancelled = false;
+    getEventAttendeeCountsAction(upcomingGuestooIds).then((r) => {
+      if (!cancelled) setCounts(r.counts);
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- stabilisiert über countsKey
+  }, [countsKey]);
 
   const [composerOpen, setComposerOpen] = useState(false);
 
@@ -46,82 +44,32 @@ export default function EventsPage() {
       <div className="page-header">
         <div>
           <div className="upper-label">Events</div>
-          <h1>Kommende Treffen</h1>
-          <div className="subtitle">Lunches, Dinners und exklusive Formate für Members. Anmeldung läuft über Guestoo.</div>
+          <h1>
+            {upcoming.length} <em style={{ color: "var(--accent)", fontStyle: "italic", fontSize: "0.9em" }}>kommende Events</em>
+          </h1>
+          <div className="subtitle">Unterschiedliche Formate: Lunches, Sport-Events, Partneranlässe.</div>
         </div>
-        <div className="row">
-          {isAdmin && viewMode === "native" && (
+        {isAdmin && (
+          <div className="row">
             <button className="btn btn-ghost" onClick={() => setComposerOpen((v) => !v)}>
               <Icon name="plus" size={14} /> {composerOpen ? "Schließen" : "Neues Event"}
             </button>
-          )}
-          <div style={{ display: "flex", border: "1px solid var(--line)", borderRadius: "var(--radius)", padding: 2, background: "var(--bg-elevated)" }}>
-            <button
-              onClick={() => setViewMode("iframe")}
-              className="btn-text"
-              style={{ padding: "6px 12px", fontSize: 12.5, background: viewMode === "iframe" ? "var(--bg-sunken)" : "transparent", borderRadius: 7 }}
-            >
-              Guestoo
-            </button>
-            <button
-              onClick={() => setViewMode("native")}
-              className="btn-text"
-              style={{ padding: "6px 12px", fontSize: 12.5, background: viewMode === "native" ? "var(--bg-sunken)" : "transparent", borderRadius: 7 }}
-            >
-              Native
-            </button>
           </div>
-        </div>
+        )}
       </div>
 
-      {isAdmin && composerOpen && viewMode === "native" && (
+      {isAdmin && composerOpen && (
         <EventComposer onDone={() => { setComposerOpen(false); reload("events"); }} onCancel={() => setComposerOpen(false)} />
       )}
 
-      {viewMode === "iframe" ? (
-        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-          <div style={{ padding: "10px 16px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 10, fontSize: 12.5, color: "var(--ink-3)" }}>
-            <Icon name="link" size={13} />
-            <span className="mono">events.guestoo.de/sportnexus</span>
-            <span style={{ marginLeft: "auto" }}>
-              <a
-                href={GUESTOO_PUBLIC_URL}
-                target="_blank"
-                rel="noreferrer"
-                className="btn btn-ghost"
-                style={{ padding: "5px 10px", fontSize: 12 }}
-              >
-                In neuem Tab öffnen ↗
-              </a>
-            </span>
-          </div>
-          <iframe
-            title="SportNexus Events (Guestoo)"
-            src={GUESTOO_PUBLIC_URL}
-            style={{
-              width: "100%",
-              height: "calc(100dvh - 220px)",
-              minHeight: 600,
-              border: "none",
-              display: "block",
-              background: "var(--bg-elevated)",
-            }}
-            referrerPolicy="no-referrer-when-downgrade"
-            loading="lazy"
-          />
-        </div>
-      ) : (
-        <>
-          <div className="upper-label" style={{ marginBottom: 12 }}>Upcoming · {upcoming.length}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))", gap: 16, marginBottom: 40 }}>
-            {upcoming.map((ev) => <EventCard key={ev.id} ev={ev} isAdmin={isAdmin} />)}
-          </div>
-          <div className="upper-label" style={{ marginBottom: 12 }}>Past · {past.length}</div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))", gap: 16 }}>
-            {past.map((ev) => <EventCard key={ev.id} ev={ev} past isAdmin={isAdmin} />)}
-          </div>
-        </>
-      )}
+      <div className="upper-label" style={{ marginBottom: 12 }}>Upcoming · {upcoming.length}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))", gap: 16, marginBottom: 40 }}>
+        {upcoming.map((ev) => <EventCard key={ev.id} ev={ev} isAdmin={isAdmin} registered={isRegistered(ev.id)} count={ev.guestooId ? counts[ev.guestooId] : undefined} />)}
+      </div>
+      <div className="upper-label" style={{ marginBottom: 12 }}>Past · {past.length}</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))", gap: 16 }}>
+        {past.map((ev) => <EventCard key={ev.id} ev={ev} past isAdmin={isAdmin} />)}
+      </div>
     </div>
   );
 }
@@ -226,7 +174,7 @@ function EventComposer({ onDone, onCancel }: { onDone: () => void; onCancel: () 
   );
 }
 
-function EventCard({ ev, past, isAdmin }: { ev: SnEvent; past?: boolean; isAdmin?: boolean }) {
+function EventCard({ ev, past, isAdmin, registered, count }: { ev: SnEvent; past?: boolean; isAdmin?: boolean; registered?: boolean; count?: number | null }) {
   const d = new Date(ev.date);
 
   const onDelete = async (e: React.MouseEvent) => {
@@ -242,12 +190,24 @@ function EventCard({ ev, past, isAdmin }: { ev: SnEvent; past?: boolean; isAdmin
     <Link href={`/events/${ev.id}`} className="card" style={{ padding: 0, overflow: "hidden", opacity: past ? 0.78 : 1, cursor: "pointer", display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
       <div style={{ aspectRatio: "16/9", background: past ? "var(--ink-3)" : "var(--ink)", position: "relative", color: "var(--bg)", overflow: "hidden", flexShrink: 0 }}>
         {ev.img && (
-          <img
-            src={ev.img}
-            alt=""
-            loading="lazy"
-            style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", filter: past ? "grayscale(0.3) brightness(0.85)" : "none" }}
-          />
+          <>
+            {/* Unscharfer Füll-Hintergrund, damit nicht-16:9-Bilder den Rahmen sauber
+                füllen, ohne das Motiv zu beschneiden. */}
+            <img
+              aria-hidden="true"
+              src={ev.img}
+              alt=""
+              loading="lazy"
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "blur(20px) brightness(0.5)", transform: "scale(1.2)" }}
+            />
+            {/* Vollständiges Bild, mittig, nicht beschnitten. */}
+            <img
+              src={ev.img}
+              alt=""
+              loading="lazy"
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain", objectPosition: "center", filter: past ? "grayscale(0.3) brightness(0.92)" : "none" }}
+            />
+          </>
         )}
         <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.05) 35%, rgba(0,0,0,0.15) 60%, rgba(0,0,0,0.78) 100%)" }} />
         <div style={{ position: "absolute", inset: 0, padding: 16, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
@@ -305,8 +265,25 @@ function EventCard({ ev, past, isAdmin }: { ev: SnEvent; past?: boolean; isAdmin
         <div className="serif" style={{ fontSize: 20, lineHeight: 1.2, marginTop: 3 }}>{ev.subtitle}</div>
         <div style={{ fontSize: 13, color: "var(--ink-3)", marginTop: 8, lineHeight: 1.5 }}>{ev.desc}</div>
         <div style={{ display: "flex", gap: 14, marginTop: 12, fontSize: 11.5, color: "var(--ink-4)" }}>
-          <span>{ev.time}</span><span>{ev.venue}</span><span>~{ev.guests} Gäste</span>
+          <span>{ev.time}</span><span>{ev.venue}</span><span>{count != null ? `${count} angemeldet` : `~${ev.guests} Gäste`}</span>
         </div>
+        {!past && (
+          <div style={{ marginTop: 12 }}>
+            <span
+              style={{
+                fontSize: 10.5,
+                fontWeight: 500,
+                padding: "3px 9px",
+                borderRadius: 999,
+                background: registered ? "var(--success)" : "var(--bg-sunken)",
+                color: registered ? "#FFFFFF" : "var(--ink-3)",
+                border: registered ? "none" : "1px solid var(--line)",
+              }}
+            >
+              {registered ? "✓ Angemeldet" : "Nicht angemeldet"}
+            </span>
+          </div>
+        )}
         <div style={{ flex: 1, minHeight: 14 }} aria-hidden="true" />
         {!past && <span className="btn btn-primary" style={{ width: "100%" }}>Details & Registrieren →</span>}
       </div>

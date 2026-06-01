@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
 import { useEvents, useMe, useMembers } from "@/lib/hooks";
+import { useMyRegistrations } from "@/lib/registrations";
 import { getEventAttendeeCountsAction } from "@/app/actions/guestoo";
 
 export default function DashboardPage() {
@@ -13,6 +14,7 @@ export default function DashboardPage() {
   const { data: me } = useMe();
   const { data: members } = useMembers();
   const { data: events } = useEvents();
+  const { isRegistered } = useMyRegistrations();
 
   const [now, setNow] = useState(() => new Date());
   useEffect(() => {
@@ -83,7 +85,9 @@ export default function DashboardPage() {
     .slice(0, 3)
     .map((x) => x.m);
 
-  const branchCount = new Set(members.map((m) => m.branch).filter(Boolean)).size;
+  // Bei wie vielen kommenden Events bin ich bereits angemeldet (lokaler Marker,
+  // bis die Guestoo/HubSpot-Verknüpfung die verbindliche Quelle liefert).
+  const registeredUpcomingCount = upcoming.filter((e) => isRegistered(e.id)).length;
 
   const nonEmpty = (v?: string | null) => Boolean(v && v.trim().length > 0);
   const profileChecks: { label: string; filled: boolean }[] = [
@@ -109,7 +113,7 @@ export default function DashboardPage() {
   const stats = [
     { k: "Mitglieder", v: members.length, sub: "im Netzwerk" },
     { k: "Kommende Events", v: upcoming.length, sub: "angekündigt" },
-    { k: "Branchen", v: branchCount, sub: "vertreten" },
+    { k: "Angemeldete Events", v: registeredUpcomingCount, sub: `von ${upcoming.length} möglichen` },
     { k: "Matchmaking", v: matchSuggestions.length, sub: "Vorschläge für dich" },
   ];
 
@@ -121,7 +125,7 @@ export default function DashboardPage() {
           <h1 style={{ marginTop: 6 }}>
             {greeting}, <em style={{ color: "var(--accent)", fontStyle: "italic" }}>{me.first}</em>.
           </h1>
-          <div className="subtitle">Du bist seit {me.since} Teil der SportNexus Community.</div>
+          <div className="subtitle">Schön, dass du Teil der SportNexus Community bist.</div>
         </div>
         <div className="row" style={{ flexWrap: "wrap" }}>
           <Link className="btn btn-ghost" href="/profile">
@@ -147,8 +151,7 @@ export default function DashboardPage() {
         <div className="card" style={{ padding: 20 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 14 }}>
             <div>
-              <div className="upper-label">Kommende Events</div>
-              <div className="serif" style={{ fontSize: 22, marginTop: 2 }}>Nächste Treffen</div>
+              <div className="serif" style={{ fontSize: 22 }}>Kommende Events</div>
             </div>
             <Link href="/events" style={{ fontSize: 12.5, color: "var(--ink-3)" }}>
               Alle ansehen →
@@ -188,7 +191,22 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div>
-                    <div style={{ fontWeight: 500, fontSize: 15 }}>{ev.title} — {ev.city}</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <span style={{ fontWeight: 500, fontSize: 15 }}>{ev.title} — {ev.city}</span>
+                      <span
+                        style={{
+                          fontSize: 10.5,
+                          fontWeight: 500,
+                          padding: "2px 8px",
+                          borderRadius: 999,
+                          background: isRegistered(ev.id) ? "var(--success)" : "var(--bg-sunken)",
+                          color: isRegistered(ev.id) ? "#FFFFFF" : "var(--ink-3)",
+                          border: isRegistered(ev.id) ? "none" : "1px solid var(--line)",
+                        }}
+                      >
+                        {isRegistered(ev.id) ? "Angemeldet" : "Nicht angemeldet"}
+                      </span>
+                    </div>
                     <div style={{ fontSize: 13, color: "var(--ink-3)", marginTop: 2 }}>{ev.subtitle}</div>
                     <div style={{ fontSize: 11.5, color: "var(--ink-4)", marginTop: 4, display: "flex", gap: 12, flexWrap: "wrap" }}>
                       <span>{ev.time}</span><span>{ev.venue}</span><span>{attendeesLabel}</span>

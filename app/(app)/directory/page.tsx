@@ -83,11 +83,11 @@ export default function DirectoryPage() {
     <div>
       <div className="page-header">
         <div>
-          <div className="upper-label">Member Directory</div>
+          <div className="upper-label">Member</div>
           <h1>
             {filtered.length} <em style={{ color: "var(--accent)", fontStyle: "italic", fontSize: "0.9em" }}>Mitglieder</em>
           </h1>
-          <div className="subtitle">Die SportNexus Community — Unternehmer, Führungskräfte und Gründer aus der Schweiz.</div>
+          <div className="subtitle">Entdecke die SportNexus Community.</div>
         </div>
       </div>
 
@@ -117,9 +117,9 @@ export default function DirectoryPage() {
             </button>
           )}
         </div>
-        <div className="row" style={{ gap: 8 }}>
+        <div className="row" style={{ gap: 8, flexWrap: "wrap" }}>
           <div style={{ display: "flex", border: "1px solid var(--line)", borderRadius: "var(--radius)", padding: 2, background: "var(--bg-elevated)" }}>
-            {([{ k: "last", l: "A–Z Nachname" }, { k: "first", l: "Vorname" }, { k: "company", l: "Firma" }] as const).map((s) => (
+            {([{ k: "last", l: "A–Z Name" }, { k: "first", l: "Vorname" }, { k: "company", l: "Firma" }] as const).map((s) => (
               <button
                 key={s.k}
                 onClick={() => setSort(s.k)}

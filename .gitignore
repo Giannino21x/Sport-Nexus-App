@@ -61,6 +61,7 @@ dev.log
 # Playwright scrape profile + outputs (local, contains session cookies)
 .playwright-profile/
 .playwright-hubspot/
+.playwright-guestoo/
 .playwright-storage.json
 scripts/guestoo-out/
 scripts/hs-shots/

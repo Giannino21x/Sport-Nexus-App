@@ -4,7 +4,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/icon";
 import { useMe } from "@/lib/hooks";
-import { listAllTableWishesAction, type AdminTableWish } from "@/app/actions/table-wishes";
+import {
+  listAllTableWishesAction,
+  setTableWishConsideredAction,
+  type AdminTableWish,
+} from "@/app/actions/table-wishes";
 
 export default function AdminTableWishesPage() {
   const { data: me } = useMe();
@@ -20,6 +24,19 @@ export default function AdminTableWishesPage() {
     });
     return () => { cancelled = true; };
   }, []);
+
+  // Berücksichtigt-Status togglen — optimistisch, mit Rollback bei Fehler.
+  const onToggleConsidered = (w: AdminTableWish) => {
+    const considered = !w.consideredAt;
+    const optimistic = considered ? new Date().toISOString() : null;
+    setItems((prev) => prev?.map((x) => (x.id === w.id ? { ...x, consideredAt: optimistic } : x)) ?? prev);
+    setTableWishConsideredAction(w.id, considered).then((r) => {
+      if (r.error) {
+        alert(r.error);
+        setItems((prev) => prev?.map((x) => (x.id === w.id ? { ...x, consideredAt: w.consideredAt } : x)) ?? prev);
+      }
+    });
+  };
 
   if (!me) return null;
   if (!me.isAdmin) {
@@ -68,6 +85,7 @@ export default function AdminTableWishesPage() {
                 <Th>Wer möchte</Th>
                 <Th>möchte kennenlernen</Th>
                 <Th>Gemeldet am</Th>
+                <Th>Berücksichtigt</Th>
               </tr>
             </thead>
             <tbody>
@@ -87,6 +105,9 @@ export default function AdminTableWishesPage() {
                         year: "numeric",
                       })}
                     </span>
+                  </Td>
+                  <Td>
+                    <ConsideredCell wish={w} onToggle={() => onToggleConsidered(w)} />
                   </Td>
                 </tr>
               ))}
@@ -112,6 +133,51 @@ function Th({ children }: { children: React.ReactNode }) {
 
 function Td({ children }: { children: React.ReactNode }) {
   return <td style={{ padding: "10px 14px", verticalAlign: "middle" }}>{children}</td>;
+}
+
+function ConsideredCell({ wish, onToggle }: { wish: AdminTableWish; onToggle: () => void }) {
+  const considered = Boolean(wish.consideredAt);
+  return (
+    <button
+      type="button"
+      onClick={onToggle}
+      title={considered ? "Klicken, um die Berücksichtigung zurückzunehmen." : "Als bei der Tischzuweisung berücksichtigt markieren."}
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "5px 10px",
+        borderRadius: 999,
+        cursor: "pointer",
+        fontSize: 12,
+        fontWeight: 500,
+        background: considered ? "var(--success)" : "transparent",
+        color: considered ? "#FFFFFF" : "var(--ink-3)",
+        border: considered ? "none" : "1px solid var(--line-strong)",
+      }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          width: 14,
+          height: 14,
+          borderRadius: 4,
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          border: considered ? "none" : "1.4px solid var(--ink-4)",
+          background: considered ? "rgba(255,255,255,0.25)" : "transparent",
+          fontSize: 10,
+          lineHeight: 1,
+        }}
+      >
+        {considered ? "✓" : ""}
+      </span>
+      {considered && wish.consideredAt
+        ? `Berücksichtigt am ${new Date(wish.consideredAt).toLocaleDateString("de-CH", { day: "2-digit", month: "2-digit", year: "numeric" })}`
+        : "Als berücksichtigt markieren"}
+    </button>
+  );
 }
 
 function PersonCell({ person }: { person: AdminTableWish["requester"] }) {

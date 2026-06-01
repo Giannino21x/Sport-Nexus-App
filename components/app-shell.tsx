@@ -68,7 +68,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const navItems: NavItem[] = [
     { k: "dashboard", href: "/dashboard", label: "Dashboard", icon: "dashboard" },
-    { k: "directory", href: "/directory", label: "Member Directory", icon: "users" },
+    { k: "directory", href: "/directory", label: "Member", icon: "users" },
     { k: "events", href: "/events", label: "Events", icon: "calendar", badge: upcoming.length },
     { k: "messages", href: "/messages", label: "Messages", icon: "message" },
     { k: "feed", href: "/feed", label: "Community Feed", icon: "feed", beta: true },
@@ -153,7 +153,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               }}
             />
           </div>
-          <div className="upper-label sidebar-label-area" style={{ padding: "0 8px 12px", marginTop: 6, fontSize: 10.5 }}>Member Area</div>
+          <div className="upper-label sidebar-label-area" style={{ padding: "0 8px 12px", marginTop: 6, fontSize: 10.5 }}>Memberbereich</div>
 
           <div className="nav-section-label">Community</div>
           {navItems.map((item) => (

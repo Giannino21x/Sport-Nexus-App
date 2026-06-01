@@ -119,6 +119,36 @@ export async function getGuestooEvent(id: string) {
   return call<GuestooEvent>(`/proxy/api/events/${id}`);
 }
 
+// Öffentliche Event-Stats — OHNE Login/Cookies. Endpoint:
+//   GET /proxy/api/public/events/{id}
+// Liefert maxVisitor + freeSlots (auch in .statistic). Daraus leiten wir die
+// bestätigten Anmeldungen ab (max - frei). Das läuft NICHT ab und ist damit die
+// stabile Quelle für die Anmeldezahlen — im Gegensatz zur cookie-basierten
+// Visitors-API (die nur die Namensliste liefern kann, aber regelmässig abläuft).
+export type GuestooPublicStats = {
+  maxVisitor: number | null;
+  freeSlots: number | null;
+  confirmed: number | null;
+};
+
+export async function getPublicGuestooStats(eventId: string): Promise<GuestooPublicStats> {
+  const res = await fetch(`${BASE}/proxy/api/public/events/${eventId}?lang=de&forceLang=true`, {
+    headers: { Accept: "application/json", "User-Agent": "SportNexus/1.0 (server)" },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error(`Guestoo public API ${res.status}`);
+  const j = (await res.json()) as {
+    maxVisitor?: number | null;
+    freeSlots?: number | null;
+    statistic?: { maxVisitor?: number | null; freeSlots?: number | null } | null;
+  };
+  const maxVisitor = j.statistic?.maxVisitor ?? j.maxVisitor ?? null;
+  const freeSlots = j.statistic?.freeSlots ?? j.freeSlots ?? null;
+  const confirmed =
+    maxVisitor != null && freeSlots != null ? Math.max(0, maxVisitor - freeSlots) : null;
+  return { maxVisitor, freeSlots, confirmed };
+}
+
 export async function searchGuestooVisitors(
   eventId: string,
   opts?: { statuses?: string[]; perPage?: number },

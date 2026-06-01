@@ -275,7 +275,7 @@ function TableWishButton({ targetMemberDbId }: { targetMemberDbId: string }) {
       title={
         wished
           ? "Du hast diese Person als Tischwunsch für das nächste Event markiert."
-          : "An einem Event an den gleichen Tisch — Admin berücksichtigt das bei der Tischzuweisung."
+          : "An einem kommenden Event am gleichen Tisch – SportNexus versucht dies bei der Tischzuweisung zu berücksichtigen."
       }
     >
       <Icon name={wished ? "check" : "users"} size={14} />

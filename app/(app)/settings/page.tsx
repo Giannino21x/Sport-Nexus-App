@@ -32,7 +32,9 @@ export default function SettingsPage() {
       </div>
 
       <div style={{ display: "grid", gap: 18, maxWidth: 720 }}>
-        {dataSource === "live" && <AccountEmailCard profileEmail={me?.email ?? null} />}
+        {dataSource === "live"
+          ? <AccountEmailCard profileEmail={me?.email ?? null} />
+          : <DemoAccountCard email={me?.email ?? null} />}
 
         <div className="card" style={{ padding: 24 }}>
           <div className="upper-label" style={{ marginBottom: 14 }}>Erscheinungsbild</div>
@@ -159,8 +161,8 @@ function AccountEmailCard({ profileEmail }: { profileEmail: string | null }) {
     <div className="card" style={{ padding: 24 }}>
       <div className="upper-label" style={{ marginBottom: 14 }}>Konto</div>
       <Row
-        label="Login-E-Mail"
-        hint="Mit dieser Adresse meldest du dich an. Sie ist nur für dich und das SportNexus-Team sichtbar — nicht für andere Members."
+        label="Login-E-Mail / Username"
+        hint="Mit dieser Adresse meldest du dich an (dein Username). Änderst du sie, wird die neue Adresse nach Bestätigung dein neues Login. Sie ist nur für dich und das SportNexus-Team sichtbar — nicht für andere Members."
       >
         {loading ? (
           <span style={{ fontSize: 13, color: "var(--ink-3)" }}>Wird geladen...</span>
@@ -223,6 +225,32 @@ function AccountEmailCard({ profileEmail }: { profileEmail: string | null }) {
           </Link>
         </div>
       </Row>
+    </div>
+  );
+}
+
+function DemoAccountCard({ email }: { email: string | null }) {
+  // Im Demo-Modus gibt es keinen echten Supabase-Auth-Account — wir zeigen die
+  // Demo-E-Mail als Login-/Username- und Profil-Angabe an, damit die Konto-Sektion
+  // nicht leer ist (Feedback: "Demo-Umgebung — hier fehlen die Konto-E-Mail-Angaben").
+  return (
+    <div className="card" style={{ padding: 24 }}>
+      <div className="upper-label" style={{ marginBottom: 14 }}>Konto</div>
+      <Row
+        label="Login-E-Mail / Username"
+        hint="Mit dieser Adresse meldest du dich an (dein Username). Im Demo-Modus ist sie fix — im Live-Modus wird eine geänderte Adresse nach Bestätigung dein neues Login."
+      >
+        <span style={{ fontSize: 13.5 }}>{email || "—"}</span>
+      </Row>
+      <Row
+        label="Profil-E-Mail"
+        hint="Diese Adresse zeigen wir in deinem Member-Profil. Im Live-Modus unter „Profil bearbeiten“ anpassbar."
+      >
+        <span style={{ fontSize: 13.5 }}>{email || "—"}</span>
+      </Row>
+      <div style={{ marginTop: 12, fontSize: 11.5, color: "var(--ink-4)", lineHeight: 1.5 }}>
+        Demo-Modus — Kontoänderungen sind nur im Live-Modus möglich.
+      </div>
     </div>
   );
 }

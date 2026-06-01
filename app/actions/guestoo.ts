@@ -1,7 +1,12 @@
 "use server";
 
 import { createClient } from "@/lib/supabase/server";
-import { searchGuestooEvents, searchGuestooVisitors, type GuestooVisitor } from "@/lib/guestoo";
+import {
+  getPublicGuestooStats,
+  searchGuestooEvents,
+  searchGuestooVisitors,
+  type GuestooVisitor,
+} from "@/lib/guestoo";
 import { revalidatePath } from "next/cache";
 
 export type EventAttendee = {
@@ -40,10 +45,10 @@ export async function getEventAttendeesAction(
   }
 }
 
-// Holt für mehrere Events parallel die bestätigten Anmeldungen — wird im
-// Dashboard verwendet, um neben dem Platz-Maximum die tatsächlichen
-// Anmeldungszahlen aus Guestoo anzuzeigen. Fehler pro Event blockieren nicht
-// den gesamten Aufruf, sondern werden zu null im Counts-Map.
+// Holt für mehrere Events parallel die bestätigten Anmeldungen über die
+// ÖFFENTLICHE Guestoo-API (max - frei) — kein Login, läuft nicht ab. Wird im
+// Dashboard und in der Events-Übersicht verwendet. Fehler pro Event blockieren
+// nicht den gesamten Aufruf, sondern werden zu null im Counts-Map.
 export async function getEventAttendeeCountsAction(
   guestooEventIds: string[],
 ): Promise<{ counts: Record<string, number | null>; error?: string }> {
@@ -53,17 +58,28 @@ export async function getEventAttendeeCountsAction(
   await Promise.all(
     unique.map(async (id) => {
       try {
-        const visitors = await searchGuestooVisitors(id, {
-          statuses: ["CONFIRMED", "APPEARED"],
-          perPage: 200,
-        });
-        counts[id] = visitors.length;
+        const stats = await getPublicGuestooStats(id);
+        counts[id] = stats.confirmed;
       } catch {
         counts[id] = null;
       }
     }),
   );
   return { counts };
+}
+
+// Öffentliche Anmelde-Stats für EIN Event (max / frei / bestätigt) — stabile
+// Quelle ohne Login. Wird auf der Event-Detailseite für die Anzeige der
+// Anmeldezahlen genutzt.
+export type EventStats = { maxVisitor: number | null; freeSlots: number | null; confirmed: number | null };
+export async function getEventStatsAction(guestooEventId: string): Promise<{ stats?: EventStats; error?: string }> {
+  if (!guestooEventId) return { error: "Keine Guestoo-ID übergeben." };
+  try {
+    const stats = await getPublicGuestooStats(guestooEventId);
+    return { stats };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
 }
 
 // Adresse aus Guestoo-Struktur: "Street Nr, PLZ City".

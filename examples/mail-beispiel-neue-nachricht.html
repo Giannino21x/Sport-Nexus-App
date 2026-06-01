@@ -1,0 +1,42 @@
+<!--
+  BEISPIEL-RENDERING der echten Mailbenachrichtigung "Neue Nachricht".
+  Vorlage: lib/email.ts -> newMessageEmail(). Diese Mail wird automatisch via
+  Hostpoint-SMTP (no-reply@sport-nexus.ch) verschickt, sobald ein Member einem
+  anderen eine Nachricht im Memberbereich schreibt. Der Kontakt-Block erscheint
+  nur, wenn der Absender E-Mail/Mobile/LinkedIn freigegeben hat.
+
+  Betreff dieser Beispiel-Mail: "Neue Nachricht von Marco Fischer"
+
+  Zum Ansehen: Datei einfach im Browser öffnen.
+-->
+<!doctype html><html><body style="margin:0; padding:0; background:#F7F7F7; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; color:#000;">
+  <div style="max-width:560px; margin:24px auto; padding:32px; background:#FFFFFF; border-radius:8px;">
+    <div style="font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:#868686;">SportNexus · Neue Nachricht</div>
+    <h1 style="font-size:22px; font-weight:600; margin:14px 0 6px; color:#000;">Hallo Pascal,</h1>
+    <p style="margin:0 0 18px; font-size:15px; line-height:1.5; color:#000;">
+      <strong>Marco Fischer</strong> — <span style="color:#575757">Managing Partner · Helvetia Partners</span> hat dir eine Nachricht im SportNexus-Memberbereich geschickt.
+    </p>
+    <blockquote style="margin:18px 0; padding:14px 18px; border-left:3px solid #C3A75E; background:#F4ECD7; border-radius:4px; color:#000; font-size:14px; line-height:1.55; white-space:pre-wrap;">Hoi Pascal, super war der Lunch letzte Woche! Ich hätte da einen spannenden Kontakt für dich im Bereich Sportmarketing — passt ein kurzer Call nächste Woche?</blockquote>
+    <table cellpadding="0" cellspacing="0" border="0" style="margin:18px 0; width:100%; background:#FAFAFA; border-radius:6px;">
+      <tbody>
+        <tr>
+          <td style="padding:14px 18px;">
+            <div style="font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:#868686; margin-bottom:8px;">Kontakt von Marco Fischer</div>
+            <div style="font-size:13.5px; line-height:1.55; color:#000;">E-Mail: <a href="mailto:marco.fischer@helvetia-partners.ch" style="color:#006FB6; text-decoration:underline;">marco.fischer@helvetia-partners.ch</a></div>
+            <div style="font-size:13.5px; line-height:1.55; color:#000;">Mobile: <a href="tel:+41791234567" style="color:#006FB6; text-decoration:underline;">+41 79 123 45 67</a></div>
+            <div style="font-size:13.5px; line-height:1.55; color:#000;">LinkedIn: <a href="https://linkedin.com/in/marcofischer" style="color:#006FB6; text-decoration:underline;">linkedin.com/in/marcofischer</a></div>
+            <div style="font-size:12px; color:#575757; margin-top:8px;">Finanzen · Zürich</div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="margin-top:24px;">
+      <a href="https://sport-nexus.ch/messages?to=marco-fischer" style="display:inline-block; background:#000; color:#fff; padding:11px 18px; border-radius:6px; text-decoration:none; font-size:14px; font-weight:500;">Antworten in der App</a>
+      <a href="https://sport-nexus.ch/directory/marco-fischer" style="display:inline-block; background:#fff; color:#000; padding:11px 18px; border-radius:6px; text-decoration:none; font-size:14px; border:1px solid #D9D9D9; margin-left:10px;">Profil ansehen</a>
+    </div>
+    <hr style="margin:32px 0; border:none; border-top:1px solid #ECECEC;">
+    <p style="font-size:11px; color:#868686; margin:0; line-height:1.5;">
+      Du erhältst diese E-Mail als SportNexus-Mitglied. Du kannst direkt in der App antworten oder die oben aufgeführten Kontaktdaten nutzen.
+    </p>
+  </div>
+</body></html>

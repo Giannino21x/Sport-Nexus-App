@@ -69,7 +69,7 @@ function LoginInner() {
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/login-hero-clean.jpg"
+          src="/login-hero-1.jpg"
           alt="Sport trifft auf Business"
           style={{
             position: "absolute",
@@ -107,7 +107,7 @@ function LoginInner() {
         />
 
         <div style={{ position: "absolute", top: 36, left: 40, zIndex: 3, filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.5))" }}>
-          <LogoWordmark height={26} variant="color-on-dark" />
+          <LogoWordmark height={38} variant="color-on-dark" />
         </div>
 
         <div style={{ position: "absolute", left: 40, right: 40, bottom: 44, zIndex: 3, color: "#FFFFFF" }}>
@@ -139,8 +139,6 @@ function LoginInner() {
               fontWeight: 500,
             }}
           >
-            <span>Since 2026</span>
-            <span style={{ opacity: 0.5 }}>·</span>
             <span>Zürich · Basel</span>
           </div>
         </div>
@@ -183,7 +181,7 @@ function LoginInner() {
                   color: C.text,
                 }}
               >
-                Willkommen zurück
+                Herzlich willkommen
               </h2>
               <div style={{ color: C.textDim, marginBottom: 32, fontSize: 14, fontFamily: SANS, fontWeight: 400 }}>
                 Melde dich im Member-Bereich an.

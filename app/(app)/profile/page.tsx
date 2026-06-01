@@ -298,6 +298,7 @@ export default function ProfilePage() {
                 value={form.since}
                 onChange={(v) => set("since", v)}
                 placeholder="TT.MM.JJJJ"
+                hint="Stammt aus dem Datum der Vertragsbestätigung (Formular gesendet · Vertrag JA)."
               />
             </div>
           </div>
@@ -321,7 +322,7 @@ export default function ProfilePage() {
             <div className="upper-label" style={{ marginBottom: 14 }}>Über dich</div>
             <div className="field">
               <label className="field-label">
-                Bio <span style={{ color: "var(--ink-4)" }}>· optional</span>
+                Bio <span style={{ color: "var(--ink-4)" }}>· was man über dich wissen sollte · optional</span>
               </label>
               <textarea
                 className="textarea"
@@ -421,7 +422,7 @@ export default function ProfilePage() {
           <div className="card" style={{ padding: 24 }}>
             <div className="upper-label" style={{ marginBottom: 14 }}>Links & Sichtbarkeit</div>
             <div className="field">
-              <label className="field-label">LinkedIn URL</label>
+              <label className="field-label">LinkedIn URL <span style={{ color: "var(--ink-4)" }}>· optional</span></label>
               <input
                 className="input"
                 value={form.linkedin}
@@ -612,12 +613,14 @@ function TextField({
   onChange,
   type = "text",
   placeholder,
+  hint,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   type?: string;
   placeholder?: string;
+  hint?: string;
 }) {
   return (
     <div className="field" style={{ marginBottom: 0 }}>
@@ -629,6 +632,7 @@ function TextField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
       />
+      {hint && <div style={{ fontSize: 11, color: "var(--ink-4)", marginTop: 4, lineHeight: 1.5 }}>{hint}</div>}
     </div>
   );
 }
