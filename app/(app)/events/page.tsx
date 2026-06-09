@@ -17,7 +17,13 @@ export default function EventsPage() {
   const { isRegistered } = useMyRegistrations();
   const isAdmin = Boolean(me?.isAdmin);
   const upcoming = events.filter((e) => e.status === "upcoming");
-  const past = events.filter((e) => e.status === "past");
+  // Past-Events: jüngstes zuoberst, ältestes zuunterst (Pascal-Feedback).
+  // Die Quelle ist nach Datum aufsteigend sortiert, hier kehren wir die
+  // Reihenfolge für die vergangenen Events explizit um.
+  const past = events
+    .filter((e) => e.status === "past")
+    .slice()
+    .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 
   // Verlässliche Anmeldezahlen pro kommendem Event über die öffentliche Guestoo-
   // API (kein Login, läuft nicht ab).

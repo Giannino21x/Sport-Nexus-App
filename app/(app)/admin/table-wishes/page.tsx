@@ -79,7 +79,11 @@ export default function AdminTableWishesPage() {
         </div>
       ) : (
         <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5 }}>
+          {/* Mobil: horizontales Scrollen, damit die hinteren Spalten
+              (Gemeldet am / Berücksichtigt) auf schmalen Screens erreichbar
+              sind. minWidth erzwingt den Scroll statt die Spalten zu quetschen. */}
+          <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+          <table style={{ width: "100%", minWidth: 640, borderCollapse: "collapse", fontSize: 13.5 }}>
             <thead>
               <tr style={{ background: "var(--bg-sunken)", color: "var(--ink-3)", textAlign: "left" }}>
                 <Th>Wer möchte</Th>
@@ -113,6 +117,7 @@ export default function AdminTableWishesPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
