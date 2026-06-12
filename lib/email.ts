@@ -1,16 +1,21 @@
 // Server-only Email-Helper. Nutzt SMTP via Nodemailer — selbe Hostpoint-
-// Credentials wie Supabase Auth (asmtp.mail.hostpoint.ch:587 mit
-// no-reply@sport-nexus.ch), nur dass wir sie hier aus ENV holen statt aus
-// Supabase. Fehlt SMTP_PASS, fällt sendEmail auf no-op zurück (kein Throw,
-// damit der Send-Action-Flow nicht blockiert).
+// Credentials wie Supabase Auth (asmtp.mail.hostpoint.ch:587), nur dass wir
+// sie hier aus ENV holen statt aus Supabase. Fehlt SMTP_PASS, fällt sendEmail
+// auf no-op zurück (kein Throw, damit der Send-Action-Flow nicht blockiert).
+//
+// ACHTUNG Absenderdomain: Auth-User ist die Hostpoint-Mailbox
+// no-reply@sport-nexus.ch (MIT Bindestrich), aber als From MUSS
+// no-reply@sportnexus.ch (OHNE Bindestrich) raus — sport-nexus.ch ist nicht
+// registriert (NXDOMAIN) und Gmail & Co. verwerfen Mails solcher Absender
+// komplett (kein Spam-Ordner, einfach weg).
 
 import nodemailer, { type Transporter } from "nodemailer";
 
 const SMTP_HOST = process.env.SMTP_HOST ?? "asmtp.mail.hostpoint.ch";
 const SMTP_PORT = Number(process.env.SMTP_PORT ?? "587");
 const SMTP_USER = process.env.SMTP_USER ?? "no-reply@sport-nexus.ch";
-const SMTP_FROM = process.env.SMTP_FROM ?? `SportNexus <${SMTP_USER}>`;
-const APP_URL = process.env.APP_URL ?? "https://sport-nexus.ch";
+const SMTP_FROM = process.env.SMTP_FROM ?? "SportNexus <no-reply@sportnexus.ch>";
+const APP_URL = process.env.APP_URL ?? "https://sport-nexus-app.vercel.app";
 
 let transporter: Transporter | null = null;
 function getTransporter(): Transporter | null {
