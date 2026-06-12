@@ -16,6 +16,7 @@ export type AdminOverview = {
   adminCount: number;
   upcomingEventCount: number;
   tableWishCount: number;
+  openProfileChangeCount: number;
   recentWishes: RecentWish[];
 };
 
@@ -32,11 +33,12 @@ export async function getAdminOverviewAction(): Promise<{ data?: AdminOverview; 
 
   const today = new Date().toISOString().slice(0, 10);
 
-  const [members, admins, events, wishes, recent] = await Promise.all([
+  const [members, admins, events, wishes, profileChanges, recent] = await Promise.all([
     supabase.from("members").select("id", { count: "exact", head: true }),
     supabase.from("members").select("id", { count: "exact", head: true }).eq("is_admin", true),
     supabase.from("events").select("id", { count: "exact", head: true }).gte("date", today),
     supabase.from("table_wishes").select("id", { count: "exact", head: true }),
+    supabase.from("profile_changes").select("id", { count: "exact", head: true }).is("reviewed_at", null),
     supabase
       .from("table_wishes")
       .select(
@@ -72,6 +74,7 @@ export async function getAdminOverviewAction(): Promise<{ data?: AdminOverview; 
       adminCount: admins.count ?? 0,
       upcomingEventCount: events.count ?? 0,
       tableWishCount: wishes.count ?? 0,
+      openProfileChangeCount: profileChanges.count ?? 0,
       recentWishes,
     },
   };

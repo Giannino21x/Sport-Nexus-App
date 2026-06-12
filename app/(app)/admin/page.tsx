@@ -15,7 +15,7 @@ export default function AdminDashboardPage() {
     if (dataSource !== "live") {
       // Demo-Modus: Platzhalter-State, keine Server-Calls.
       // eslint-disable-next-line react-hooks/set-state-in-effect -- bewusster Demo-Reset
-      setData({ memberCount: 0, adminCount: 0, upcomingEventCount: 0, tableWishCount: 0, recentWishes: [] });
+      setData({ memberCount: 0, adminCount: 0, upcomingEventCount: 0, tableWishCount: 0, openProfileChangeCount: 0, recentWishes: [] });
       return;
     }
     let cancelled = false;
@@ -55,6 +55,7 @@ export default function AdminDashboardPage() {
         <StatCard label="Members" value={data?.memberCount ?? "—"} sub={data?.adminCount != null ? `${data.adminCount} Admins` : ""} />
         <StatCard label="Upcoming Events" value={data?.upcomingEventCount ?? "—"} />
         <StatCard label="Tischwünsche" value={data?.tableWishCount ?? "—"} />
+        <StatCard label="Offene Profil-Änderungen" value={data?.openProfileChangeCount ?? "—"} />
       </div>
 
       <div className="card" style={{ padding: 22, marginBottom: 18 }}>
@@ -65,6 +66,12 @@ export default function AdminDashboardPage() {
             icon="trophy"
             label="Tischwünsche verwalten"
             sub="Wer möchte wen kennenlernen — Grundlage für Tischzuweisung"
+          />
+          <QuickLink
+            href="/admin/profile-changes"
+            icon="users"
+            label="Profil-Änderungen prüfen"
+            sub="Von Members geänderte Felder — relevante Mutationen manuell ins CRM übernehmen"
           />
           <QuickLink
             href="/directory"

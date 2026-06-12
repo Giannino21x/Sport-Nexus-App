@@ -78,6 +78,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     ? [
         { k: "admin-overview", href: "/admin", label: "Übersicht", icon: "dashboard" },
         { k: "table-wishes", href: "/admin/table-wishes", label: "Tischwünsche", icon: "trophy" },
+        { k: "profile-changes", href: "/admin/profile-changes", label: "Profil-Änderungen", icon: "users" },
       ]
     : [];
 
