@@ -70,3 +70,5 @@ scripts/hs-accounts.json
 
 # Generated PDFs from docs/ (regenerated via scripts/md-to-pdf.mjs)
 pdfs/
+scripts/hs-properties.json
+scripts/hs-props-capture.json

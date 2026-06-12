@@ -35,22 +35,38 @@ Next.js API-Route  /api/hubspot/member-webhook
 
 ### Field-Mapping HubSpot → SportNexus
 
-| HubSpot Contact Property         | Supabase `members` Spalte | Notiz                                            |
-|----------------------------------|--------------------------|--------------------------------------------------|
-| `firstname`                      | `first`                  |                                                  |
-| `lastname`                       | `last`                   |                                                  |
-| `email`                          | `email` + Auth-Email     | Wird auch Login-Adresse                          |
-| `company`                        | `company`                |                                                  |
-| `jobtitle`                       | `role`                   |                                                  |
-| `branche_dropdown`               | `branch` + `sub` (Split) | **Update Feedback 5 (2026-06-12):** Pascal hat ein Dropdown-Feld angelegt, das Branche und Subbranche kombiniert enthält („Branche - Subbranche"), weil die HubSpot-Lizenz keine abhängigen Felder erlaubt. Wir splitten beim Sync am ersten « - » → `branch` (davor) und `sub` (danach); fehlt der Trenner, geht alles in `branch` und `sub` bleibt leer. So bleiben beide Directory-Filter (Branche UND Subbranche) erhalten. |
-| `date_of_birth`                  | `date_of_birth`          | **Neu Feedback 5:** Geburtsdatum — Spalte `members.date_of_birth` (date) + Profil-Feld sind angelegt (Migration 20260612000000). |
-| `work_city`                      | `work`                   |                                                  |
-| `home_city`                      | `home`                   |                                                  |
-| `mobilephone`                    | `mobile`                 |                                                  |
-| `linkedin_url`                   | `linkedin`               |                                                  |
-| `sports_interests` (Multi-Value) | `sports` (text[])        | Kommagetrennt parsen                             |
-| `additional_roles`               | `additional`             | Freitext für VR-Mandate etc.                     |
-| `member_since`                   | `since`                  | ISO-Date oder TT.MM.JJJJ — wir parsen beides    |
+> **Verifiziert am 2026-06-12 direkt im SportNexus-Portal (146284992)** via
+> interne Properties-API (`scripts/hs-props-capture.mjs`, Rohdaten in
+> `scripts/hs-props-capture.json`). Das sind die ECHTEN Property-Namen, nicht
+> mehr die Annahmen aus dem ersten Konzept-Entwurf.
+
+| HubSpot Contact Property         | Typ                      | Supabase `members` Spalte | Notiz                                            |
+|----------------------------------|--------------------------|--------------------------|--------------------------------------------------|
+| `firstname` (Standard)           | text                     | `first`                  |                                                  |
+| `lastname` (Standard)            | text                     | `last`                   |                                                  |
+| `email` (Standard)               | text                     | `email` + Auth-Email     | Wird auch Login-Adresse                          |
+| `company` (Standard)             | text                     | `company`                |                                                  |
+| `jobtitle` (Standard)            | text                     | `role`                   |                                                  |
+| `branche_dropdown`               | enum/select (50 Werte)   | `branch` + `sub` (Split) | Kombiniert „Branche **–** Subbranche" (HubSpot-Lizenz kann keine abhängigen Felder). **Trenner ist der Gedankenstrich « – » (U+2013 mit Spaces), NICHT der Bindestrich!** Split am ersten « – »: davor → `branch`, danach → `sub`; ohne Trenner alles in `branch`. So bleiben beide Directory-Filter erhalten. |
+| `zweitbranche_dropdown`          | enum/select (50 Werte)   | — (noch ohne App-Feld)   | Existiert zusätzlich; gleiche Werteliste. Fürs MVP ignorieren oder später als zweite Branche abbilden — mit Pascal klären. |
+| `sub_branche`                    | text                     | — (vermutlich Altlast)   | Freitext-Feld, wohl durch `branche_dropdown` abgelöst — mit Pascal klären, nicht mappen. |
+| `date_of_birth` (Standard)       | **text** (kein Datum!)   | `date_of_birth` (date)   | HubSpot-Standardfeld „Geburtsdatum" — als String! Beim Sync TT.MM.JJJJ und ISO parsen (wie `parseDateInput` in app/actions/members.ts). Spalte + Profil-Feld live (Migration 20260612000000). |
+| `hauptarbeitsort`                | text                     | `work`                   |                                                  |
+| `city` (Standard „Stadt")        | text                     | `home`                   | Annahme: Stadt = Wohnort — mit Pascal bestätigen. |
+| `mobilephone` (Standard)         | phonenumber              | `mobile`                 |                                                  |
+| `website` (Standard)             | text                     | `web`                    |                                                  |
+| `hs_linkedin_url` (Standard)     | text                     | `linkedin`               | Es gibt KEIN Custom-LinkedIn-Feld — Standard-Property nutzen. |
+| `sportinteressen`                | enum/checkbox (13 Werte) | `sports` (text[])        | Multi-Checkbox (Volleyball, Golf, Padel Tennis, …). HubSpot liefert Mehrfachwerte `;`-getrennt. Daneben existiert `sportarten___interessen` (Freitext-Textarea) — mit Pascal klären, welches gepflegt wird. |
+| `was_biete_ich`                  | textarea                 | `offer`                  |                                                  |
+| `zusatzfunktionen`               | textarea                 | `additional_roles`       | VR-Mandate etc.                                  |
+| `vertrag` + Vertragsdatum        | booleancheckbox          | `since`                  | „Member seit" = Datum der Vertragsbestätigung. Kandidat: `timeline` („Chronik", date) — mit Pascal klären. |
+| `memberstatus`                   | enum/select (10 Werte)   | — (Filter fürs Onboarding) | Werte u.a. Lead, Seed/Early/Regular Member, Founder, Stellvertreter, Ehemaliges Mitglied, LOST. |
+
+**Onboarding-Trigger:** Die im Konzept vorgesehene Property
+`is_sportnexus_pruefung_abgeschlossen` existiert (noch) NICHT im Portal.
+Alternative ohne neues Feld: Workflow-Trigger auf `memberstatus` ∈ {Founder,
+Seed Member, Early Member, Regular Member} **und** `vertrag = true` — mit
+Pascal abstimmen.
 
 ### Code-Skelett (für späteren Build)
 

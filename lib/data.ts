@@ -49,15 +49,19 @@ export type SnEvent = {
   guestooId?: string;
 };
 
+// Offizielle SportNexus-Taxonomie — 1:1 die Werte des HubSpot-Dropdowns
+// `branche_dropdown` („Branche – Subbranche", verifiziert 2026-06-12 im
+// CRM-Portal). Freitext bleibt im Profil weiterhin erlaubt; das hier sind
+// nur die Vorschlagslisten.
 export const BRANCHES: Record<string, string[]> = {
-  "Finanzen": ["Asset Management", "Banking", "Versicherung", "Private Equity", "FinTech"],
-  "Technologie": ["Software", "AI & Data", "Cloud", "Cybersecurity", "Hardware"],
-  "Industrie": ["Maschinenbau", "Logistik", "Bau", "Energie", "Chemie"],
-  "Consulting": ["Strategie", "Organisation", "M&A", "Nachhaltigkeit", "HR"],
-  "Marketing & Media": ["Agentur", "PR", "Produktion", "Publishing", "Events"],
-  "Legal & Tax": ["Wirtschaftsrecht", "Steuern", "Compliance", "Notariat"],
-  "Sport & Health": ["Vereinsmanagement", "Sportmedizin", "Physiotherapie", "Nutrition", "Equipment"],
-  "Real Estate": ["Investment", "Entwicklung", "Verwaltung", "Makler"],
+  "Finanzen": ["Banken", "Vermögensverwaltung & Family Offices", "Asset Management & Fondsanbieter", "Versicherungen & Pensionskassen", "Finanzdienstleister & FinTechs", "Treuhand & Revision", "Sonstige"],
+  "Beratung & Recht": ["Unternehmensberatung", "Coaching & Training", "HR & Personalberatung", "Anwaltskanzleien & Notariate", "Wirtschaftsprüfung & Spezialberatung", "Sonstige"],
+  "IT, Digital & Marketing": ["Software & IT-Services", "Cloud, Security & Infrastruktur", "Web, CRM & Daten", "Marketing- & Werbeagenturen", "Medien & Kommunikation", "Sonstige"],
+  "Industrie, Handel & Produktion": ["Produktion & Fertigung", "Grosshandel", "Detailhandel", "E-Commerce", "Logistik & Transport", "Gewerbe & Handwerk", "Sonstige"],
+  "Immobilien & Bau": ["Immobilien & Vermarktung", "Architektur & Planung", "GU & Bauhauptgewerbe", "Grosshandel & Innenausbau", "Ausbau & Handwerk", "Gebäudetechnik & Facility Services", "Sonstige"],
+  "Gesundheit, Sport & Wellbeing": ["Arztpraxen & Medizinische Zentren", "Fitness, Prävention & Therapie", "Sportvereine, Clubs & Verbände", "Wellbeing & Gesundheitsdienstleistungen", "Sonstige"],
+  "Tourismus, Events & Hospitality": ["Hotellerie", "Gastronomie", "Eventagenturen & Messen", "Entertainment & Freizeit", "Tourismus, Bergbahnen & Destinationen", "Sonstige"],
+  "Bildung, Public & Non-Profit": ["Schulen & Bildungsanbieter", "Hochschulen & Weiterbildung", "Verbände", "Stiftungen & NGOs", "Öffentliche Verwaltung", "Sonstige"],
 };
 
 export const CITIES = ["Zürich", "Basel", "Bern", "Luzern", "Zug", "St. Gallen", "Genf", "Winterthur", "Lausanne", "Lugano"];
