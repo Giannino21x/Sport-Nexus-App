@@ -14,6 +14,7 @@ export type ProfileInput = {
   home?: string;
   email?: string;
   since?: string;
+  dateOfBirth?: string;
   bio?: string;
   offer?: string;
   search?: string;
@@ -28,11 +29,11 @@ export type ProfileInput = {
   additional?: string;
 };
 
-function parseSince(v?: string): string | null {
+// Akzeptiert "TT.MM.JJJJ" oder ISO "JJJJ-MM-TT" — für `since` und `date_of_birth`.
+function parseDateInput(v?: string): string | null {
   if (!v) return null;
   const trimmed = v.trim();
   if (!trimmed) return null;
-  // Accept "DD.MM.YYYY" or ISO "YYYY-MM-DD"
   const dotMatch = trimmed.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
   if (dotMatch) {
     const [, d, m, y] = dotMatch;
@@ -77,7 +78,8 @@ export async function updateProfileAction(input: ProfileInput): Promise<{ error?
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Nicht eingeloggt." };
 
-  const since = parseSince(input.since);
+  const since = parseDateInput(input.since);
+  const dateOfBirth = parseDateInput(input.dateOfBirth);
 
   const { error } = await supabase
     .from("members")
@@ -92,6 +94,7 @@ export async function updateProfileAction(input: ProfileInput): Promise<{ error?
       home: input.home ?? "",
       email: input.email ?? "",
       since,
+      date_of_birth: dateOfBirth,
       bio: input.bio ?? "",
       offer: input.offer ?? "",
       search: input.search ?? "",

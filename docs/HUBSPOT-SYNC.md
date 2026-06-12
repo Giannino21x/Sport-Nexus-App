@@ -30,7 +30,7 @@ Next.js API-Route  /api/hubspot/member-webhook
 
 **Workflow:**
 1. Sales/Boris setzt die Property auf TRUE, sobald ein neuer Mitglieder-Kontakt genehmigt ist.
-2. HubSpot-Workflow „Member onboarding" feuert einen Webhook an `https://sport-nexus.ch/api/hubspot/member-webhook`.
+2. HubSpot-Workflow „Member onboarding" feuert einen Webhook an `https://sport-nexus-app.vercel.app/api/hubspot/member-webhook`. (Achtung: die Domain sport-nexus.ch existiert nicht — siehe docs/EMAIL.md.)
 3. Webhook-Payload enthält Contact-Properties (siehe Field-Mapping unten) + Signatur-Header.
 
 ### Field-Mapping HubSpot → SportNexus
@@ -42,8 +42,8 @@ Next.js API-Route  /api/hubspot/member-webhook
 | `email`                          | `email` + Auth-Email     | Wird auch Login-Adresse                          |
 | `company`                        | `company`                |                                                  |
 | `jobtitle`                       | `role`                   |                                                  |
-| `industry` (Freitext)            | `branch`                 | **Kein Dropdown** — wie Pascal angemerkt hat. Die App akzeptiert seit jüngst beliebige Freitext-Branchen (siehe profile/page.tsx ComboField). |
-| `industry_sub`                   | `sub`                    | Optional, Freitext                               |
+| `branche_dropdown`               | `branch` + `sub` (Split) | **Update Feedback 5 (2026-06-12):** Pascal hat ein Dropdown-Feld angelegt, das Branche und Subbranche kombiniert enthält („Branche - Subbranche"), weil die HubSpot-Lizenz keine abhängigen Felder erlaubt. Wir splitten beim Sync am ersten « - » → `branch` (davor) und `sub` (danach); fehlt der Trenner, geht alles in `branch` und `sub` bleibt leer. So bleiben beide Directory-Filter (Branche UND Subbranche) erhalten. |
+| `date_of_birth`                  | `date_of_birth`          | **Neu Feedback 5:** Geburtsdatum — Spalte `members.date_of_birth` (date) + Profil-Feld sind angelegt (Migration 20260612000000). |
 | `work_city`                      | `work`                   |                                                  |
 | `home_city`                      | `home`                   |                                                  |
 | `mobilephone`                    | `mobile`                 |                                                  |

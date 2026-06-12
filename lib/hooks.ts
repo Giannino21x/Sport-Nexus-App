@@ -101,6 +101,7 @@ function rowToMember(r: Row): Member {
     sports: Array.isArray(r.sports) ? (r.sports as string[]).map(repairMojibake) : [],
     search: rm(r.search),
     since: typeof r.since === "string" ? formatDate(r.since) : "",
+    dateOfBirth: typeof r.date_of_birth === "string" ? formatDate(r.date_of_birth) : "",
     email: String(r.email ?? ""),
     mobile: String(r.mobile ?? ""),
     web: String(r.web ?? ""),

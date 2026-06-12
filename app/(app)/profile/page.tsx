@@ -188,6 +188,7 @@ export default function ProfilePage() {
         home: form.home,
         email: form.email,
         since: form.since,
+        dateOfBirth: form.dateOfBirth,
         bio: form.bio,
         offer: form.offer,
         search: form.search,
@@ -299,6 +300,12 @@ export default function ProfilePage() {
                 onChange={(v) => set("since", v)}
                 placeholder="TT.MM.JJJJ"
                 hint="Stammt aus dem Datum der Vertragsbestätigung (Formular gesendet · Vertrag JA)."
+              />
+              <TextField
+                label="Geburtsdatum"
+                value={form.dateOfBirth ?? ""}
+                onChange={(v) => set("dateOfBirth", v)}
+                placeholder="TT.MM.JJJJ"
               />
             </div>
           </div>

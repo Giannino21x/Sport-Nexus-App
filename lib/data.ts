@@ -16,6 +16,7 @@ export type Member = {
   sports: string[];
   search: string;
   since: string;
+  dateOfBirth?: string;
   email: string;
   mobile: string;
   web: string;
