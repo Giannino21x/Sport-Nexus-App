@@ -8,6 +8,7 @@ import { CommandPalette } from "./command-palette";
 import { Icon, type IconName } from "./icon";
 import { LogoWordmark } from "./logo-wordmark";
 import { NotificationsPopover } from "./notifications-popover";
+import { PhotoGate } from "./photo-gate";
 import { useSettings } from "./settings-context";
 import { useEvents, useMe, useMembers, useNotifications } from "@/lib/hooks";
 import { signOutAction } from "@/app/actions/auth";
@@ -363,6 +364,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         members={members}
         events={events}
       />
+
+      <PhotoGate />
     </div>
   );
 }

@@ -174,6 +174,70 @@ export async function uploadAvatarAction(
   return { url: publicUrl };
 }
 
+// Admin lädt ein Profilbild FÜR ein anderes Mitglied hoch (Pascal Feedback 6,
+// 2026-06-16: "Bei gewissen kann ich das selbst machen."). Die Storage-RLS
+// erlaubt Uploads nur in den eigenen uid-Ordner — der Admin legt die Datei
+// daher in SEINEN Ordner; weil der avatars-Bucket public-read ist, funktioniert
+// die URL trotzdem für alle. Die members-Zeile des Ziel-Mitglieds wird per
+// is_admin-Policy aktualisiert (analog setMemberExtraAction).
+export async function uploadMemberAvatarAction(
+  memberDbId: string,
+  formData: FormData,
+): Promise<{ error?: string; url?: string }> {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Keine Datei empfangen." };
+  }
+  if (file.size > MAX_AVATAR_BYTES) {
+    return { error: "Datei zu gross (max. 25 MB)." };
+  }
+  if (!ALLOWED_AVATAR_TYPES.has(file.type)) {
+    return { error: "Nur JPG, PNG oder WebP erlaubt." };
+  }
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: "Nicht eingeloggt." };
+
+  const { data: me } = await supabase
+    .from("members")
+    .select("is_admin")
+    .eq("auth_id", user.id)
+    .maybeSingle();
+  if (!me?.is_admin) return { error: "Keine Berechtigung." };
+
+  const ext = file.type === "image/png" ? "png" : file.type === "image/webp" ? "webp" : "jpg";
+  const path = `${user.id}/member-${memberDbId}-${Date.now()}.${ext}`;
+
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  const { error: upErr } = await supabase.storage
+    .from("avatars")
+    .upload(path, bytes, { contentType: file.type, upsert: true });
+  if (upErr) return { error: upErr.message };
+
+  const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
+  const publicUrl = pub.publicUrl;
+
+  // Frühere Admin-Uploads für genau dieses Mitglied aufräumen (nur eigener Ordner).
+  const { data: list } = await supabase.storage.from("avatars").list(user.id);
+  const stale = (list ?? [])
+    .map((o) => `${user.id}/${o.name}`)
+    .filter((p) => p !== path && p.includes(`/member-${memberDbId}-`));
+  if (stale.length > 0) {
+    await supabase.storage.from("avatars").remove(stale);
+  }
+
+  const { error: dbErr } = await supabase
+    .from("members")
+    .update({ avatar_url: publicUrl })
+    .eq("id", memberDbId);
+  if (dbErr) return { error: dbErr.message };
+
+  revalidatePath("/directory");
+  revalidatePath(`/directory/${memberDbId}`);
+  return { url: publicUrl };
+}
+
 export async function removeAvatarAction(): Promise<{ error?: string }> {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

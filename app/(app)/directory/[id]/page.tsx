@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
 import { useSettings } from "@/components/settings-context";
 import { reload, useEvents, useMe, useMember } from "@/lib/hooks";
-import { setMemberExtraAction } from "@/app/actions/members";
+import { setMemberExtraAction, uploadMemberAvatarAction } from "@/app/actions/members";
 import {
   getMyTableWishesAction,
   toggleTableWishAction,
@@ -63,7 +63,7 @@ export default function MemberDetailPage() {
             flexWrap: "wrap",
           }}
         >
-          <div style={{ marginTop: -74, flexShrink: 0 }}>
+          <div style={{ marginTop: -74, flexShrink: 0, textAlign: "center" }}>
             <Avatar
               first={m.first}
               last={m.last}
@@ -72,6 +72,9 @@ export default function MemberDetailPage() {
               square
               url={m.avatarUrl}
             />
+            {isAdmin && m.dbId && (
+              <AdminAvatarUpload memberDbId={m.dbId} hasPhoto={Boolean(m.avatarUrl)} />
+            )}
           </div>
           <div style={{ flex: "1 1 240px", minWidth: 0 }}>
             <div
@@ -282,6 +285,68 @@ function TableWishButton({ targetMemberDbId }: { targetMemberDbId: string }) {
       <Icon name={wished ? "check" : "users"} size={14} />
       {wished ? "Tischwunsch gemeldet" : "Tischwunsch melden"}
     </button>
+  );
+}
+
+// Admin lädt ein Profilbild für dieses Mitglied hoch (Pascal Feedback 6) —
+// nützlich für Member, die noch keins gepflegt haben. Sie können es später
+// selbst ersetzen.
+function AdminAvatarUpload({ memberDbId, hasPhoto }: { memberDbId: string; hasPhoto: boolean }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!["image/jpeg", "image/jpg", "image/png", "image/webp"].includes(file.type)) {
+      setErr("Nur JPG, PNG oder WebP.");
+      return;
+    }
+    if (file.size > 25 * 1024 * 1024) {
+      setErr("Datei zu gross (max. 25 MB).");
+      return;
+    }
+    setErr(null);
+    setBusy(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const r = await uploadMemberAvatarAction(memberDbId, fd);
+      if (r.error) {
+        setErr(r.error);
+        return;
+      }
+      reload("members");
+    } catch (e2) {
+      setErr(e2 instanceof Error ? e2.message : "Upload fehlgeschlagen.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: 8 }}>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        onChange={onFile}
+        style={{ display: "none" }}
+      />
+      <button
+        className="btn-text"
+        onClick={() => { setErr(null); fileRef.current?.click(); }}
+        disabled={busy}
+        style={{ fontSize: 11.5, color: "var(--ink-4)", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 }}
+        title="Als Admin ein Profilbild für dieses Mitglied hochladen"
+      >
+        <Icon name="image" size={12} />
+        {busy ? "Lädt..." : hasPhoto ? "Foto ersetzen (Admin)" : "Foto hochladen (Admin)"}
+      </button>
+      {err && <div style={{ fontSize: 11, color: "var(--danger)", marginTop: 4 }}>{err}</div>}
+    </div>
   );
 }
 
