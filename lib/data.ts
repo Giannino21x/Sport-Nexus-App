@@ -10,6 +10,7 @@ export type Member = {
   additional?: string;
   branch: string;
   sub: string;
+  branch2?: string;
   work: string;
   home: string;
   offer: string;

@@ -95,6 +95,7 @@ function rowToMember(r: Row): Member {
     additional: rm(r.additional_roles),
     branch: rm(r.branch),
     sub: rm(r.sub),
+    branch2: rm(r.branch2),
     work: rm(r.work),
     home: rm(r.home),
     offer: rm(r.offer),

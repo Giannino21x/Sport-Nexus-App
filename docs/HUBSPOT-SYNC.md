@@ -48,25 +48,30 @@ Next.js API-Route  /api/hubspot/member-webhook
 | `company` (Standard)             | text                     | `company`                |                                                  |
 | `jobtitle` (Standard)            | text                     | `role`                   |                                                  |
 | `branche_dropdown`               | enum/select (50 Werte)   | `branch` + `sub` (Split) | Kombiniert „Branche **–** Subbranche" (HubSpot-Lizenz kann keine abhängigen Felder). **Trenner ist der Gedankenstrich « – » (U+2013 mit Spaces), NICHT der Bindestrich!** Split am ersten « – »: davor → `branch`, danach → `sub`; ohne Trenner alles in `branch`. So bleiben beide Directory-Filter erhalten. |
-| `zweitbranche_dropdown`          | enum/select (50 Werte)   | — (noch ohne App-Feld)   | Existiert zusätzlich; gleiche Werteliste. Fürs MVP ignorieren oder später als zweite Branche abbilden — mit Pascal klären. |
-| `sub_branche`                    | text                     | — (vermutlich Altlast)   | Freitext-Feld, wohl durch `branche_dropdown` abgelöst — mit Pascal klären, nicht mappen. |
+| `zweitbranche_dropdown`          | enum/select (50 Werte)   | `branch2`                | **Bestätigt 2026-06-16 (Pascal): anzeigen.** Gleiche Werteliste. Wird als EIN Feld „Zweitbranche" im Profil gepflegt und auf der Member-Detailseite angezeigt (kein Split in Subbranche). SportNexus befüllt wenige Werte manuell. Spalte + Feld live (Migration 20260616000000). |
+| `sub_branche`                    | text                     | — (NICHT mappen)         | **Bestätigt 2026-06-16 (Pascal): Altlast, durch `branche_dropdown` abgelöst — irrelevant.** Nicht synchronisieren. |
 | `date_of_birth` (Standard)       | **text** (kein Datum!)   | `date_of_birth` (date)   | HubSpot-Standardfeld „Geburtsdatum" — als String! Beim Sync TT.MM.JJJJ und ISO parsen (wie `parseDateInput` in app/actions/members.ts). Spalte + Profil-Feld live (Migration 20260612000000). |
 | `hauptarbeitsort`                | text                     | `work`                   |                                                  |
 | `city` (Standard „Stadt")        | text                     | `home`                   | Annahme: Stadt = Wohnort — mit Pascal bestätigen. |
 | `mobilephone` (Standard)         | phonenumber              | `mobile`                 |                                                  |
 | `website` (Standard)             | text                     | `web`                    |                                                  |
 | `hs_linkedin_url` (Standard)     | text                     | `linkedin`               | Es gibt KEIN Custom-LinkedIn-Feld — Standard-Property nutzen. |
-| `sportinteressen`                | enum/checkbox (13 Werte) | `sports` (text[])        | Multi-Checkbox (Volleyball, Golf, Padel Tennis, …). HubSpot liefert Mehrfachwerte `;`-getrennt. Daneben existiert `sportarten___interessen` (Freitext-Textarea) — mit Pascal klären, welches gepflegt wird. |
+| `sportarten___interessen`        | textarea (Freitext)      | `sports` (text[])        | **Bestätigt 2026-06-16 (Pascal): DIES ist das führende Feld** (mehrzeiliger Freitext), NICHT die Checkbox. Beim Sync in Tags zerlegen: an Zeilenumbruch/Komma splitten, trimmen, leere weg → `sports`-Array. Die App-eigene Chip-Auswahl bleibt fürs Member-Self-Service (treibt den Directory-Filter); der Import füllt sie aus diesem Freitext. |
+| `sportinteressen`                | enum/checkbox (13 Werte) | — (NICHT führend)        | Checkbox-Variante; laut Pascal NICHT die gepflegte Quelle. Nicht als Master mappen. |
 | `was_biete_ich`                  | textarea                 | `offer`                  |                                                  |
 | `zusatzfunktionen`               | textarea                 | `additional_roles`       | VR-Mandate etc.                                  |
 | `vertrag` + Vertragsdatum        | booleancheckbox          | `since`                  | „Member seit" = Datum der Vertragsbestätigung. Kandidat: `timeline` („Chronik", date) — mit Pascal klären. |
 | `memberstatus`                   | enum/select (10 Werte)   | — (Filter fürs Onboarding) | Werte u.a. Lead, Seed/Early/Regular Member, Founder, Stellvertreter, Ehemaliges Mitglied, LOST. |
 
-**Onboarding-Trigger:** Die im Konzept vorgesehene Property
-`is_sportnexus_pruefung_abgeschlossen` existiert (noch) NICHT im Portal.
-Alternative ohne neues Feld: Workflow-Trigger auf `memberstatus` ∈ {Founder,
-Seed Member, Early Member, Regular Member} **und** `vertrag = true` — mit
-Pascal abstimmen.
+**Onboarding-Trigger (bestätigt 2026-06-16, Pascal):** Kein neues HubSpot-Feld
+nötig. Workflow-Trigger auf `memberstatus` ∈ {Founder, Seed Member, Early
+Member, Regular Member, Stellvertreter, Premium Sponsor, Moderation} **und**
+`vertrag = JA`.
+
+> **Test-Phase:** Vorerst NUR `memberstatus = Founder` (+ `vertrag = JA`)
+> freischalten, damit der Onboarding-Flow an wenigen, kontrollierten Kontakten
+> getestet werden kann. Erst nach erfolgreichem Test die übrigen Status
+> dazunehmen.
 
 ### Code-Skelett (für späteren Build)
 

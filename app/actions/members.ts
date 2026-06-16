@@ -10,6 +10,7 @@ export type ProfileInput = {
   role?: string;
   branch?: string;
   sub?: string;
+  branch2?: string;
   work?: string;
   home?: string;
   email?: string;
@@ -90,6 +91,7 @@ export async function updateProfileAction(input: ProfileInput): Promise<{ error?
       role: input.role ?? "",
       branch: input.branch ?? "",
       sub: input.sub ?? "",
+      branch2: input.branch2 ?? "",
       work: input.work ?? "",
       home: input.home ?? "",
       email: input.email ?? "",

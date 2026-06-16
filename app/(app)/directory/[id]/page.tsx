@@ -130,6 +130,7 @@ export default function MemberDetailPage() {
             <InfoRow label="Zusatzfunktionen" value={m.additional} />
             <InfoRow label="Angebot" value={m.offer} />
             <InfoRow label="Branche" value={`${m.branch}${m.sub ? " · " + m.sub : ""}`} />
+            <InfoRow label="Zweitbranche" value={m.branch2} />
             <InfoRow
               label="Webseite"
               value={

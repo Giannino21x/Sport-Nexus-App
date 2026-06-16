@@ -19,6 +19,7 @@ const FIELD_LABELS: Record<string, string> = {
   role: "Rolle",
   branch: "Branche",
   sub: "Subbranche",
+  branch2: "Zweitbranche",
   work: "Arbeitsort",
   home: "Wohnort",
   email: "E-Mail",

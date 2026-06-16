@@ -184,6 +184,7 @@ export default function ProfilePage() {
         role: form.role,
         branch: form.branch,
         sub: form.sub,
+        branch2: form.branch2,
         work: form.work,
         home: form.home,
         email: form.email,
@@ -278,6 +279,13 @@ export default function ProfilePage() {
                 onChange={(v) => set("sub", v)}
                 options={BRANCHES[form.branch] ?? []}
                 placeholder="z.B. Asset Management, oder beliebig"
+              />
+              <ComboField
+                label="Zweitbranche"
+                value={form.branch2 ?? ""}
+                onChange={(v) => set("branch2", v)}
+                options={Object.keys(BRANCHES)}
+                placeholder="optional — zweite Branche"
               />
               <ComboField
                 label="Arbeitsort"
