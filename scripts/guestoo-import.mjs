@@ -93,7 +93,12 @@ for (const g of picked) {
   const city = g.address?.city ?? "";
   const { title, subtitle } = splitTitle(g.displayName, city);
   const time = g.startDate && g.endDate ? `${fmtTime(g.startDate)} – ${fmtTime(g.endDate)}` : "";
-  const image_url = await bgImageUrl(g.id, g.image?.defaultImagePath);
+  // Das `image`-Feld ist das echte, pro Event hochgeladene Foto; `bgImage` ist
+  // oft nur das generische Agentur-Default. Daher `image` bevorzugen, bgImage
+  // nur als Fallback. (Korrektur bestehender Events: guestoo-fix-images.mjs.)
+  const image_url = g.image?.defaultImagePath
+    ? `${BASE}${g.image.defaultImagePath}`
+    : await bgImageUrl(g.id, null);
   const row = {
     id: await uniqueId(`ev-${date}-${citySlug(city)}-lunch`),
     title, subtitle, date, time, city,
