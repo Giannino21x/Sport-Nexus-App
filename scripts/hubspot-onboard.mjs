@@ -47,7 +47,10 @@ const ALLOWED_STATUS = (statusArg ? statusArg.split("=")[1] : "Founder")
   .split(",")
   .map((s) => s.trim().toLowerCase())
   .filter(Boolean);
-const ONLY_EMAIL = onlyArg ? onlyArg.split("=")[1].trim().toLowerCase() : null;
+// --only akzeptiert eine oder mehrere (kommagetrennte) E-Mails.
+const ONLY = onlyArg
+  ? onlyArg.split("=")[1].split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)
+  : null;
 
 const log = (...a) => console.log(...a);
 
@@ -96,6 +99,26 @@ async function fetchContracted() {
     after = json.paging?.next?.after;
   } while (after);
   return out;
+}
+
+// Firmenname über die verknüpfte Company holen (Kontakt-Property `company` ist
+// im Bestand leer; die Firma hängt am Company-Objekt). Braucht Scope
+// crm.objects.companies.read. Best-effort — bei Fehler leer.
+async function fetchCompanyName(contactId) {
+  try {
+    const h = { Authorization: `Bearer ${HUBSPOT_TOKEN}` };
+    const a = await fetch(`https://api.hubapi.com/crm/v4/objects/contacts/${contactId}/associations/companies`, { headers: h });
+    if (!a.ok) return "";
+    const aj = await a.json();
+    const compId = aj.results?.[0]?.toObjectId;
+    if (!compId) return "";
+    const c = await fetch(`https://api.hubapi.com/crm/v3/objects/companies/${compId}?properties=name`, { headers: h });
+    if (!c.ok) return "";
+    const cj = await c.json();
+    return cj.properties?.name ?? "";
+  } catch {
+    return "";
+  }
 }
 
 // ---------- Mapping HubSpot-Properties → members-Row ----------
@@ -226,7 +249,7 @@ async function onboardOne(admin, m) {
 
 // ---------- Main ----------
 log(`\n=== HubSpot-Onboarding (${LIVE ? "LIVE" : "DRY-RUN"}) ===`);
-log(`Freigegebene memberstatus: ${ALLOWED_STATUS.join(", ")}${ONLY_EMAIL ? `  ·  nur ${ONLY_EMAIL}` : ""}\n`);
+log(`Freigegebene memberstatus: ${ALLOWED_STATUS.join(", ")}${ONLY ? `  ·  nur ${ONLY.join(", ")}` : ""}\n`);
 
 const contacts = await fetchContracted();
 log(`HubSpot: ${contacts.length} Kontakt(e) mit vertrag=true.`);
@@ -236,10 +259,18 @@ const seenStatus = new Set(contacts.map((c) => (c.properties.memberstatus ?? "(l
 log(`Vorkommende memberstatus-Werte: ${[...seenStatus].join(" | ")}\n`);
 
 const candidates = contacts
-  .map((c) => mapContact(c.properties))
+  .map((c) => ({ hsId: c.id, ...mapContact(c.properties) }))
   .filter((m) => m.email)
   .filter((m) => ALLOWED_STATUS.includes((m.memberstatus ?? "").toLowerCase()))
-  .filter((m) => !ONLY_EMAIL || m.email === ONLY_EMAIL);
+  .filter((m) => !ONLY || ONLY.includes(m.email));
+
+// Firma aus dem verknüpften Company-Objekt nachladen (Kontakt-Feld ist leer).
+for (const m of candidates) {
+  if (!m.company && m.hsId) {
+    const name = await fetchCompanyName(m.hsId);
+    if (name) m.company = name;
+  }
+}
 
 log(`→ ${candidates.length} Kandidat(en) nach Status-Filter:\n`);
 for (const m of candidates) {
