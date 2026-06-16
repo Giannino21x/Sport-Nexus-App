@@ -73,7 +73,36 @@ Member, Regular Member, Stellvertreter, Premium Sponsor, Moderation} **und**
 > getestet werden kann. Erst nach erfolgreichem Test die übrigen Status
 > dazunehmen.
 
-### Code-Skelett (für späteren Build)
+### Umsetzung: Pull-basiertes Onboarding (`scripts/hubspot-onboard.mjs`)
+
+**Entscheid 2026-06-16:** Statt Webhook (push) zieht **unsere Seite** die Kontakte
+aus HubSpot. Grund: die HubSpot-Workflow-Aktion „Webhook" verlangt **Operations
+Hub Professional**; die vorliegende Lizenz ist eingeschränkt (keine abhängigen
+Dropdowns). Pull läuft auf jeder Lizenzstufe und ist fürs Testing kontrolliert
+per Hand auslösbar.
+
+Ablauf des Skripts:
+1. Sucht via CRM-Search-API alle Kontakte mit `vertrag = true` (paginiert).
+2. Filtert clientseitig auf freigegebene `memberstatus`-Werte (Default `Founder`).
+3. **Dry-Run (Default):** zeigt Kandidaten + gemappte Felder, schreibt nichts.
+4. `--live`: Supabase `inviteUserByEmail` (Passwort-Setzen-Mail) + Insert in
+   `members` (idempotent: bestehende E-Mails werden übersprungen).
+
+```
+node scripts/hubspot-onboard.mjs                         # Dry-Run
+node scripts/hubspot-onboard.mjs --live                  # echtes Onboarding (Founder)
+node scripts/hubspot-onboard.mjs --status="Founder,Early Member"
+node scripts/hubspot-onboard.mjs --live --only=max@example.com
+```
+
+**Voraussetzung:** `HUBSPOT_TOKEN` in `.env.local` — ein **Private App Token**
+(Settings → Integrations → Private Apps) mit Lese-Scope `crm.objects.contacts.read`.
+Anlegen erfordert eingeloggte HubSpot-Session; bei abgelaufener Automations-Session
+zuerst `node scripts/hs-login.mjs` (öffnet Fenster zum Anmelden).
+Der Dry-Run listet zudem die real vorkommenden `memberstatus`-Werte auf — so
+verifizieren wir die internen Werte direkt am Echtbestand.
+
+### Code-Skelett (Webhook-Variante, nur falls später Ops Hub Pro)
 
 ```ts
 // app/api/hubspot/member-webhook/route.ts
