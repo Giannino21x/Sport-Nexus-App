@@ -96,11 +96,21 @@ node scripts/hubspot-onboard.mjs --live --only=max@example.com
 ```
 
 **Voraussetzung:** `HUBSPOT_TOKEN` in `.env.local` — ein **Private App Token**
-(Settings → Integrations → Private Apps) mit Lese-Scope `crm.objects.contacts.read`.
-Anlegen erfordert eingeloggte HubSpot-Session; bei abgelaufener Automations-Session
-zuerst `node scripts/hs-login.mjs` (öffnet Fenster zum Anmelden).
-Der Dry-Run listet zudem die real vorkommenden `memberstatus`-Werte auf — so
-verifizieren wir die internen Werte direkt am Echtbestand.
+mit Lese-Scope `crm.objects.contacts.read`. **Angelegt 2026-06-16** als private
+App **„SportNexus Onboarding"** (App-ID 42800571, unter Settings → Entwicklung →
+Alte Apps; HubSpot hat klassische Private Apps dorthin verschoben). Bei
+abgelaufener Automations-Session zuerst `node scripts/hs-login.mjs`; Token neu
+anlegen/auslesen mit `scripts/hs-make-token.mjs` bzw. `scripts/hs-get-token.mjs`.
+
+**Dry-Run-Befunde 2026-06-16 (Echtbestand):**
+- 114 Kontakte mit `vertrag = true`; reale `memberstatus`-Werte: *Seed Member,
+  Early Member, Stellvertreter, Founder, Premium Sponsor, LOST* (Lead/Regular/
+  Ehemaliges aktuell ohne Vertrag). **9 Founder** erkannt.
+- Branche-Split + Sportarten-Freitext→Tags funktionieren am Echtbestand.
+- **Offen:** `company` ist am Kontakt leer — Firma steckt vermutlich am
+  verknüpften **Company-Objekt**. Für vollständige Firmennamen beim Sync die
+  Association `contact→company` nachladen (Associations-API). `date_of_birth`
+  und Vertragsdatum (`vertragsdatum`?) sind im Bestand meist leer.
 
 ### Code-Skelett (Webhook-Variante, nur falls später Ops Hub Pro)
 

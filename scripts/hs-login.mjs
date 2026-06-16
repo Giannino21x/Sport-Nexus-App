@@ -25,12 +25,28 @@ const page = ctx.pages()[0] ?? (await ctx.newPage());
 log("→ Öffne HubSpot. Bitte im Fenster anmelden (Passkey/Google).");
 await page.goto(`https://app-eu1.hubspot.com/private-apps/${PORTAL}`, { waitUntil: "domcontentloaded" });
 
-// Bis zu 4 Minuten auf erfolgreichen Login warten (URL nicht mehr /login).
-const deadline = Date.now() + 4 * 60 * 1000;
+// Erfolg gilt ERST, wenn wir wieder im HubSpot-Portal sind (app-eu1) und NICHT
+// auf einer Login-Seite. Wichtig: die Google-SSO-Seite (accounts.google.com)
+// darf NICHT als Erfolg zählen — sonst schliesst das Fenster mitten im Login.
+const onPortal = () => {
+  const u = page.url();
+  return u.startsWith("https://app-eu1.hubspot.com/") && !/\/login/i.test(u);
+};
+const deadline = Date.now() + 5 * 60 * 1000;
 let loggedIn = false;
+let closed = false;
 while (Date.now() < deadline) {
-  await page.waitForTimeout(2000);
-  if (!/\/login/i.test(page.url())) { loggedIn = true; break; }
+  try {
+    await page.waitForTimeout(2000);
+  } catch {
+    closed = true;
+    break;
+  }
+  if (page.isClosed()) { closed = true; break; }
+  if (onPortal()) { loggedIn = true; break; }
+}
+if (closed) {
+  log("✗ Fenster wurde geschlossen, bevor der Login erkannt wurde. Bitte erneut starten und das Fenster offen lassen.");
 }
 
 if (loggedIn) {
