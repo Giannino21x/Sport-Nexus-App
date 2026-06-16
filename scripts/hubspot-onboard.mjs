@@ -131,15 +131,6 @@ function parseSports(v) {
     .filter(Boolean);
 }
 
-function slugify(s) {
-  return s
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
-}
-
 function mapContact(p) {
   const { branch, sub } = splitBranche(p.branche_dropdown);
   return {
@@ -166,37 +157,51 @@ function mapContact(p) {
 }
 
 // ---------- Supabase: ein Mitglied onboarden ----------
+// WICHTIG: Der DB-Trigger on_auth_user_created (handle_new_user) legt beim
+// inviteUserByEmail automatisch eine members-Zeile an bzw. verknüpft eine
+// bestehende per E-Mail. Wir dürfen daher NICHT zusätzlich inserten (sonst
+// Duplikat) — wir UPDATEN die vom Trigger verknüpfte Zeile mit den HubSpot-Daten.
 async function onboardOne(admin, m) {
-  // Idempotenz: existiert schon ein Member mit dieser E-Mail?
-  const { data: existing } = await admin
+  // 1. Bestehende members-Zeile(n) zu dieser E-Mail prüfen (bevorzugt auth-verknüpft).
+  const { data: pre, error: preErr } = await admin
     .from("members")
-    .select("id")
-    .eq("email", m.email)
-    .maybeSingle();
-  if (existing) return { status: "skip", reason: "Member existiert bereits" };
+    .select("id, slug, auth_id, first")
+    .eq("email", m.email);
+  if (preErr) return { status: "error", reason: `Select: ${preErr.message}` };
+  const existing = (pre ?? []).find((r) => r.auth_id) ?? (pre ?? [])[0] ?? null;
 
-  // Auth-Invite (Mail mit Passwort-Setzen-Link).
-  const { error: authErr } = await admin.auth.admin.inviteUserByEmail(m.email, {
-    redirectTo: `${APP_URL}/auth/callback?next=/reset-password`,
-  });
-  if (authErr && !/already|registered|exists/i.test(authErr.message)) {
-    return { status: "error", reason: `Auth: ${authErr.message}` };
+  // Schon vollständig onboarded (Auth-verknüpft + Name gesetzt) → nichts tun.
+  if (existing && existing.auth_id && existing.first && existing.first.trim()) {
+    return { status: "skip", reason: "bereits onboarded" };
   }
 
-  // Eindeutigen Slug finden.
-  let base = slugify(`${m.first}-${m.last}`) || slugify(m.email.split("@")[0]) || "member";
-  let slug = base;
-  for (let n = 2; n < 50; n++) {
-    const { data: clash } = await admin.from("members").select("id").eq("slug", slug).maybeSingle();
-    if (!clash) break;
-    slug = `${base}-${n}`;
+  // 2. Invite nur, wenn noch KEIN Auth-Account existiert (kein auth-verknüpfter
+  //    Member). So vermeiden wir doppelte Invite-Mails. Der Trigger
+  //    handle_new_user legt/verknüpft dabei die members-Zeile.
+  if (!(existing && existing.auth_id)) {
+    const { error: authErr } = await admin.auth.admin.inviteUserByEmail(m.email, {
+      redirectTo: `${APP_URL}/auth/callback?next=/reset-password`,
+    });
+    if (authErr && !/already|registered|exists/i.test(authErr.message)) {
+      return { status: "error", reason: `Auth: ${authErr.message}` };
+    }
   }
 
-  const { error: insErr } = await admin.from("members").insert({
-    slug,
+  // 3. Verknüpfte Zeile (nach evtl. Invite/Trigger) holen und mit HubSpot-Daten füllen.
+  const { data: rows, error: selErr } = await admin
+    .from("members")
+    .select("id, slug, auth_id, first")
+    .eq("email", m.email);
+  if (selErr) return { status: "error", reason: `Select: ${selErr.message}` };
+  if (!rows || rows.length === 0) return { status: "error", reason: "Keine members-Zeile nach Invite" };
+  const target = rows.find((r) => r.auth_id) ?? rows[0];
+  const wasLinked = Boolean(existing && existing.auth_id);
+
+  // CRM-Felder setzen. since/date_of_birth nur, wenn HubSpot einen Wert liefert
+  // (sonst nicht den Trigger-Default current_date überschreiben).
+  const update = {
     first: m.first,
     last: m.last,
-    email: m.email,
     company: m.company,
     role: m.role,
     branch: m.branch,
@@ -210,13 +215,13 @@ async function onboardOne(admin, m) {
     sports: m.sports,
     offer: m.offer,
     additional_roles: m.additional_roles,
-    date_of_birth: m.date_of_birth,
-    since: m.since,
-  });
-  if (insErr && !/duplicate/i.test(insErr.message)) {
-    return { status: "error", reason: `Insert: ${insErr.message}` };
-  }
-  return { status: "onboarded", slug };
+  };
+  if (m.date_of_birth) update.date_of_birth = m.date_of_birth;
+  if (m.since) update.since = m.since;
+
+  const { error: updErr } = await admin.from("members").update(update).eq("id", target.id);
+  if (updErr) return { status: "error", reason: `Update: ${updErr.message}` };
+  return { status: wasLinked ? "aktualisiert" : "onboarded", slug: target.slug };
 }
 
 // ---------- Main ----------
