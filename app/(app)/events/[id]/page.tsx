@@ -148,57 +148,43 @@ export default function EventDetailPage() {
       </Link>
 
       <div className="card" style={{ padding: 0, overflow: "hidden", marginBottom: 18 }}>
-        <div style={{ position: "relative", aspectRatio: "21/9", background: "var(--ink)", overflow: "hidden" }}>
+        {/* Bild als sauberes Banner — unscharfer Füll-Hintergrund, damit auch
+            quadratische Guestoo-Motive den Rahmen füllen, ohne beschnitten zu
+            werden. Titel/Datum liegen NICHT mehr darüber, sondern darunter. */}
+        <div className="event-hero-media">
           {ev.img && (
             <>
-              {/* Unscharfer Füll-Hintergrund, damit auch quadratische/hochformatige
-                  Eventbilder den Rahmen sauber füllen — ohne das Motiv zu beschneiden. */}
-              <img
-                aria-hidden="true"
-                src={ev.img}
-                alt=""
-                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "blur(28px) brightness(0.5)", transform: "scale(1.2)" }}
-              />
-              {/* Vollständiges Bild, mittig, nicht beschnitten. */}
+              <img aria-hidden="true" src={ev.img} alt="" className="event-hero-bg" />
               <img
                 src={ev.img}
-                alt=""
-                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain", objectPosition: "center", filter: past ? "grayscale(0.15) brightness(0.92)" : "none" }}
+                alt={ev.subtitle || ev.title}
+                className="event-hero-img"
+                style={{ filter: past ? "grayscale(0.15) brightness(0.92)" : "none" }}
               />
             </>
           )}
-          <div aria-hidden="true" style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.15) 45%, rgba(0,0,0,0.78) 100%)" }} />
-          <div style={{ position: "absolute", inset: 0, padding: "32px 40px", display: "flex", flexDirection: "column", justifyContent: "space-between", color: "#fff" }}>
-            <div style={{ display: "flex", gap: 8 }}>
-              {ev.featured && <span className="chip" style={{ background: "var(--accent)", color: "var(--accent-ink)", borderColor: "transparent" }}>Featured</span>}
-              <span className="chip" style={{ background: "rgba(255,255,255,0.18)", color: "#fff", borderColor: "transparent", backdropFilter: "blur(6px)" }}>{ev.city}</span>
-              {past && <span className="chip" style={{ background: "rgba(255,255,255,0.15)", color: "#fff", borderColor: "transparent" }}>Vergangenes Event</span>}
+          <div className="event-hero-chips">
+            {ev.featured && <span className="chip" style={{ background: "var(--accent)", color: "var(--accent-ink)", borderColor: "transparent" }}>Featured</span>}
+            <span className="chip" style={{ background: "rgba(0,0,0,0.45)", color: "#fff", borderColor: "transparent", backdropFilter: "blur(6px)" }}>{ev.city}</span>
+            {past && <span className="chip" style={{ background: "rgba(0,0,0,0.45)", color: "#fff", borderColor: "transparent", backdropFilter: "blur(6px)" }}>Vergangenes Event</span>}
+          </div>
+        </div>
+
+        <div className="event-hero-body">
+          <div className="event-hero-head">
+            <div style={{ minWidth: 0 }}>
+              <div className="upper-label">{ev.title}</div>
+              <h1 className="serif event-hero-title">{ev.subtitle}</h1>
             </div>
-            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 24, flexWrap: "wrap" }}>
-              <div style={{ minWidth: 0, flex: "1 1 320px" }}>
-                <div className="upper-label" style={{ color: "rgba(255,255,255,0.7)" }}>{ev.title}</div>
-                <div
-                  className="serif"
-                  style={{
-                    fontSize: "clamp(28px, 5vw, 52px)",
-                    lineHeight: 1.1,
-                    letterSpacing: "-0.015em",
-                    marginTop: 8,
-                    maxWidth: 720,
-                    overflowWrap: "anywhere",
-                    wordBreak: "break-word",
-                  }}
-                >
-                  {ev.subtitle}
-                </div>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <div className="serif" style={{ fontSize: 64, lineHeight: 1.1 }}>{d.getDate()}</div>
-                <div className="mono" style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: "0.14em", marginTop: 4, color: "rgba(255,255,255,0.8)" }}>
-                  {d.toLocaleDateString("de-CH", { month: "long", year: "numeric" })}
-                </div>
-              </div>
+            <div className="event-hero-date">
+              <div className="serif day">{d.getDate()}</div>
+              <div className="mon">{d.toLocaleDateString("de-CH", { month: "short" })}</div>
             </div>
+          </div>
+          <div className="event-hero-meta">
+            <span><b>{d.toLocaleDateString("de-CH", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}</b></span>
+            {ev.time && <span>{ev.time}</span>}
+            {ev.venue && <span>{ev.venue}</span>}
           </div>
         </div>
       </div>
