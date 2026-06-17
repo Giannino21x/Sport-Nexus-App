@@ -199,6 +199,7 @@ function LoginInner() {
                     required
                     autoFocus
                     autoComplete="email"
+                    suppressHydrationWarning
                   />
                 </div>
                 <div className="field">
@@ -229,6 +230,7 @@ function LoginInner() {
                       name="password"
                       required
                       autoComplete="current-password"
+                      suppressHydrationWarning
                     />
                     <button
                       type="button"
@@ -321,16 +323,16 @@ function LoginInner() {
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                   <div className="field">
                     <label className="field-label" style={labelStyle}>Vorname</label>
-                    <input className="input" style={inputStyle} type="text" name="first" required autoComplete="given-name" />
+                    <input className="input" style={inputStyle} type="text" name="first" required autoComplete="given-name" suppressHydrationWarning />
                   </div>
                   <div className="field">
                     <label className="field-label" style={labelStyle}>Nachname</label>
-                    <input className="input" style={inputStyle} type="text" name="last" required autoComplete="family-name" />
+                    <input className="input" style={inputStyle} type="text" name="last" required autoComplete="family-name" suppressHydrationWarning />
                   </div>
                 </div>
                 <div className="field">
                   <label className="field-label" style={labelStyle}>E-Mail</label>
-                  <input className="input" style={inputStyle} type="email" name="email" required autoComplete="email" />
+                  <input className="input" style={inputStyle} type="email" name="email" required autoComplete="email" suppressHydrationWarning />
                 </div>
                 <div className="field">
                   <label className="field-label" style={labelStyle}>
@@ -345,6 +347,7 @@ function LoginInner() {
                       required
                       minLength={8}
                       autoComplete="new-password"
+                      suppressHydrationWarning
                     />
                     <button
                       type="button"
@@ -459,6 +462,7 @@ function LoginInner() {
                     required
                     autoFocus
                     autoComplete="email"
+                    suppressHydrationWarning
                   />
                 </div>
                 {forgotState?.error && (
