@@ -747,7 +747,10 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 }
 .event-hero-meta b { color: var(--ink-2); font-weight: 500; }
 @media (max-width: 780px) {
-  .event-hero-media { aspect-ratio: 16 / 10; }
+  /* 16/9 statt 16/10: gleicht die Detail-Hero-Box der Event-Übersichtskarte an,
+     damit die typischen 16:9-Eventbilder randlos füllen (kein Letterbox-Streifen
+     oben/unten mehr). Quadratische Bilder bleiben dank contain unbeschnitten. */
+  .event-hero-media { aspect-ratio: 16 / 9; }
   .event-hero-body { padding: 18px 18px 18px; gap: 12px; }
   .event-hero-date .day { font-size: 34px; }
 }
