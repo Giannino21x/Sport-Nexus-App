@@ -55,6 +55,9 @@ const ONLY = onlyArg
 // --reinvite: schickt auch bereits onboardeten Membern eine frische Welcome-Mail
 // mit neuem Passwort-Link (z.B. Founder, deren erster Invite-Link abgelaufen ist).
 const REINVITE = args.includes("--reinvite");
+// --no-mail: onboardet/aktualisiert nur die Daten, verschickt KEINE Mail
+// (z.B. um „Member seit" nachzutragen, ohne erneut Invites auszulösen).
+const NOMAIL = args.includes("--no-mail");
 
 const log = (...a) => console.log(...a);
 
@@ -188,7 +191,7 @@ const PROPS = [
   "branche_dropdown", "zweitbranche_dropdown", "date_of_birth",
   "hauptarbeitsort", "city", "mobilephone", "website", "hs_linkedin_url",
   "sportarten___interessen", "was_biete_ich", "zusatzfunktionen",
-  "vertrag", "vertragsdatum", "memberstatus",
+  "vertrag", "vertragsdatum", "memberstatus", "timeline", "createdate",
 ];
 
 // ---------- HubSpot: Kontakte mit vertrag=true suchen (paginiert) ----------
@@ -238,6 +241,37 @@ async function fetchCompanyName(contactId) {
   } catch {
     return "";
   }
+}
+
+// „Member seit" = Datum, an dem `vertrag` auf JA gesetzt wurde (Konzept-Logik).
+// Steckt nur in der Property-History (timeline/vertragsdatum sind im Bestand leer).
+// Liefert Map: contactId → "YYYY-MM-DD" (frühestes true). Batch-Read max 100/Call.
+async function fetchVertragSince(ids) {
+  const map = new Map();
+  const h = { Authorization: `Bearer ${HUBSPOT_TOKEN}`, "Content-Type": "application/json" };
+  for (let i = 0; i < ids.length; i += 100) {
+    const chunk = ids.slice(i, i + 100);
+    try {
+      const r = await fetch("https://api.hubapi.com/crm/v3/objects/contacts/batch/read", {
+        method: "POST",
+        headers: h,
+        body: JSON.stringify({ propertiesWithHistory: ["vertrag"], inputs: chunk.map((id) => ({ id })) }),
+      });
+      if (!r.ok) continue;
+      const j = await r.json();
+      for (const c of j.results ?? []) {
+        const hist = c.propertiesWithHistory?.vertrag ?? [];
+        const trueTs = hist
+          .filter((v) => String(v.value).toLowerCase() === "true")
+          .map((v) => String(v.timestamp))
+          .sort();
+        if (trueTs[0]) map.set(String(c.id), trueTs[0].slice(0, 10));
+      }
+    } catch {
+      // still — Fallback (createdate) greift im Mapping.
+    }
+  }
+  return map;
 }
 
 // ---------- Mapping HubSpot-Properties → members-Row ----------
@@ -293,7 +327,9 @@ function mapContact(p) {
     offer: p.was_biete_ich ?? "",
     additional_roles: p.zusatzfunktionen ?? "",
     date_of_birth: parseDate(p.date_of_birth),
-    since: parseDate(p.vertragsdatum),
+    // „Member seit": primär das vertrag→JA-Datum (in main aus der Property-
+    // History gesetzt); hier nur Fallbacks, falls History fehlt.
+    since: parseDate(p.vertragsdatum) || parseDate(p.timeline) || parseDate(p.createdate),
     memberstatus: p.memberstatus ?? "",
   };
 }
@@ -408,6 +444,14 @@ for (const m of candidates) {
   }
 }
 
+// „Member seit" aus der vertrag→JA-Property-History setzen (überschreibt den
+// Fallback aus mapContact, weil timeline/vertragsdatum im Bestand leer sind).
+const sinceMap = await fetchVertragSince(candidates.map((m) => m.hsId).filter(Boolean));
+for (const m of candidates) {
+  const hist = sinceMap.get(String(m.hsId));
+  if (hist) m.since = hist;
+}
+
 log(`→ ${candidates.length} Kandidat(en) nach Status-Filter:\n`);
 for (const m of candidates) {
   log(`  • ${m.first} ${m.last}  <${m.email}>  [${m.memberstatus}]`);
@@ -434,7 +478,9 @@ for (const m of candidates) {
   if (r.status === "onboarded" || r.status === "reinvite") {
     ok++;
     let mailNote = " (kein Link — keine Mail)";
-    if (r.actionLink) {
+    if (NOMAIL) {
+      mailNote = " (--no-mail: nur Daten aktualisiert)";
+    } else if (r.actionLink) {
       try {
         const sent = await sendWelcome(m.email, m.first, r.actionLink);
         if (sent.ok) { mailed++; mailNote = " + Welcome-Mail ✉"; }

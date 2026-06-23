@@ -168,7 +168,14 @@ export default function MemberDetailPage() {
                 </div>
               }
             />
-            <InfoRow label="Member seit" value={m.since} mono />
+            <InfoRow
+              label="Member seit"
+              value={
+                m.since
+                  ? new Date(m.since).toLocaleDateString("de-CH", { day: "numeric", month: "long", year: "numeric" })
+                  : null
+              }
+            />
           </div>
         </div>
 

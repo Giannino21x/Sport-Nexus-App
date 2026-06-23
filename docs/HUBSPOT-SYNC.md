@@ -60,7 +60,7 @@ Next.js API-Route  /api/hubspot/member-webhook
 | `sportinteressen`                | enum/checkbox (13 Werte) | — (NICHT führend)        | Checkbox-Variante; laut Pascal NICHT die gepflegte Quelle. Nicht als Master mappen. |
 | `was_biete_ich`                  | textarea                 | `offer`                  |                                                  |
 | `zusatzfunktionen`               | textarea                 | `additional_roles`       | VR-Mandate etc.                                  |
-| `vertrag` + Vertragsdatum        | booleancheckbox          | `since`                  | „Member seit" = Datum der Vertragsbestätigung. Kandidat: `timeline` („Chronik", date) — mit Pascal klären. |
+| `vertrag` (Property-History)     | booleancheckbox          | `since`                  | „Member seit" = **frühestes Datum, an dem `vertrag` auf JA gesetzt wurde** (aus der Property-History via batch/read `propertiesWithHistory`). **Bestätigt 2026-06-23:** `timeline` („Chronik") und `vertragsdatum` sind im Bestand leer; Fallback-Kette im Code: vertragsdatum → timeline → createdate. Geburtsdatum bleibt vorerst leer (nie abgefragt). |
 | `memberstatus`                   | enum/select (10 Werte)   | — (Filter fürs Onboarding) | Werte u.a. Lead, Seed/Early/Regular Member, Founder, Stellvertreter, Ehemaliges Mitglied, LOST. |
 
 **Onboarding-Trigger (bestätigt 2026-06-16, Pascal):** Kein neues HubSpot-Feld
