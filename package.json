@@ -10,7 +10,8 @@
     "guestoo:refresh": "node scripts/guestoo-refresh.mjs",
     "guestoo:check": "node scripts/guestoo-refresh.mjs --check",
     "guestoo:sync": "node scripts/guestoo-sync-bootstrap.mjs",
-    "guestoo:images": "node scripts/guestoo-sync-images.mjs"
+    "guestoo:images": "node scripts/guestoo-sync-images.mjs",
+    "guestoo:sync-regs": "node scripts/guestoo-sync-registrations.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.10.2",

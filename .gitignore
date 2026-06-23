@@ -72,3 +72,4 @@ scripts/hs-accounts.json
 pdfs/
 scripts/hs-properties.json
 scripts/hs-props-capture.json
+.guestoo-chrome-profile/

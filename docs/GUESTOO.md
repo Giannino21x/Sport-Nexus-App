@@ -35,6 +35,23 @@ Bis Guestoo den offiziellen API-Token-Auth (für höhere Tarife) freischaltet, n
 | `npm run guestoo:check` | Prüft, ob Session gültig ist (Exit 0 = ok, 1 = abgelaufen) |
 | `npm run guestoo:refresh` | Loggt sich neu ein, schreibt Cookies in `.env.local` |
 | `npm run guestoo:sync` | Synchronisiert Events (Mappings, max. Plätze, Adresse, Venue) |
+| `npm run guestoo:sync-regs` | Synchronisiert **Anmeldungen** → `event_registrations` (E-Mail-Match, `--dry-run` möglich) |
+
+## Anmeldungs-Sync (Member ↔ Guestoo-Verbindung)
+`scripts/guestoo-sync-registrations.mjs` zieht pro Event die Teilnehmer aus
+Guestoo und ordnet sie über die **E-Mail** unseren Members zu → schreibt
+`public.event_registrations` mit `source = 'guestoo'`. Manuelle Self-Marks
+(`source = 'self'`, „Ich bin bereits angemeldet"-Button) bleiben unangetastet;
+der Sync gleicht nur seine eigenen Einträge ab (inkl. Abmeldungen entfernen).
+Die App liest den Anmeldestatus ausschliesslich aus `event_registrations`
+(geräteübergreifend) — sie ruft dafür Guestoo nicht live auf.
+
+**Automatik:** `.github/workflows/guestoo-sync.yml` läuft alle 6 h auf GitHub
+Actions: Headless-Login (frische Cookies, ~7 Tage gültig) → Anmeldungs-Sync.
+Benötigte Repo-Secrets: `GUESTOO_LOGIN_EMAIL`, `GUESTOO_LOGIN_PASSWORD`,
+`GUESTOO_AGENCY_ID`, `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
+Welche Guestoo-Status als „angemeldet" zählen, steuert `REGISTERED_STATUSES`
+(Default `CONFIRMED,APPEARED,ADDED`).
 
 ### Cron-Empfehlung
 Auf der Dev-Maschine wöchentlich:

@@ -1,0 +1,54 @@
+name: Guestoo Anmeldungs-Sync
+
+# Hält public.event_registrations automatisch mit Guestoo synchron:
+# frischer Headless-Login (Cookies ~7 Tage gültig) → Anmeldungen pro Event
+# über die E-Mail den Members zuordnen. Läuft alle 6 Stunden + manuell.
+#
+# Benötigte Repository-Secrets (Settings → Secrets and variables → Actions):
+#   GUESTOO_LOGIN_EMAIL      Guestoo-Login (am besten ein dedizierter Account)
+#   GUESTOO_LOGIN_PASSWORD   Guestoo-Passwort
+#   GUESTOO_AGENCY_ID        66e439d1-dd45-4b2b-a514-cef5e97e4708
+#   NEXT_PUBLIC_SUPABASE_URL
+#   SUPABASE_SERVICE_ROLE_KEY
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}
+
+concurrency:
+  group: guestoo-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Playwright-Browser installieren (für Login-Refresh)
+        run: npx playwright install --with-deps chromium
+
+      - name: .env.local aus Secrets erzeugen
+        run: |
+          cat > .env.local <<EOF
+          NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GUESTOO_LOGIN_EMAIL=${{ secrets.GUESTOO_LOGIN_EMAIL }}
+          GUESTOO_LOGIN_PASSWORD=${{ secrets.GUESTOO_LOGIN_PASSWORD }}
+          GUESTOO_AGENCY_ID=${{ secrets.GUESTOO_AGENCY_ID }}
+          EOF
+
+      - name: Guestoo-Session erneuern (Headless-Login)
+        run: npm run guestoo:refresh
+
+      - name: Anmeldungen synchronisieren
+        run: npm run guestoo:sync-regs
