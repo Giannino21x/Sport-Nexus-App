@@ -78,47 +78,90 @@ export default function AdminTableWishesPage() {
           Noch keine Tischwünsche gemeldet.
         </div>
       ) : (
-        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-          {/* Mobil: horizontales Scrollen, damit die hinteren Spalten
-              (Gemeldet am / Berücksichtigt) auf schmalen Screens erreichbar
-              sind. minWidth erzwingt den Scroll statt die Spalten zu quetschen. */}
-          <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-          <table style={{ width: "100%", minWidth: 640, borderCollapse: "collapse", fontSize: 13.5 }}>
-            <thead>
-              <tr style={{ background: "var(--bg-sunken)", color: "var(--ink-3)", textAlign: "left" }}>
-                <Th>Wer möchte</Th>
-                <Th>möchte kennenlernen</Th>
-                <Th>Gemeldet am</Th>
-                <Th>Berücksichtigt</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((w) => (
-                <tr key={w.id} style={{ borderTop: "1px solid var(--line)" }}>
-                  <Td>
-                    <PersonCell person={w.requester} />
-                  </Td>
-                  <Td>
-                    <PersonCell person={w.target} />
-                  </Td>
-                  <Td>
-                    <span className="mono" style={{ fontSize: 12, color: "var(--ink-3)" }}>
-                      {new Date(w.createdAt).toLocaleDateString("de-CH", {
-                        day: "2-digit",
-                        month: "2-digit",
-                        year: "numeric",
-                      })}
-                    </span>
-                  </Td>
-                  <Td>
-                    <ConsideredCell wish={w} onToggle={() => onToggleConsidered(w)} />
-                  </Td>
+        <>
+          {/* Desktop: Tabelle. Mobil: gestapelte Karten, damit ALLE Felder
+              sichtbar sind (kein horizontales Wischen / verstecktes Scrollen
+              nötig). Umschaltung rein per CSS-Media-Query — kein JS, daher
+              kein Hydration-Mismatch. */}
+          <div className="tw-desktop card" style={{ padding: 0, overflow: "hidden" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13.5 }}>
+              <thead>
+                <tr style={{ background: "var(--bg-sunken)", color: "var(--ink-3)", textAlign: "left" }}>
+                  <Th>Wer möchte</Th>
+                  <Th>möchte kennenlernen</Th>
+                  <Th>Gemeldet am</Th>
+                  <Th>Berücksichtigt</Th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {items.map((w) => (
+                  <tr key={w.id} style={{ borderTop: "1px solid var(--line)" }}>
+                    <Td>
+                      <PersonCell person={w.requester} />
+                    </Td>
+                    <Td>
+                      <PersonCell person={w.target} />
+                    </Td>
+                    <Td>
+                      <span className="mono" style={{ fontSize: 12, color: "var(--ink-3)" }}>
+                        {new Date(w.createdAt).toLocaleDateString("de-CH", {
+                          day: "2-digit",
+                          month: "2-digit",
+                          year: "numeric",
+                        })}
+                      </span>
+                    </Td>
+                    <Td>
+                      <ConsideredCell wish={w} onToggle={() => onToggleConsidered(w)} />
+                    </Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div>
+
+          <div className="tw-mobile" style={{ display: "grid", gap: 10 }}>
+            {items.map((w) => (
+              <div key={w.id} className="card" style={{ padding: 14, display: "grid", gap: 12 }}>
+                <Field label="Wer möchte">
+                  <PersonCell person={w.requester} />
+                </Field>
+                <Field label="möchte kennenlernen">
+                  <PersonCell person={w.target} />
+                </Field>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 10,
+                    flexWrap: "wrap",
+                    borderTop: "1px solid var(--line)",
+                    paddingTop: 10,
+                  }}
+                >
+                  <span className="mono" style={{ fontSize: 12, color: "var(--ink-3)" }}>
+                    Gemeldet am{" "}
+                    {new Date(w.createdAt).toLocaleDateString("de-CH", {
+                      day: "2-digit",
+                      month: "2-digit",
+                      year: "numeric",
+                    })}
+                  </span>
+                  <ConsideredCell wish={w} onToggle={() => onToggleConsidered(w)} />
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <style>{`
+            .tw-mobile { display: none; }
+            @media (max-width: 640px) {
+              .tw-desktop { display: none; }
+              .tw-mobile { display: grid !important; }
+            }
+          `}</style>
+        </>
       )}
 
       <div style={{ marginTop: 16, fontSize: 12, color: "var(--ink-4)" }}>
@@ -138,6 +181,26 @@ function Th({ children }: { children: React.ReactNode }) {
 
 function Td({ children }: { children: React.ReactNode }) {
   return <td style={{ padding: "10px 14px", verticalAlign: "middle" }}>{children}</td>;
+}
+
+// Beschriftetes Feld für die Mobile-Karten-Ansicht.
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: "grid", gap: 3 }}>
+      <span
+        style={{
+          fontSize: 10.5,
+          fontWeight: 500,
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          color: "var(--ink-3)",
+        }}
+      >
+        {label}
+      </span>
+      {children}
+    </div>
+  );
 }
 
 function ConsideredCell({ wish, onToggle }: { wish: AdminTableWish; onToggle: () => void }) {
