@@ -23,6 +23,7 @@
 import { readFileSync } from "node:fs";
 import { argv } from "node:process";
 import { createClient } from "@supabase/supabase-js";
+import nodemailer from "nodemailer";
 
 // ---------- .env.local laden ----------
 const env = Object.fromEntries(
@@ -51,8 +52,126 @@ const ALLOWED_STATUS = (statusArg ? statusArg.split("=")[1] : "Founder")
 const ONLY = onlyArg
   ? onlyArg.split("=")[1].split(",").map((s) => s.trim().toLowerCase()).filter(Boolean)
   : null;
+// --reinvite: schickt auch bereits onboardeten Membern eine frische Welcome-Mail
+// mit neuem Passwort-Link (z.B. Founder, deren erster Invite-Link abgelaufen ist).
+const REINVITE = args.includes("--reinvite");
 
 const log = (...a) => console.log(...a);
+
+// ---------- SMTP (Hostpoint, identisch zu lib/email.ts) ----------
+const SMTP_HOST = env.SMTP_HOST ?? "asmtp.mail.hostpoint.ch";
+const SMTP_PORT = Number(env.SMTP_PORT ?? "587");
+const SMTP_USER = env.SMTP_USER ?? "no-reply@sport-nexus.ch";
+const SMTP_PASS = env.SMTP_PASS;
+// WICHTIG: From MUSS no-reply@sportnexus.ch (OHNE Bindestrich) sein — sport-nexus.ch
+// ist NXDOMAIN und Gmail verwirft solche Absender komplett. Siehe docs/EMAIL.md.
+const SMTP_FROM = env.SMTP_FROM ?? "SportNexus <no-reply@sportnexus.ch>";
+
+let _tx = null;
+function transporter() {
+  if (!SMTP_PASS) return null;
+  if (!_tx) {
+    _tx = nodemailer.createTransport({
+      host: SMTP_HOST,
+      port: SMTP_PORT,
+      secure: SMTP_PORT === 465,
+      requireTLS: SMTP_PORT === 587,
+      auth: { user: SMTP_USER, pass: SMTP_PASS },
+    });
+  }
+  return _tx;
+}
+
+// Gebrandete Welcome-/Onboarding-Mail mit klarer Login-Anleitung. Das ist die
+// Mail, die Member (und jetzt zuerst die Founder zum Testen) erhalten.
+function welcomeEmail({ first, actionUrl }) {
+  const greeting = first ? `Hallo ${first},` : "Hallo,";
+  const subject = "Willkommen bei SportNexus — dein Zugang";
+  const steps = [
+    ["1", "Passwort festlegen", "Klick auf den Button unten und vergib dein persönliches Passwort (mind. 8 Zeichen)."],
+    ["2", "Profilbild hinzufügen", "Beim ersten Login lädst du kurz ein Foto hoch — das macht das Verzeichnis persönlicher."],
+    ["3", "Loslegen", "Verzeichnis, Events, Nachrichten und dein Profil stehen dir offen."],
+  ];
+  const stepRows = steps.map(([n, t, d]) => `
+    <tr>
+      <td valign="top" style="padding:0 12px 16px 0; width:30px;">
+        <div style="width:26px; height:26px; border-radius:50%; background:#000; color:#fff; font-size:13px; font-weight:600; text-align:center; line-height:26px;">${n}</div>
+      </td>
+      <td valign="top" style="padding:0 0 16px 0;">
+        <div style="font-size:14.5px; font-weight:600; color:#000;">${t}</div>
+        <div style="font-size:13.5px; line-height:1.5; color:#575757; margin-top:2px;">${d}</div>
+      </td>
+    </tr>`).join("");
+
+  const html = `<!doctype html><html><body style="margin:0; padding:0; background:#F7F7F7; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; color:#000;">
+  <div style="max-width:560px; margin:24px auto; padding:32px; background:#FFFFFF; border-radius:8px;">
+    <div style="font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:#C3A75E; font-weight:600;">SportNexus</div>
+    <h1 style="font-size:23px; font-weight:600; margin:12px 0 6px; color:#000;">${greeting}</h1>
+    <p style="margin:0 0 22px; font-size:15px; line-height:1.55; color:#000;">
+      schön, dass du dabei bist. Dein Zugang zum SportNexus-Memberbereich ist bereit — <strong>Sport trifft auf Business</strong>. In drei kurzen Schritten bist du drin:
+    </p>
+    <table cellpadding="0" cellspacing="0" border="0" style="width:100%;">${stepRows}</table>
+    <div style="margin:18px 0 6px;">
+      <a href="${actionUrl}" style="display:inline-block; background:#000; color:#fff; padding:13px 22px; border-radius:6px; text-decoration:none; font-size:15px; font-weight:600;">Passwort festlegen &amp; einloggen →</a>
+    </div>
+    <p style="margin:18px 0 0; font-size:12.5px; line-height:1.5; color:#575757;">
+      Falls der Button nicht funktioniert, kopiere diesen Link in den Browser:<br>
+      <span style="word-break:break-all; color:#006FB6;">${actionUrl}</span>
+    </p>
+    <hr style="margin:28px 0; border:none; border-top:1px solid #ECECEC;">
+    <p style="font-size:12px; color:#575757; margin:0 0 6px; line-height:1.5;">
+      Später meldest du dich jederzeit unter <a href="${APP_URL}/login" style="color:#006FB6;">${APP_URL.replace(/^https?:\/\//, "")}/login</a> mit deiner E-Mail und deinem Passwort an. Die App gibt's auch fürs Handy — Link folgt nach der Store-Freigabe.
+    </p>
+    <p style="font-size:11px; color:#868686; margin:10px 0 0; line-height:1.5;">
+      Du erhältst diese E-Mail, weil für dich ein SportNexus-Member-Zugang eingerichtet wurde. Fragen? Antworte einfach auf diese Mail.
+    </p>
+  </div>
+</body></html>`;
+
+  const text = [
+    greeting,
+    ``,
+    `schön, dass du dabei bist. Dein Zugang zum SportNexus-Memberbereich ist bereit.`,
+    ``,
+    `So legst du los:`,
+    `1. Passwort festlegen — über den Link unten dein persönliches Passwort vergeben (mind. 8 Zeichen).`,
+    `2. Profilbild hinzufügen — beim ersten Login kurz ein Foto hochladen.`,
+    `3. Loslegen — Verzeichnis, Events, Nachrichten & dein Profil.`,
+    ``,
+    `Passwort festlegen & einloggen:`,
+    actionUrl,
+    ``,
+    `Später: Login unter ${APP_URL}/login mit E-Mail + Passwort.`,
+    `Fragen? Antworte einfach auf diese Mail.`,
+  ].join("\n");
+
+  return { subject, html, text };
+}
+
+async function sendWelcome(to, first, actionUrl) {
+  const tx = transporter();
+  if (!tx) return { ok: false, reason: "SMTP_PASS fehlt" };
+  const tpl = welcomeEmail({ first, actionUrl });
+  await tx.sendMail({ from: SMTP_FROM, to, subject: tpl.subject, html: tpl.html, text: tpl.text });
+  return { ok: true };
+}
+
+// Erzeugt einen Passwort-Setzen-Link: 'invite' für neue Accounts (legt den User
+// + via Trigger die members-Zeile an), 'recovery' als Fallback für bestehende.
+// generateLink verschickt KEINE Mail — wir versenden selbst (gebrandet).
+async function makeActionLink(admin, email, first, last) {
+  const redirectTo = `${APP_URL}/auth/callback?next=/reset-password`;
+  let r = await admin.auth.admin.generateLink({
+    type: "invite",
+    email,
+    options: { redirectTo, data: { first, last } },
+  });
+  if (r.error && /already|registered|exists/i.test(r.error.message)) {
+    r = await admin.auth.admin.generateLink({ type: "recovery", email, options: { redirectTo } });
+  }
+  if (r.error) return { error: r.error.message };
+  return { link: r.data?.properties?.action_link ?? null };
+}
 
 if (!HUBSPOT_TOKEN) {
   console.error("✗ HUBSPOT_TOKEN fehlt in .env.local. Lege einen HubSpot Private App Token an (CRM-Lese-Rechte) und trage ihn dort ein.");
@@ -192,23 +311,22 @@ async function onboardOne(admin, m) {
     .eq("email", m.email);
   if (preErr) return { status: "error", reason: `Select: ${preErr.message}` };
   const existing = (pre ?? []).find((r) => r.auth_id) ?? (pre ?? [])[0] ?? null;
+  const fullyOnboarded = Boolean(existing && existing.auth_id && existing.first && existing.first.trim());
 
-  // Schon vollständig onboarded (Auth-verknüpft + Name gesetzt) → nichts tun.
-  if (existing && existing.auth_id && existing.first && existing.first.trim()) {
+  // Schon vollständig onboarded: standardmässig überspringen. Mit --reinvite
+  // erzeugen wir dennoch einen frischen Link + Welcome-Mail (für Founder, deren
+  // erster Invite-Link abgelaufen ist).
+  if (fullyOnboarded && !REINVITE) {
     return { status: "skip", reason: "bereits onboarded" };
   }
 
-  // 2. Invite nur, wenn noch KEIN Auth-Account existiert (kein auth-verknüpfter
-  //    Member). So vermeiden wir doppelte Invite-Mails. Der Trigger
-  //    handle_new_user legt/verknüpft dabei die members-Zeile.
-  if (!(existing && existing.auth_id)) {
-    const { error: authErr } = await admin.auth.admin.inviteUserByEmail(m.email, {
-      redirectTo: `${APP_URL}/auth/callback?next=/reset-password`,
-    });
-    if (authErr && !/already|registered|exists/i.test(authErr.message)) {
-      return { status: "error", reason: `Auth: ${authErr.message}` };
-    }
-  }
+  // 2. Passwort-Setzen-Link erzeugen. 'invite' legt bei neuen Adressen den
+  //    Auth-User an (Trigger handle_new_user erstellt/verknüpft die members-Zeile),
+  //    'recovery' greift als Fallback bei bestehenden. generateLink verschickt
+  //    KEINE Mail — wir versenden gleich selbst die gebrandete Welcome-Mail.
+  const linkRes = await makeActionLink(admin, m.email, m.first, m.last);
+  if (linkRes.error) return { status: "error", reason: `Auth: ${linkRes.error}` };
+  const actionLink = linkRes.link;
 
   // 3. Verknüpfte Zeile (nach evtl. Invite/Trigger) holen und mit HubSpot-Daten füllen.
   const { data: rows, error: selErr } = await admin
@@ -218,7 +336,6 @@ async function onboardOne(admin, m) {
   if (selErr) return { status: "error", reason: `Select: ${selErr.message}` };
   if (!rows || rows.length === 0) return { status: "error", reason: "Keine members-Zeile nach Invite" };
   const target = rows.find((r) => r.auth_id) ?? rows[0];
-  const wasLinked = Boolean(existing && existing.auth_id);
 
   // CRM-Felder setzen. since/date_of_birth nur, wenn HubSpot einen Wert liefert
   // (sonst nicht den Trigger-Default current_date überschreiben).
@@ -244,7 +361,26 @@ async function onboardOne(admin, m) {
 
   const { error: updErr } = await admin.from("members").update(update).eq("id", target.id);
   if (updErr) return { status: "error", reason: `Update: ${updErr.message}` };
-  return { status: wasLinked ? "aktualisiert" : "onboarded", slug: target.slug };
+  return { status: fullyOnboarded ? "reinvite" : "onboarded", slug: target.slug, actionLink };
+}
+
+// ---------- Test-Hook: nur die Welcome-Mail rendern + zustellen ----------
+// node scripts/hubspot-onboard.mjs --test-mail=info@space-media.ch
+// Schickt eine Beispiel-Welcome-Mail (Platzhalter-Link) an die Adresse, um
+// Rendering + Zustellbarkeit zu prüfen — ohne HubSpot/Onboarding.
+const testMailArg = args.find((a) => a.startsWith("--test-mail="));
+if (testMailArg) {
+  const to = testMailArg.split("=")[1].trim();
+  const link = `${APP_URL}/auth/callback?next=/reset-password`;
+  log(`\nTest-Welcome-Mail an ${to} (Platzhalter-Link)...`);
+  try {
+    const res = await sendWelcome(to, "Test", link);
+    log(res.ok ? `✓ verschickt.` : `✗ übersprungen: ${res.reason}`);
+    process.exit(res.ok ? 0 : 1);
+  } catch (e) {
+    log(`✗ FEHLER: ${e instanceof Error ? e.message : e}`);
+    process.exit(1);
+  }
 }
 
 // ---------- Main ----------
@@ -292,11 +428,28 @@ if (candidates.length === 0) {
 
 const admin = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
 log(`\nLIVE — lege Konten an...\n`);
-let ok = 0, skip = 0, err = 0;
+let ok = 0, skip = 0, err = 0, mailed = 0;
 for (const m of candidates) {
   const r = await onboardOne(admin, m);
-  if (r.status === "onboarded") { ok++; log(`  ✓ ${m.email} → onboarded (${r.slug})`); }
-  else if (r.status === "skip") { skip++; log(`  – ${m.email} → übersprungen (${r.reason})`); }
-  else { err++; log(`  ✗ ${m.email} → FEHLER: ${r.reason}`); }
+  if (r.status === "onboarded" || r.status === "reinvite") {
+    ok++;
+    let mailNote = " (kein Link — keine Mail)";
+    if (r.actionLink) {
+      try {
+        const sent = await sendWelcome(m.email, m.first, r.actionLink);
+        if (sent.ok) { mailed++; mailNote = " + Welcome-Mail ✉"; }
+        else { mailNote = ` (Mail übersprungen: ${sent.reason})`; }
+      } catch (e) {
+        mailNote = ` (Mail-FEHLER: ${e instanceof Error ? e.message : e})`;
+      }
+    }
+    log(`  ✓ ${m.email} → ${r.status} (${r.slug})${mailNote}`);
+  } else if (r.status === "skip") {
+    skip++;
+    log(`  – ${m.email} → übersprungen (${r.reason}${REINVITE ? "" : " — mit --reinvite trotzdem mailen"})`);
+  } else {
+    err++;
+    log(`  ✗ ${m.email} → FEHLER: ${r.reason}`);
+  }
 }
-log(`\nFertig: ${ok} onboarded, ${skip} übersprungen, ${err} Fehler.\n`);
+log(`\nFertig: ${ok} verarbeitet, ${mailed} Welcome-Mails verschickt, ${skip} übersprungen, ${err} Fehler.\n`);
