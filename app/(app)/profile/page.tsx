@@ -272,6 +272,7 @@ export default function ProfilePage() {
                 }}
                 options={Object.keys(BRANCHES)}
                 placeholder="z.B. Finanzen, oder beliebig"
+                openOnFocus
               />
               <ComboField
                 label="Subbranche"
@@ -279,6 +280,7 @@ export default function ProfilePage() {
                 onChange={(v) => set("sub", v)}
                 options={BRANCHES[form.branch] ?? []}
                 placeholder="z.B. Asset Management, oder beliebig"
+                openOnFocus
               />
               <ComboField
                 label="Zweitbranche"
@@ -286,6 +288,7 @@ export default function ProfilePage() {
                 onChange={(v) => set("branch2", v)}
                 options={Object.keys(BRANCHES)}
                 placeholder="optional — zweite Branche"
+                openOnFocus
               />
               <ComboField
                 label="Arbeitsort"
@@ -658,12 +661,16 @@ function ComboField({
   onChange,
   options,
   placeholder,
+  openOnFocus = false,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   options: string[];
   placeholder?: string;
+  // Browse-Modus: zeigt bei Klick/Fokus die GANZE Optionsliste (für kleine,
+  // feste Listen wie Branche/Subbranche). Standard aus für lange Listen (Städte).
+  openOnFocus?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [highlighted, setHighlighted] = useState(-1);
@@ -680,11 +687,16 @@ function ComboField({
   }, [open]);
 
   const q = (value ?? "").trim().toLowerCase();
-  // Only surface suggestions once the user starts typing — a dropdown of 90
-  // Swiss cities on every focus is noisy. Exact match? Don't bother suggesting.
-  const filtered = touched && q.length >= 1 && !options.some((o) => o.toLowerCase() === q)
-    ? options.filter((o) => o.toLowerCase().includes(q)).slice(0, 8)
-    : [];
+  const exact = options.some((o) => o.toLowerCase() === q);
+  // Tippvorschläge ab 1 Zeichen. Im Browse-Modus (kleine feste Liste) zeigt ein
+  // Klick/Fokus die GANZE Liste — auch ohne Tippen. Lange Listen (90 Städte)
+  // bleiben reine Tipp-Suche, sonst rauscht das Dropdown bei jedem Fokus zu.
+  const typing = touched && q.length >= 1 && !exact;
+  const filtered = typing
+    ? options.filter((o) => o.toLowerCase().includes(q)).slice(0, 12)
+    : openOnFocus
+      ? options
+      : [];
 
   return (
     <div className="field" style={{ marginBottom: 0 }}>
@@ -693,6 +705,7 @@ function ComboField({
         <input
           className="input"
           type="text"
+          style={openOnFocus ? { paddingRight: 30 } : undefined}
           value={value || ""}
           placeholder={placeholder}
           onChange={(e) => {
@@ -701,9 +714,7 @@ function ComboField({
             setOpen(true);
             setHighlighted(0);
           }}
-          onFocus={() => {
-            if (touched && filtered.length > 0) setOpen(true);
-          }}
+          onFocus={() => setOpen(true)}
           onBlur={() => {
             // Delay so a click on an option registers before close.
             setTimeout(() => setOpen(false), 120);
@@ -727,6 +738,24 @@ function ComboField({
             }
           }}
         />
+        {openOnFocus && (
+          <span
+            aria-hidden="true"
+            onMouseDown={(e) => { e.preventDefault(); setOpen((o) => !o); setTouched(true); }}
+            style={{
+              position: "absolute",
+              right: 10,
+              top: "50%",
+              transform: `translateY(-50%) rotate(${open ? 180 : 0}deg)`,
+              cursor: "pointer",
+              color: "var(--ink-3)",
+              fontSize: 11,
+              transition: "transform 120ms",
+            }}
+          >
+            ▾
+          </span>
+        )}
         {open && filtered.length > 0 && (
           <div
             role="listbox"
