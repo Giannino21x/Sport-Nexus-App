@@ -105,7 +105,7 @@ function welcomeEmail({ first, actionUrl }) {
 
   const html = `<!doctype html><html><body style="margin:0; padding:0; background:#F7F7F7; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; color:#000;">
   <div style="max-width:560px; margin:24px auto; padding:32px; background:#FFFFFF; border-radius:8px;">
-    <div style="font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:#C3A75E; font-weight:600;">SportNexus</div>
+    <img src="${APP_URL}/logo-sportnexus.png" alt="SportNexus" width="190" style="display:block; width:190px; max-width:60%; height:auto; border:0; margin:0 0 8px;">
     <h1 style="font-size:23px; font-weight:600; margin:12px 0 6px; color:#000;">${greeting}</h1>
     <p style="margin:0 0 22px; font-size:15px; line-height:1.55; color:#000;">
       schön, dass du dabei bist. Dein Zugang zum SportNexus-Memberbereich ist bereit — <strong>Sport trifft auf Business</strong>. In drei kurzen Schritten bist du drin:
