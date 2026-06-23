@@ -278,6 +278,14 @@ export default function EventDetailPage() {
                   >
                     Jetzt anmelden <Icon name="arrow" size={14} />
                   </button>
+                  <button
+                    type="button"
+                    className="btn btn-text"
+                    style={{ width: "100%", marginTop: 8, color: "var(--ink-3)", fontSize: 12.5 }}
+                    onClick={() => setRegistered(ev.id, true)}
+                  >
+                    Ich bin bereits angemeldet
+                  </button>
                 </>
               )
             ) : (

@@ -1,18 +1,19 @@
 "use client";
 
-// Client-seitiger Anmelde-Marker pro Event.
+// Anmeldestatus pro Event — serverseitig pro Member gespeichert, damit er
+// geräteübergreifend stimmt. localStorage dient nur noch als (a) Sofort-Cache
+// für schnelles Rendern und (b) Fallback im Demo-Modus (nicht eingeloggt).
 //
-// Hintergrund: Guestoo ist das System of Record für Event-Anmeldungen, aber es
-// gibt (noch) keine Verknüpfung zwischen eingeloggtem Member und Guestoo-
-// Registrierung. Bis die Guestoo/HubSpot-Integration diese Verknüpfung liefert,
-// halten wir den Anmeldestatus lokal im Browser fest (gleiches Muster wie der
-// Demo-Avatar in lib/hooks.ts). Das macht die geforderten UI-Zustände
-// ("Angemeldete Events", "Bereits angemeldet", Anmelde-Badge) real und
-// demonstrierbar. Auf der Event-Detailseite wird der lokale Marker zusätzlich
-// mit der echten Guestoo-Anmeldeliste abgeglichen (Name-Match), sobald diese
-// geladen ist.
+// Hintergrund: Guestoo ist System of Record für Anmeldungen, aber die Basic-API
+// liefert keine Teilnehmernamen → keine automatische Zuordnung Member↔Guestoo.
+// Darum hält der Member seinen Anmeldestatus selbst (Button "Jetzt anmelden"
+// bzw. "Ich bin bereits angemeldet"); persistiert in public.event_registrations.
 
 import { useCallback, useEffect, useState } from "react";
+import {
+  getMyEventRegistrationsAction,
+  setEventRegistrationAction,
+} from "@/app/actions/events";
 
 const KEY = "sn_event_registrations";
 
@@ -40,14 +41,28 @@ function writeRaw(ids: string[]) {
 
 export function useMyRegistrations() {
   const [ids, setIds] = useState<string[]>([]);
+  const [authed, setAuthed] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+    // 1. Sofort aus dem lokalen Cache rendern.
+    setIds(readRaw());
     const sync = () => setIds(readRaw());
-    sync();
     listeners.add(sync);
-    // Cross-Tab-Sync über das native storage-Event.
     window.addEventListener("storage", sync);
+
+    // 2. Server ist Source of Truth, sobald eingeloggt — überschreibt den Cache.
+    getMyEventRegistrationsAction()
+      .then((r) => {
+        if (cancelled || !r.auth) return; // Demo/nicht eingeloggt → lokal bleiben
+        setAuthed(true);
+        writeRaw(r.ids); // Cache + andere Hook-Instanzen syncen
+        setIds(r.ids);
+      })
+      .catch(() => {});
+
     return () => {
+      cancelled = true;
       listeners.delete(sync);
       window.removeEventListener("storage", sync);
     };
@@ -56,15 +71,20 @@ export function useMyRegistrations() {
   const isRegistered = useCallback((eventId: string) => ids.includes(eventId), [ids]);
 
   const setRegistered = useCallback((eventId: string, value: boolean) => {
+    // Optimistisch lokal (sofortiges UI-Feedback + Cache).
     const curr = readRaw();
     const next = value ? [...curr, eventId] : curr.filter((x) => x !== eventId);
     writeRaw(next);
+    // Serverseitig persistieren (no-op im Demo-Modus, dort zählt nur lokal).
+    setEventRegistrationAction(eventId, value).catch(() => {});
   }, []);
 
-  const toggle = useCallback((eventId: string) => {
-    const curr = readRaw();
-    writeRaw(curr.includes(eventId) ? curr.filter((x) => x !== eventId) : [...curr, eventId]);
-  }, []);
+  const toggle = useCallback(
+    (eventId: string) => {
+      setRegistered(eventId, !readRaw().includes(eventId));
+    },
+    [setRegistered],
+  );
 
-  return { ids, isRegistered, setRegistered, toggle };
+  return { ids, isRegistered, setRegistered, toggle, authed };
 }

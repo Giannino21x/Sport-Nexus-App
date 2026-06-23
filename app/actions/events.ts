@@ -164,3 +164,50 @@ export async function registerEventAction(eventId: string): Promise<{ error?: st
   revalidatePath(`/events/${eventId}`);
   return { registered: true };
 }
+
+// Eigene Anmeldungen (event_ids) des eingeloggten Members. `auth:false` heisst
+// nicht eingeloggt (Demo) → die UI fällt dann auf den lokalen Marker zurück.
+export async function getMyEventRegistrationsAction(): Promise<{ ids: string[]; auth: boolean; error?: string }> {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ids: [], auth: false };
+  const { data: me } = await supabase.from("members").select("id").eq("auth_id", user.id).maybeSingle();
+  if (!me) return { ids: [], auth: false };
+  const { data, error } = await supabase
+    .from("event_registrations")
+    .select("event_id")
+    .eq("member_id", me.id);
+  if (error) return { ids: [], auth: true, error: error.message };
+  return { ids: (data ?? []).map((r) => r.event_id), auth: true };
+}
+
+// Setzt den Anmeldestatus explizit (idempotent). Für den lokalen Marker/Toggle
+// in der UI; geräteübergreifend, weil serverseitig pro Member gespeichert.
+export async function setEventRegistrationAction(
+  eventId: string,
+  registered: boolean,
+): Promise<{ registered?: boolean; auth: boolean; error?: string }> {
+  if (!eventId) return { auth: true, error: "Kein Event übergeben." };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { auth: false };
+  const { data: me } = await supabase.from("members").select("id").eq("auth_id", user.id).maybeSingle();
+  if (!me) return { auth: false };
+
+  if (registered) {
+    const { error } = await supabase
+      .from("event_registrations")
+      .upsert({ member_id: me.id, event_id: eventId }, { onConflict: "member_id,event_id" });
+    if (error) return { auth: true, error: error.message };
+  } else {
+    const { error } = await supabase
+      .from("event_registrations")
+      .delete()
+      .eq("member_id", me.id)
+      .eq("event_id", eventId);
+    if (error) return { auth: true, error: error.message };
+  }
+  revalidatePath(`/events/${eventId}`);
+  revalidatePath("/events");
+  return { registered, auth: true };
+}
