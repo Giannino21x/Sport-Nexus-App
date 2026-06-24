@@ -2,7 +2,7 @@
 
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
-import { createClient as createAdminClient } from "@supabase/supabase-js";
+import { createClient as createAdminClient, type EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { passwordResetEmail, sendEmail } from "@/lib/email";
 
@@ -104,7 +104,17 @@ export async function requestPasswordResetAction(
       options: { redirectTo: `${origin}/auth/callback?next=/reset-password` },
     });
 
-    if (!linkErr && data?.properties?.action_link) {
+    // WICHTIG: Wir versenden NICHT den Supabase-action_link (der verifiziert den
+    // Einmal-Token schon beim GET auf /auth/v1/verify). Mail-Security-Scanner
+    // (Outlook SafeLinks, Defender, Proxies) rufen Links automatisch vorab auf
+    // und verbrauchen damit den Token, BEVOR der User klickt — Resultat:
+    // "Link ungültig oder abgelaufen". Stattdessen bauen wir den Link auf unsere
+    // eigene /reset-confirm-Seite mit dem hashed_token. Dort wird NICHTS beim
+    // Laden verifiziert — erst der echte Button-Klick (POST) löst verifyOtp aus.
+    // Scanner folgen GET-Links, drücken aber keine Buttons → Token überlebt.
+    const tokenHash = data?.properties?.hashed_token;
+    if (!linkErr && tokenHash) {
+      const recoveryUrl = `${origin}/reset-confirm?token_hash=${encodeURIComponent(tokenHash)}&type=recovery`;
       let recipientFirst: string | null = null;
       if (data.user?.id) {
         const { data: m } = await admin
@@ -115,7 +125,7 @@ export async function requestPasswordResetAction(
         recipientFirst = m?.first || null;
       }
       const tpl = passwordResetEmail({
-        recoveryUrl: data.properties.action_link,
+        recoveryUrl,
         recipientFirst,
       });
       await sendEmail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text });
@@ -134,6 +144,23 @@ export async function requestPasswordResetAction(
   return {
     info: "Falls ein Account mit dieser E-Mail existiert, haben wir dir einen Link zum Zurücksetzen geschickt. Prüfe auch den Spam-Ordner.",
   };
+}
+
+// Wird vom Button auf /reset-confirm aufgerufen (echter User-Klick, POST).
+// Erst HIER wird der Einmal-Token verbraucht — nicht beim Laden der Seite —
+// damit Mail-Scanner den Recovery-Token nicht vorab entwerten. Bei Erfolg ist
+// die Recovery-Session gesetzt und /reset-password zeigt das Passwort-Formular.
+export async function confirmRecoveryAction(formData: FormData) {
+  const token_hash = String(formData.get("token_hash") || "");
+  const type = (String(formData.get("type") || "recovery") || "recovery") as EmailOtpType;
+  if (!token_hash) redirect("/login?error=missing_code");
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.verifyOtp({ type, token_hash });
+  if (error) redirect("/login?error=reset_invalid");
+
+  (await cookies()).set("sn-mode", "live", { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+  redirect("/reset-password");
 }
 
 // Liefert die aktuelle Auth-E-Mail (= Login-E-Mail) des eingeloggten Users.
