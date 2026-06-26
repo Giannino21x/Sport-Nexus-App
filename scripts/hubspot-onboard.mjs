@@ -162,18 +162,32 @@ async function sendWelcome(to, first, actionUrl) {
 // Erzeugt einen Passwort-Setzen-Link: 'invite' für neue Accounts (legt den User
 // + via Trigger die members-Zeile an), 'recovery' als Fallback für bestehende.
 // generateLink verschickt KEINE Mail — wir versenden selbst (gebrandet).
+//
+// WICHTIG: Wir versenden NICHT den rohen Supabase-action_link (/auth/v1/verify).
+// Der verifiziert den Einmal-Token schon beim ersten GET und ist damit fragil:
+// Mail-Scanner-Prefetch (SafeLinks/Defender/Proxies) ODER ein verspäteter Klick
+// entwerten ihn → "Link ungültig / klappt nicht" (genau das Problem, an dem
+// Oliver D. hing). Stattdessen bauen wir — identisch zum In-App-Reset-Flow
+// (siehe app/actions/auth.ts) — einen Link auf unsere /reset-confirm-Seite mit
+// dem hashed_token. Dort wird beim Laden NICHTS verifiziert; erst der Button-
+// Klick (POST → confirmRecoveryAction → verifyOtp) verbraucht den Token.
 async function makeActionLink(admin, email, first, last) {
-  const redirectTo = `${APP_URL}/auth/callback?next=/reset-password`;
+  const safeLink = (data, type) => {
+    const th = data?.properties?.hashed_token;
+    return th ? `${APP_URL}/reset-confirm?token_hash=${encodeURIComponent(th)}&type=${type}` : null;
+  };
   let r = await admin.auth.admin.generateLink({
     type: "invite",
     email,
-    options: { redirectTo, data: { first, last } },
+    options: { data: { first, last } },
   });
   if (r.error && /already|registered|exists/i.test(r.error.message)) {
-    r = await admin.auth.admin.generateLink({ type: "recovery", email, options: { redirectTo } });
+    r = await admin.auth.admin.generateLink({ type: "recovery", email });
+    if (r.error) return { error: r.error.message };
+    return { link: safeLink(r.data, "recovery") };
   }
   if (r.error) return { error: r.error.message };
-  return { link: r.data?.properties?.action_link ?? null };
+  return { link: safeLink(r.data, "invite") };
 }
 
 if (!HUBSPOT_TOKEN) {
