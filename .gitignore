@@ -73,3 +73,6 @@ pdfs/
 scripts/hs-properties.json
 scripts/hs-props-capture.json
 .guestoo-chrome-profile/
+
+# Founder Temp-Passwörter (geheim, nie committen)
+scripts/.founder-pw.local.json
