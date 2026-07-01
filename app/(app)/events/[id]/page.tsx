@@ -94,8 +94,10 @@ export default function EventDetailPage() {
   const confirmed = stats?.confirmed ?? null;
   const freeSlots = stats?.freeSlots ?? null;
   const maxSlots = stats?.maxVisitor ?? ev.guests;
-  const attendingPreview = hasRealAttendees
-    ? realAttendees.slice(0, 8).map((a) => ({
+  // Vollständige Anmeldeliste (alle Namen, die wir haben) — beim Aufklappen
+  // sollen ALLE sichtbar sein, nicht nur eine Vorschau.
+  const attendeesFull = hasRealAttendees
+    ? realAttendees.map((a) => ({
         id: `gst-${a.guestooId}`,
         first: a.firstName,
         last: a.lastName,
@@ -117,6 +119,8 @@ export default function EventDetailPage() {
           memberSlug: m.id as string | null,
         }))
       : [];
+  // Avatar-Cluster oben zeigt weiterhin nur eine kompakte Vorschau (max. 8 Gesichter).
+  const attendingPreview = attendeesFull.slice(0, 8);
   // Bevorzugt die verlässliche Public-Zahl; sonst echte Namensliste; sonst Demo.
   const totalAttendees = confirmed ?? (hasRealAttendees ? realAttendees.length : isDemo ? ev.guests : 0);
 
@@ -352,7 +356,7 @@ export default function EventDetailPage() {
               style={{ padding: "4px 10px", fontSize: 12, color: "var(--ink-3)" }}
               aria-expanded={attendeesOpen}
             >
-              {attendeesOpen ? "Liste ausblenden" : "Liste anzeigen"}
+              {attendeesOpen ? "Ausblenden" : `Alle ${totalAttendees} anzeigen`}
             </button>
           )}
         </div>
@@ -448,60 +452,65 @@ export default function EventDetailPage() {
             : `${maxSlots} Plätze · ${totalAttendees} angemeldet${freeSlots != null ? ` · ${freeSlots} frei` : ""}`}
         </div>
         {attendeesOpen && (
-          <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--line)", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 2 }}>
-            {attendingPreview.map((m) => m.memberSlug ? (
-              <Link
-                key={m.id}
-                href={`/directory/${m.memberSlug}`}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: "8px 6px",
-                  borderRadius: 8,
-                  transition: "background 120ms",
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-sunken)"; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-              >
-                <Avatar first={m.first} last={m.last} color={m.color} size={32} url={m.avatarUrl} />
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {m.first} {m.last}
-                  </div>
-                  <div style={{ fontSize: 11.5, color: "var(--ink-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {m.role}{m.company ? ` · ${m.company}` : ""}
-                  </div>
-                </div>
-                <Icon name="arrow" size={14} className="text-ink-3" />
-              </Link>
-            ) : (
-              <div
-                key={m.id}
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 12,
-                  padding: "8px 6px",
-                  borderRadius: 8,
-                }}
-              >
-                <Avatar first={m.first} last={m.last} color={m.color} size={32} url={m.avatarUrl} />
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 13.5, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {m.first} {m.last}
-                  </div>
-                  {m.company && (
-                    <div style={{ fontSize: 11.5, color: "var(--ink-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {m.company}
+          <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--line)" }}>
+            <div className="upper-label" style={{ marginBottom: 10 }}>
+              {past ? "Alle Teilnehmenden" : "Alle Anmeldungen"} · {attendeesFull.length}
+            </div>
+            <div style={{ maxHeight: 460, overflowY: "auto", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 4, marginRight: -6, paddingRight: 6 }}>
+              {attendeesFull.map((m) => m.memberSlug ? (
+                <Link
+                  key={m.id}
+                  href={`/directory/${m.memberSlug}`}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "8px 8px",
+                    borderRadius: 8,
+                    transition: "background 120ms",
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-sunken)"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                >
+                  <Avatar first={m.first} last={m.last} color={m.color} size={34} url={m.avatarUrl} />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {m.first} {m.last}
                     </div>
-                  )}
+                    <div style={{ fontSize: 11.5, color: "var(--ink-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {m.role}{m.company ? ` · ${m.company}` : ""}
+                    </div>
+                  </div>
+                  <Icon name="arrow" size={14} className="text-ink-3" />
+                </Link>
+              ) : (
+                <div
+                  key={m.id}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 12,
+                    padding: "8px 8px",
+                    borderRadius: 8,
+                  }}
+                >
+                  <Avatar first={m.first} last={m.last} color={m.color} size={34} url={m.avatarUrl} />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontSize: 13.5, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {m.first} {m.last}
+                    </div>
+                    {m.company && (
+                      <div style={{ fontSize: 11.5, color: "var(--ink-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {m.company}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
-            {totalAttendees > attendingPreview.length && (
-              <div style={{ fontSize: 11.5, color: "var(--ink-4)", padding: "8px 6px 0" }}>
-                +{totalAttendees - attendingPreview.length} weitere Anmeldungen.
+              ))}
+            </div>
+            {totalAttendees > attendeesFull.length && (
+              <div style={{ fontSize: 11.5, color: "var(--ink-4)", padding: "10px 8px 0" }}>
+                +{totalAttendees - attendeesFull.length} weitere ohne Namensangabe.
               </div>
             )}
           </div>
