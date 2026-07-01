@@ -47,7 +47,8 @@ Die App liest den Anmeldestatus ausschliesslich aus `event_registrations`
 (geräteübergreifend) — sie ruft dafür Guestoo nicht live auf.
 
 **Automatik:** `.github/workflows/guestoo-sync.yml` läuft alle 6 h auf GitHub
-Actions: Headless-Login (frische Cookies, ~7 Tage gültig) → Anmeldungs-Sync.
+Actions: Headless-Login (frische Cookies, ~7 Tage gültig) → Event-Stammdaten-Sync
+(`guestoo:sync`, aktualisiert Venue/Adresse/Plätze) → Anmeldungs-Sync.
 Benötigte Repo-Secrets: `GUESTOO_LOGIN_EMAIL`, `GUESTOO_LOGIN_PASSWORD`,
 `GUESTOO_AGENCY_ID`, `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`.
 Welche Guestoo-Status als „angemeldet" zählen, steuert `REGISTERED_STATUSES`
@@ -78,7 +79,7 @@ Die Cookie-Session läuft alle ~7 Tage ab — danach Schritt 1–3 wiederholen o
 | `id` | unsere UUID/Slug |
 | `guestoo_id` | Guestoo-UUID (von `syncGuestooIdsAction`) |
 | `title`, `subtitle`, `date`, `time`, `city` | manuell gepflegt |
-| `venue`, `address`, `guests` (max. Plätze) | aus Guestoo synchronisiert |
+| `venue`, `address`, `guests` (max. Plätze) | aus Guestoo synchronisiert (Cron, alle 6 h) |
 | `status` | `upcoming` / `past` (lokal) |
 
 Die **aktuelle Anmeldezahl** wird live via `/events/{id}/visitors/search` geholt (kein Persistieren) — siehe `getEventAttendeesAction`.

@@ -1,8 +1,9 @@
-name: Guestoo Anmeldungs-Sync
+name: Guestoo-Sync (Events + Anmeldungen)
 
-# Hält public.event_registrations automatisch mit Guestoo synchron:
-# frischer Headless-Login (Cookies ~7 Tage gültig) → Anmeldungen pro Event
-# über die E-Mail den Members zuordnen. Läuft alle 6 Stunden + manuell.
+# Hält Events und Anmeldungen automatisch mit Guestoo synchron:
+# frischer Headless-Login (Cookies ~7 Tage gültig) → Event-Stammdaten
+# (Venue/Adresse/max. Plätze) + Anmeldungen pro Event über die E-Mail den
+# Members zuordnen. Läuft alle 6 Stunden + manuell.
 #
 # Benötigte Repository-Secrets (Settings → Secrets and variables → Actions):
 #   GUESTOO_LOGIN_EMAIL      Guestoo-Login (am besten ein dedizierter Account)
@@ -49,6 +50,9 @@ jobs:
 
       - name: Guestoo-Session erneuern (Headless-Login)
         run: npm run guestoo:refresh
+
+      - name: Event-Stammdaten synchronisieren (Venue/Adresse/Plätze)
+        run: npm run guestoo:sync
 
       - name: Anmeldungen synchronisieren
         run: npm run guestoo:sync-regs
