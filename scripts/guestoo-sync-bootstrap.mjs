@@ -1,6 +1,10 @@
-// Einmal-Bootstrap: matched bestehende Supabase-Events mit Guestoo-Events
-// und schreibt die Guestoo-UUID in events.guestoo_id. Direkter Service-Role-
-// Schreibzugriff, damit es ohne eingeloggten Admin läuft.
+// Event-Sync: matched bestehende Supabase-Events mit Guestoo-Events und zieht
+// die harten Fakten nach (Guestoo = Wahrheit):
+//   guestoo_id, guests (maxVisitor), venue/address, date/time (+status), city.
+// Titel + Untertitel bleiben BEWUSST unangetastet (kuratiert, in der App
+// gepflegt) — Guestoos displayName ist unsauber/wechselnd formatiert.
+// Direkter Service-Role-Schreibzugriff, damit es ohne eingeloggten Admin läuft.
+// --dry-run zeigt alle Änderungen an, ohne zu schreiben.
 
 import { readFileSync } from "node:fs";
 import { createClient } from "@supabase/supabase-js";
@@ -23,6 +27,7 @@ const XSRF = env.GUESTOO_XSRF_TOKEN;
 if (!SUPABASE_URL || !SERVICE_ROLE) throw new Error("Supabase env fehlt");
 if (!COOKIE_HEADER || !XSRF) throw new Error("Guestoo env fehlt");
 
+const DRY = process.argv.includes("--dry-run");
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
 
 async function fetchGuestooEvents() {
@@ -50,7 +55,7 @@ console.log(`Guestoo: ${guestooEvents.length} Events.`);
 
 const { data: dbEvents } = await supabase
   .from("events")
-  .select("id, title, subtitle, date, city, venue, address, guests, guestoo_id");
+  .select("id, title, subtitle, date, time, city, venue, address, guests, status, guestoo_id");
 console.log(`Supabase: ${dbEvents?.length ?? 0} Events.`);
 
 const norm = (s) => (s ?? "").toLowerCase().replace(/[^a-z0-9äöüß ]/g, " ").replace(/\s+/g, " ").trim();
@@ -59,6 +64,10 @@ const formatAddr = (a) => {
   const cityLine = [a?.postCode, a?.city].filter(Boolean).join(" ").trim();
   return [street, cityLine].filter(Boolean).join(", ").trim();
 };
+// Datum/Zeit in Europe/Zurich (identisch zu scripts/guestoo-import.mjs).
+const fmtDate = (ms) => new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zurich", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
+const fmtTime = (ms) => new Intl.DateTimeFormat("de-CH", { timeZone: "Europe/Zurich", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date(ms));
+const statusForDate = (iso) => (new Date(iso + "T23:59:59").getTime() < Date.now() ? "past" : "upcoming");
 
 let matched = 0, updated = 0;
 const unmatched = [];
@@ -105,8 +114,25 @@ for (const ev of dbEvents ?? []) {
       updates.venue = candidate.address.locationName;
     }
   }
+  // Harte Fakten: Datum/Zeit (Guestoo ist Wahrheit) inkl. Status-Neuberechnung.
+  if (candidate.startDate) {
+    const gDate = fmtDate(candidate.startDate);
+    if (gDate !== String(ev.date)) { updates.date = gDate; updates.status = statusForDate(gDate); }
+    const gTime = candidate.endDate ? `${fmtTime(candidate.startDate)} – ${fmtTime(candidate.endDate)}` : fmtTime(candidate.startDate);
+    if (gTime && gTime !== ev.time) updates.time = gTime;
+  }
+  // Stadt.
+  const gCity = candidate.address?.city ?? "";
+  if (gCity && gCity !== ev.city) updates.city = gCity;
+
   if (Object.keys(updates).length === 0) {
     console.log(`= ${ev.title} (in sync)`);
+    continue;
+  }
+  if (DRY) {
+    updated++;
+    console.log(`↻ (dry) ${ev.title} → ${Object.keys(updates).join(", ")}`);
+    for (const k of Object.keys(updates)) console.log(`      ${k}: ${JSON.stringify(ev[k])}  →  ${JSON.stringify(updates[k])}`);
     continue;
   }
   const { error } = await supabase.from("events").update(updates).eq("id", ev.id);
@@ -115,4 +141,5 @@ for (const ev of dbEvents ?? []) {
   console.log(`↻ ${ev.title} → updated: ${Object.keys(updates).join(", ")}`);
 }
 
-console.log(`\nMatched: ${matched} | Updated: ${updated} | Unmatched: ${unmatched.length}`);
+console.log(`\n${DRY ? "DRY-RUN — nichts geschrieben. Ohne --dry-run ausführen zum Anwenden." : "Geschrieben."}`);
+console.log(`Matched: ${matched} | ${DRY ? "Würde ändern" : "Updated"}: ${updated} | Unmatched: ${unmatched.length}`);
