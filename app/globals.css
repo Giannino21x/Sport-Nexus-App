@@ -425,6 +425,20 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   box-shadow: var(--shadow-sm);
 }
 
+/* Event-Karten: dezenter Hover — anheben, tieferer Schatten, kräftigerer Rahmen */
+.event-card {
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+.event-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--line-strong);
+}
+@media (prefers-reduced-motion: reduce) {
+  .event-card { transition: none; }
+  .event-card:hover { transform: none; }
+}
+
 /* ---------- Avatar ---------- */
 .avatar {
   border-radius: 50%;

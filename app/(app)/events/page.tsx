@@ -193,7 +193,7 @@ function EventCard({ ev, past, isAdmin, registered, count }: { ev: SnEvent; past
   };
 
   return (
-    <Link href={`/events/${ev.id}`} className="card" style={{ padding: 0, overflow: "hidden", opacity: past ? 0.78 : 1, cursor: "pointer", display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
+    <Link href={`/events/${ev.id}`} className="card event-card" style={{ padding: 0, overflow: "hidden", opacity: past ? 0.78 : 1, cursor: "pointer", display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
       <div style={{ aspectRatio: "16/9", background: past ? "var(--ink-3)" : "var(--ink)", position: "relative", color: "var(--bg)", overflow: "hidden", flexShrink: 0 }}>
         {ev.img && (
           <>
