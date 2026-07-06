@@ -53,9 +53,25 @@ function MessagesInner() {
 
   const convos = dataSource === "live" ? liveConvos : demoConvosRef;
 
+  // Startwert synchron aus window: Seiten unter der AppShell mounten erst
+  // clientseitig (Boot-Splash-Gate), darum ist das sicher — der alte
+  // useEffect-Weg liess das Layout nach dem ersten Render umspringen.
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < 780,
+  );
+  useEffect(() => {
+    const h = () => setIsMobile(window.innerWidth < 780);
+    window.addEventListener("resize", h);
+    return () => window.removeEventListener("resize", h);
+  }, []);
+
   // If ?to=slug is set, auto-select or create thread
   const initialDbId = useMemo(() => {
-    if (!toParam) return convos[0]?.otherDbId ?? null;
+    // Mobile ohne ?to: KEINE Auto-Auswahl. Die Vorauswahl der ersten
+    // Konversation ist ein Desktop-Konzept (zweispaltig) — auf dem Handy
+    // liess sie die Ansicht nach dem Laden von der Liste in den Thread
+    // springen. Mobile startet immer in der Liste.
+    if (!toParam) return isMobile ? null : convos[0]?.otherDbId ?? null;
     const memberBySlug = members.find((m) => m.id === toParam);
     // Members still loading — wait instead of falling back to a different convo
     if (!memberBySlug) return null;
@@ -63,7 +79,7 @@ function MessagesInner() {
     if (existing) return existing.otherDbId;
     // New conversation — resolve to DB uuid in live, or slug in demo
     return dataSource === "live" ? memberBySlug.dbId ?? null : toParam;
-  }, [convos, toParam, members, dataSource]);
+  }, [convos, toParam, members, dataSource, isMobile]);
 
   const [activeDbId, setActiveDbId] = useState<string | null>(initialDbId);
   const userPickedRef = useRef(false);
@@ -287,19 +303,6 @@ function MessagesInner() {
       }
     });
   };
-
-  // Startwert synchron aus window: Seiten unter der AppShell mounten erst
-  // clientseitig (Boot-Splash-Gate). Mit dem alten useEffect-Weg startete
-  // isMobile als false und kippte erst NACH dem ersten Render — das Layout
-  // sprang sichtbar von zweispaltig (Liste+Thread) auf einspaltig um.
-  const [isMobile, setIsMobile] = useState(
-    () => typeof window !== "undefined" && window.innerWidth < 780,
-  );
-  useEffect(() => {
-    const h = () => setIsMobile(window.innerWidth < 780);
-    window.addEventListener("resize", h);
-    return () => window.removeEventListener("resize", h);
-  }, []);
 
   const threadScrollRef = useRef<HTMLDivElement>(null);
   const [showJumpDown, setShowJumpDown] = useState(false);
