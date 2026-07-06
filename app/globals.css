@@ -44,7 +44,9 @@
      Schichten: (1) tiefe Transluzenz + starker Blur mit Saturation-Boost,
      (2) Specular-Lichtkante oben (--glass-rim), (3) diagonaler Sheen
      (--glass-sheen als ::before-Overlay), (4) weiche Tiefenschatten. */
-  --glass-bg: rgba(255, 255, 255, 0.42);
+  /* 0.6 statt 0.42: über bildlastigem Inhalt (Events) war die Bar sonst zu
+     durchsichtig — echte iOS-Bars sind deutlich opaker als sie wirken. */
+  --glass-bg: rgba(255, 255, 255, 0.6);
   --glass-bg-strong: rgba(255, 255, 255, 0.88);
   --glass-border: rgba(255, 255, 255, 0.45);
   --glass-hairline: rgba(0, 0, 0, 0.06);
@@ -86,7 +88,7 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 8px 24px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.6), 0 16px 48px rgba(0, 0, 0, 0.5);
-  --glass-bg: rgba(20, 20, 22, 0.4);
+  --glass-bg: rgba(22, 22, 24, 0.55);
   --glass-bg-strong: rgba(58, 58, 60, 0.9);
   --glass-border: rgba(255, 255, 255, 0.12);
   --glass-hairline: rgba(255, 255, 255, 0.08);
@@ -748,7 +750,8 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   gap: 3px;
   padding: 8px 4px 7px;
   border-radius: 999px;
-  color: var(--ink-3);
+  /* ink-2 statt ink-3: über durchscheinendem (Bild-)Inhalt lesbar bleiben */
+  color: var(--ink-2);
   cursor: pointer;
   transition: background 220ms cubic-bezier(0.2, 0.8, 0.2, 1), color 160ms;
 }
