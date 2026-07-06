@@ -403,7 +403,7 @@ function ExtraTitle({
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           placeholder="z.B. Admin, SportNexus Co-Founder, Forbes 30U30"
-          style={{ flex: "1 1 240px", minWidth: 0, fontSize: 13 }}
+          style={{ flex: "1 1 240px", minWidth: 0 }}
           autoFocus
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); onSave(); } if (e.key === "Escape") setEditing(false); }}
         />

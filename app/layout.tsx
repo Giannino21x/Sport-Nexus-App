@@ -41,6 +41,16 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
+// Edge-to-Edge-Erkennung: Das Safe-Area-Top-Padding (--safe-top) darf nur
+// greifen, wenn die Seite WIRKLICH unter der Status-Bar liegt. Das ist der
+// Fall in (a) der nativen Hülle mit contentInset 'never' — erkennbar am
+// UA-Token "SportNexusEdge" (appendUserAgent in capacitor.config.ts) — und
+// (b) einer Homescreen-PWA. Die ALTE App-Hülle (contentInset 'always') rückt
+// den Inhalt schon nativ unter die Status-Bar; dort würde env(safe-area-
+// inset-top) obendrauf doppeln ("Titel kommt zu weit runter"). Im Browser
+// ist env() ohnehin 0. Läuft inline vor dem ersten Paint (kein Layout-Flash).
+const edgeDetect = `try{if(/SportNexusEdge/.test(navigator.userAgent)||window.matchMedia("(display-mode: standalone)").matches||navigator.standalone===true){document.documentElement.setAttribute("data-shell","edge")}}catch(e){}`;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -52,7 +62,10 @@ export default function RootLayout({
       className={`${bricolage.variable} ${manrope.variable} ${jetbrainsMono.variable}`}
       suppressHydrationWarning
     >
-      <body>{children}</body>
+      <body>
+        <script dangerouslySetInnerHTML={{ __html: edgeDetect }} />
+        {children}
+      </body>
     </html>
   );
 }

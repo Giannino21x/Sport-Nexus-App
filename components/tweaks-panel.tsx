@@ -28,7 +28,7 @@ export function TweaksPanel({ onClose, isMobile, navigate }: Props) {
       {isMobile && <div className="tweaks-backdrop" onClick={onClose} />}
       <div
         className="tweaks"
-        style={{ bottom: isMobile ? `calc(72px + env(safe-area-inset-bottom))` : 20 }}
+        style={{ bottom: isMobile ? `calc(88px + env(safe-area-inset-bottom))` : 20 }}
       >
         <div className="tweaks-header">
           <span>Tweaks</span>

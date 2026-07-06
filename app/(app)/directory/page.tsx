@@ -106,7 +106,8 @@ export default function DirectoryPage() {
         >
           <Icon name="search" size={16} className="text-ink-3" />
           <input
-            style={{ flex: 1, border: "none", background: "transparent", padding: "10px 0", outline: "none", fontSize: 13.5 }}
+            className="input-bare"
+            style={{ flex: 1, border: "none", background: "transparent", padding: "10px 0", outline: "none" }}
             placeholder="Suche nach Name, Firma, Angebot oder Suche..."
             value={q}
             onChange={(e) => setQ(e.target.value)}

@@ -40,16 +40,31 @@
 
   /* Liquid Glass (iOS-26-Look): transluzente Chrome-Flächen, kombiniert mit
      backdrop-filter blur+saturate. Nur fürs App-Chrome (Topbar, Tab-Bar,
-     Drawer) — Inhalte bleiben opak. */
-  --glass-bg: rgba(255, 255, 255, 0.62);
+     Drawer) — Inhalte bleiben opak. Der "echte" Look entsteht aus vier
+     Schichten: (1) tiefe Transluzenz + starker Blur mit Saturation-Boost,
+     (2) Specular-Lichtkante oben (--glass-rim), (3) diagonaler Sheen
+     (--glass-sheen als ::before-Overlay), (4) weiche Tiefenschatten. */
+  --glass-bg: rgba(255, 255, 255, 0.5);
   --glass-bg-strong: rgba(255, 255, 255, 0.85);
-  --glass-border: rgba(0, 0, 0, 0.07);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.55);
+  --glass-hairline: rgba(0, 0, 0, 0.08);
+  --glass-rim: inset 0 1px 1px rgba(255, 255, 255, 0.85), inset 0 -1px 1px rgba(255, 255, 255, 0.25);
+  --glass-sheen: linear-gradient(115deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.12) 28%, rgba(255, 255, 255, 0) 52%, rgba(255, 255, 255, 0.2) 100%);
+  --glass-shadow: 0 10px 36px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.08);
+  --glass-blur: blur(28px) saturate(190%);
 
   --font-display: var(--font-bricolage), "Azo Sans", "Manrope", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-sans: var(--font-manrope), "Azo Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-mono: var(--font-jetbrains-mono), "IBM Plex Mono", ui-monospace, monospace;
+
+  /* Safe-Area oben: standardmässig AUS. Nur wenn die Seite wirklich unter der
+     Status-Bar liegt (data-shell="edge", siehe layout.tsx), wird env() aktiv.
+     Die alte App-Hülle (contentInset 'always') rückt den Inhalt bereits nativ
+     ein — env() obendrauf gäbe doppelten Abstand. safe-area-inset-bottom
+     bleibt ungegated: fixed-Elemente (Tab-Bar) brauchen es in beiden Modi. */
+  --safe-top: 0px;
 }
+:root[data-shell="edge"] { --safe-top: env(safe-area-inset-top); }
 
 [data-theme="dark"] {
   --bg: #0A0A0A;
@@ -71,10 +86,13 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 8px 24px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.6), 0 16px 48px rgba(0, 0, 0, 0.5);
-  --glass-bg: rgba(16, 16, 16, 0.6);
-  --glass-bg-strong: rgba(28, 28, 28, 0.85);
-  --glass-border: rgba(255, 255, 255, 0.09);
-  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --glass-bg: rgba(18, 18, 18, 0.45);
+  --glass-bg-strong: rgba(44, 44, 46, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --glass-hairline: rgba(255, 255, 255, 0.1);
+  --glass-rim: inset 0 1px 1px rgba(255, 255, 255, 0.18), inset 0 -1px 1px rgba(255, 255, 255, 0.06);
+  --glass-sheen: linear-gradient(115deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 28%, rgba(255, 255, 255, 0) 52%, rgba(255, 255, 255, 0.06) 100%);
+  --glass-shadow: 0 10px 36px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
 }
 
 /* SN Blau als Akzent (Sekundärfarbe in Akzentrolle) */
@@ -186,7 +204,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .sidebar {
   background: var(--bg-sunken);
   border-right: 1px solid var(--line);
-  padding: calc(18px + env(safe-area-inset-top)) 16px 0;
+  padding: calc(18px + var(--safe-top)) 16px 0;
   position: sticky;
   top: 0;
   height: 100vh;
@@ -202,10 +220,11 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 /* Mobile-Drawer-Variante der Sidebar: Liquid Glass über dem Seiteninhalt */
 @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
   .sidebar-drawer {
-    background: color-mix(in srgb, var(--bg-sunken) 72%, transparent);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    backdrop-filter: blur(24px) saturate(180%);
-    border-right-color: var(--glass-border);
+    background: color-mix(in srgb, var(--bg-sunken) 55%, transparent);
+    -webkit-backdrop-filter: blur(36px) saturate(190%);
+    backdrop-filter: blur(36px) saturate(190%);
+    border-right: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow), var(--glass-rim);
   }
   .sidebar-drawer .me { background: transparent; }
 }
@@ -351,23 +370,26 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   flex-direction: column;
   min-width: 0;
 }
-/* Topbar reicht bis unter die Status-Bar (Edge-to-Edge in der nativen App,
-   env() ist im Browser 0) und bekommt den Liquid-Glass-Look: Inhalt scrollt
-   sichtbar unter der transluzenten Leiste durch. */
+/* Topbar reicht bis unter die Status-Bar (--safe-top, nur im Edge-to-Edge-
+   Modus aktiv) und bekommt den Liquid-Glass-Look: Inhalt scrollt sichtbar
+   unter der transluzenten Leiste durch. */
 .topbar {
-  height: calc(58px + env(safe-area-inset-top));
+  height: calc(58px + var(--safe-top));
   border-bottom: 1px solid var(--line);
-  padding: env(safe-area-inset-top) 28px 0;
+  padding: var(--safe-top) 28px 0;
   display: flex; align-items: center; gap: 14px;
   background: var(--bg);
-  position: sticky; top: 0; z-index: 10;
+  /* Über der Tab-Bar (50): das Notification-Bottom-Sheet + Backdrop leben im
+     Stacking-Context der Topbar und sollen die Glas-Kapsel mit abdunkeln;
+     Inhalts-Dropdowns (z≤50) scrollen so auch sauber UNTER die Glas-Leiste. */
+  position: sticky; top: 0; z-index: 60;
 }
 @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
   .topbar {
     background: var(--glass-bg);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    backdrop-filter: blur(20px) saturate(180%);
-    border-bottom-color: var(--glass-border);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    border-bottom-color: var(--glass-hairline);
   }
 }
 .topbar .breadcrumbs { font-size: 13px; color: var(--ink-3); display: flex; align-items: center; gap: 8px; }
@@ -529,11 +551,20 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   transition: border-color 120ms, box-shadow 120ms;
 }
 .input:focus, .select:focus, .textarea:focus { border-color: var(--ink); }
+/* Rahmenlose Inputs (z.B. Verzeichnis-Suche): gleiche Typo wie .input,
+   aber ohne Box-Styling — Wrapper zeichnet den Rahmen. */
+.input-bare { font-size: 13.5px; }
 /* iOS zoomt beim Fokussieren automatisch in jedes Input mit font-size < 16px
    hinein (und bleibt in der App-WebView herangezoomt hängen). Auf Touch-
-   Geräten deshalb mindestens 16px. */
+   Geräten deshalb mindestens 16px — die Blanket-Regel fängt auch Felder ohne
+   .input-Klasse ab (Inline-fontSize < 16 auf Inputs bleibt verboten!). */
 @media (hover: none) and (pointer: coarse) {
-  .input, .select, .textarea { font-size: 16px; }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  select,
+  textarea {
+    font-size: max(16px, 1em);
+  }
+  .input, .select, .textarea, .input-bare { font-size: 16px; }
 }
 .textarea { resize: vertical; min-height: 80px; font-family: inherit; }
 .field-label { display: block; font-size: 11.5px; color: var(--ink-3); margin-bottom: 6px; letter-spacing: 0.04em; }
@@ -687,11 +718,22 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
   .tabbar {
     background: var(--glass-bg);
-    -webkit-backdrop-filter: blur(20px) saturate(180%);
-    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
     border-color: var(--glass-border);
-    box-shadow: var(--glass-shadow);
+    box-shadow: var(--glass-shadow), var(--glass-rim);
   }
+  /* Diagonaler Sheen — die "Licht läuft übers Glas"-Schicht */
+  .tabbar::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: var(--glass-sheen);
+    opacity: 0.6;
+    pointer-events: none;
+  }
+  .tabbar > * { position: relative; }
 }
 .tabbar-item {
   flex: 1;
@@ -715,7 +757,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 
 /* ---------- Mobile overrides ---------- */
 @media (max-width: 780px) {
-  .topbar { padding: env(safe-area-inset-top) 16px 0; }
+  .topbar { padding: var(--safe-top) 16px 0; }
   .topbar .search-global { display: none; }
   /* Schwebende Tab-Bar: 12px Abstand + ~58px Kapsel + Luft, plus
      safe-area-inset-bottom (Home-Indicator). Wir reservieren entsprechend
