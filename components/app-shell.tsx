@@ -25,7 +25,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const [notifsOpen, setNotifsOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
+  // Synchroner Startwert (Server: false — dort wird eh nur der Splash
+  // gerendert). Verhindert einen falschen ersten Frame bei Drawer/Popover.
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < 780,
+  );
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { data: members } = useMembers();

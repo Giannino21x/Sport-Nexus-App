@@ -288,10 +288,15 @@ function MessagesInner() {
     });
   };
 
-  const [isMobile, setIsMobile] = useState(false);
+  // Startwert synchron aus window: Seiten unter der AppShell mounten erst
+  // clientseitig (Boot-Splash-Gate). Mit dem alten useEffect-Weg startete
+  // isMobile als false und kippte erst NACH dem ersten Render — das Layout
+  // sprang sichtbar von zweispaltig (Liste+Thread) auf einspaltig um.
+  const [isMobile, setIsMobile] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < 780,
+  );
   useEffect(() => {
     const h = () => setIsMobile(window.innerWidth < 780);
-    h();
     window.addEventListener("resize", h);
     return () => window.removeEventListener("resize", h);
   }, []);
