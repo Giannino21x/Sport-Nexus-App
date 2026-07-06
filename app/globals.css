@@ -223,7 +223,11 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   scrollbar-width: none;
 }
 .sidebar::-webkit-scrollbar { display: none; }
-/* Mobile-Drawer-Variante der Sidebar: Liquid Glass über dem Seiteninhalt */
+/* Mobile-Drawer-Variante der Sidebar: Liquid Glass über dem Seiteninhalt.
+   Als FIXES Element sitzt der Drawer an der echten Bildschirmkante — Abstand
+   zur Status-Bar deshalb via env() direkt (gilt in alter UND neuer Hülle),
+   nicht über das gegatete --safe-top. */
+.sidebar-drawer { padding-top: calc(18px + env(safe-area-inset-top)); }
 @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
   .sidebar-drawer {
     background: color-mix(in srgb, var(--bg-sunken) 55%, transparent);
@@ -761,6 +765,33 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   background: var(--glass-bg-strong);
   box-shadow: var(--shadow-sm);
 }
+
+/* ---------- Status-Bar-Scrim ----------
+   Fixe Glas-Abdeckung der Zone unter Notch/Dynamic Island. Nötig für die
+   ALTE App-Hülle (contentInset 'always'): dort rückt iOS den Inhalt nur
+   initial unter die Status-Bar — beim Runterscrollen läuft er unverdeckt
+   unter der Dynamic Island durch. Fixe Elemente sitzen (anders als der
+   Seiteninhalt) immer an der echten Bildschirmkante, darum hier env()
+   direkt statt --safe-top. Im Browser ist env()=0 → unsichtbar; in der
+   neuen Edge-to-Edge-Hülle deckt die Topbar die Zone selbst ab. */
+.statusbar-scrim {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: env(safe-area-inset-top);
+  z-index: 70;
+  pointer-events: none;
+  background: var(--bg);
+}
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .statusbar-scrim {
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+  }
+}
+:root[data-shell="edge"] .statusbar-scrim { display: none; }
 
 /* ---------- Boot-Splash ----------
    Neutraler erster Frame, bis die Session geklärt ist: verhindert das

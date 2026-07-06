@@ -142,6 +142,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     // per isMobile-State): die JS-Erkennung greift erst nach dem ersten
     // Render und liess auf dem Handy kurz das Desktop-Layout aufblitzen.
     <div className="app" data-mobile={isMobile} data-sidebar={sidebarCollapsed ? "collapsed" : "expanded"}>
+      <div className="statusbar-scrim" aria-hidden="true" />
       <button
         type="button"
         className="sidebar-collapse-btn"
