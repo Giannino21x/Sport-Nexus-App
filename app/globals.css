@@ -855,16 +855,22 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
     flex-direction: column;
   }
 
-  /* iPhone: statt fragile calc auf 100dvh, nutzen wir Flex-Layout. Der Wrap
-     erstreckt sich vom Topbar-Boden bis zur Tab-Bar-Oberkante. Innerhalb
-     drückt das Grid mit flex:1 den Composer immer an die Wrap-Unterkante.
-     content { padding-bottom: 100px } reserviert bereits den Platz für die
-     Tab-Bar — also lassen wir das margin-bottom des Wraps auf 0 (nicht
-     mehr -100px), damit der Composer NICHT unter der Tab-Bar landet. */
+  /* iPhone: Chat als echtes Viewport-Layout. Der Wrap bekommt eine FESTE
+     Höhe (Topbar-Unterkante bis Screen-Unterkante) — vorher war er
+     auto-hoch, dadurch scrollte der ganze BODY und die Composer-Bar
+     "verrutschte" gegen die fixe Tab-Bar. Jetzt scrollen nur Liste bzw.
+     Nachrichten intern; Composer steht fest.
+     Höhenformel: 58px Topbar + env(safe-area-inset-top) deckt beide Hüllen
+     ab — alte Hülle schiebt den Inhalt nativ um env() runter (--safe-top=0),
+     neue Hülle macht die Topbar um --safe-top=env() höher. Browser: env()=0.
+     Das negative margin-bottom neutralisiert das padding-bottom des .content
+     (96px + Safe-Area), damit der Body exakt bildschirmhoch ist. */
   .messages-wrap {
-    margin: -20px -16px 0;
+    margin: -20px -16px calc(-96px - env(safe-area-inset-bottom));
+    height: calc(100dvh - 58px - env(safe-area-inset-top));
     display: flex;
     flex-direction: column;
+    overflow: hidden;
   }
   .messages-inner {
     padding: 16px 16px 16px;
@@ -875,20 +881,20 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   }
   .messages-grid {
     grid-template-columns: 1fr;
-    /* Höhe aus Flex statt aus dvh-Calc — robust gegen wechselnde
-       Browser-Chrome-Höhen, Safari Address-Bar Show/Hide, Notch-Variationen. */
     height: auto;
     flex: 1;
-    min-height: 320px;
+    min-height: 0;
   }
   .messages-list {
     border-right: none;
+    overscroll-behavior: contain;
+    /* Letzter Eintrag muss über der schwebenden Kapsel erreichbar sein */
+    padding-bottom: calc(84px + env(safe-area-inset-bottom));
   }
-  /* Falls die Bottom-Tabbar mit Safe-Area höher als die im content reservierten
-     100px ist (z. B. iPhones mit grossem Home-Indicator), drücken wir den
-     Composer zusätzlich nach oben. */
+  /* Composer über der schwebenden Glas-Kapsel: 12px Abstand + ~58px Kapsel
+     + Luft, plus Home-Indicator. */
   .messages-composer {
-    padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+    padding: 10px 12px calc(84px + env(safe-area-inset-bottom));
   }
   .tweaks-body {
     max-height: none;

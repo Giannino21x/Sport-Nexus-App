@@ -480,7 +480,7 @@ function MessagesInner() {
                   <div
                     ref={threadScrollRef}
                     onScroll={onThreadScroll}
-                    style={{ flex: 1, minHeight: 0, padding: isMobile ? 14 : 24, background: "var(--bg-sunken)", overflowY: "auto", position: "relative" }}
+                    style={{ flex: 1, minHeight: 0, padding: isMobile ? 14 : 24, background: "var(--bg-sunken)", overflowY: "auto", overscrollBehavior: "contain", position: "relative" }}
                   >
                     {msgs.length === 0 ? (
                       <div style={{ textAlign: "center", color: "var(--ink-3)", fontSize: 13, marginTop: 40 }}>
