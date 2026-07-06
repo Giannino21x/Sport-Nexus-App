@@ -266,19 +266,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       {isMobile && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            background: "var(--bg-elevated)",
-            borderTop: "1px solid var(--line)",
-            display: "flex",
-            padding: "6px 6px calc(6px + env(safe-area-inset-bottom))",
-            zIndex: 50,
-          }}
-        >
+        <div className="tabbar">
           {[
             { href: "/dashboard", icon: "home" as const, l: "Home" },
             { href: "/directory", icon: "users" as const, l: "Members" },
@@ -289,21 +277,10 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Link
               key={it.href}
               href={it.href}
-              style={{
-                flex: 1,
-                padding: "8px 4px",
-                background: "transparent",
-                border: "none",
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                gap: 3,
-                color: isActive(it.href) ? "var(--ink)" : "var(--ink-3)",
-                cursor: "pointer",
-              }}
+              className={"tabbar-item" + (isActive(it.href) ? " active" : "")}
             >
               <Icon name={it.icon} size={19} />
-              <span style={{ fontSize: 10 }}>{it.l}</span>
+              <span className="tabbar-label">{it.l}</span>
             </Link>
           ))}
         </div>
@@ -316,7 +293,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         >
           <aside
             onClick={(e) => e.stopPropagation()}
-            className="sidebar"
+            className="sidebar sidebar-drawer"
             style={{ position: "fixed", top: 0, left: 0, width: 260, height: "100vh" }}
           >
             <div className="brand"><LogoWordmark height={22} invert={theme === "dark"} /></div>

@@ -197,7 +197,8 @@ export function CommandPalette({
               outline: "none",
               background: "transparent",
               color: "var(--ink)",
-              fontSize: 15,
+              // 16px: unter 16px zoomt iOS beim Fokus automatisch hinein
+              fontSize: 16,
               fontFamily: "inherit",
             }}
             autoComplete="off"

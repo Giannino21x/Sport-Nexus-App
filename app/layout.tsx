@@ -30,9 +30,14 @@ export const metadata: Metadata = {
 // Desktop-Breite (980px) und skaliert runter. `viewportFit: cover` reicht den
 // Safe-Area-Inset ins CSS durch, damit env(safe-area-inset-*) für Notch/Home-
 // Indicator korrekt aufgelöst wird.
+// maximumScale/userScalable: Safari IGNORIERT beides seit iOS 10 (Pinch-Zoom
+// im Browser bleibt möglich), aber die WKWebView der nativen App respektiert
+// es — verhindert dort den hängenbleibenden Auto-Zoom beim Input-Fokus.
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: "cover",
 };
 

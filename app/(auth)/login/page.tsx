@@ -106,7 +106,7 @@ function LoginInner() {
           }}
         />
 
-        <div style={{ position: "absolute", top: 36, left: 40, zIndex: 3, filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.5))" }}>
+        <div style={{ position: "absolute", top: "calc(36px + env(safe-area-inset-top))", left: 40, zIndex: 3, filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.5))" }}>
           <LogoWordmark height={38} variant="color-on-dark" />
         </div>
 

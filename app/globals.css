@@ -38,6 +38,14 @@
   --shadow: 0 2px 6px rgba(0, 0, 0, 0.05), 0 8px 22px rgba(0, 0, 0, 0.05);
   --shadow-lg: 0 4px 14px rgba(0, 0, 0, 0.08), 0 18px 48px rgba(0, 0, 0, 0.09);
 
+  /* Liquid Glass (iOS-26-Look): transluzente Chrome-Flächen, kombiniert mit
+     backdrop-filter blur+saturate. Nur fürs App-Chrome (Topbar, Tab-Bar,
+     Drawer) — Inhalte bleiben opak. */
+  --glass-bg: rgba(255, 255, 255, 0.62);
+  --glass-bg-strong: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(0, 0, 0, 0.07);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.14), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+
   --font-display: var(--font-bricolage), "Azo Sans", "Manrope", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-sans: var(--font-manrope), "Azo Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-mono: var(--font-jetbrains-mono), "IBM Plex Mono", ui-monospace, monospace;
@@ -63,6 +71,10 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 8px 24px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.6), 0 16px 48px rgba(0, 0, 0, 0.5);
+  --glass-bg: rgba(16, 16, 16, 0.6);
+  --glass-bg-strong: rgba(28, 28, 28, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 /* SN Blau als Akzent (Sekundärfarbe in Akzentrolle) */
@@ -174,7 +186,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .sidebar {
   background: var(--bg-sunken);
   border-right: 1px solid var(--line);
-  padding: 18px 16px 0;
+  padding: calc(18px + env(safe-area-inset-top)) 16px 0;
   position: sticky;
   top: 0;
   height: 100vh;
@@ -187,6 +199,16 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   scrollbar-width: none;
 }
 .sidebar::-webkit-scrollbar { display: none; }
+/* Mobile-Drawer-Variante der Sidebar: Liquid Glass über dem Seiteninhalt */
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .sidebar-drawer {
+    background: color-mix(in srgb, var(--bg-sunken) 72%, transparent);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    backdrop-filter: blur(24px) saturate(180%);
+    border-right-color: var(--glass-border);
+  }
+  .sidebar-drawer .me { background: transparent; }
+}
 .app[data-sidebar="collapsed"] .sidebar { overflow: hidden; }
 .sidebar .brand {
   display: flex;
@@ -329,13 +351,24 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   flex-direction: column;
   min-width: 0;
 }
+/* Topbar reicht bis unter die Status-Bar (Edge-to-Edge in der nativen App,
+   env() ist im Browser 0) und bekommt den Liquid-Glass-Look: Inhalt scrollt
+   sichtbar unter der transluzenten Leiste durch. */
 .topbar {
-  height: 58px;
+  height: calc(58px + env(safe-area-inset-top));
   border-bottom: 1px solid var(--line);
-  padding: 0 28px;
+  padding: env(safe-area-inset-top) 28px 0;
   display: flex; align-items: center; gap: 14px;
   background: var(--bg);
   position: sticky; top: 0; z-index: 10;
+}
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .topbar {
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    border-bottom-color: var(--glass-border);
+  }
 }
 .topbar .breadcrumbs { font-size: 13px; color: var(--ink-3); display: flex; align-items: center; gap: 8px; }
 .topbar .breadcrumbs .crumb-current { color: var(--ink); }
@@ -496,6 +529,12 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   transition: border-color 120ms, box-shadow 120ms;
 }
 .input:focus, .select:focus, .textarea:focus { border-color: var(--ink); }
+/* iOS zoomt beim Fokussieren automatisch in jedes Input mit font-size < 16px
+   hinein (und bleibt in der App-WebView herangezoomt hängen). Auf Touch-
+   Geräten deshalb mindestens 16px. */
+@media (hover: none) and (pointer: coarse) {
+  .input, .select, .textarea { font-size: 16px; }
+}
 .textarea { resize: vertical; min-height: 80px; font-family: inherit; }
 .field-label { display: block; font-size: 11.5px; color: var(--ink-3); margin-bottom: 6px; letter-spacing: 0.04em; }
 .field { margin-bottom: 14px; }
@@ -579,12 +618,12 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   }
   .notif-popover {
     position: fixed;
-    inset: auto 12px calc(70px + env(safe-area-inset-bottom)) 12px;
+    inset: auto 12px calc(86px + env(safe-area-inset-bottom)) 12px;
     width: auto;
     max-width: none;
     top: auto;
     right: auto;
-    max-height: calc(100dvh - 140px - env(safe-area-inset-bottom));
+    max-height: calc(100dvh - 156px - env(safe-area-inset-bottom));
   }
   .notif-popover .notif-list {
     max-height: none;
@@ -629,14 +668,59 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   overflow: hidden;
 }
 
+/* ---------- Mobile Bottom-Tab-Bar (Liquid Glass) ----------
+   Schwebende Kapsel im iOS-26-Stil statt vollbreiter Leiste: abgerundet,
+   transluzent, mit Blur — der Seiteninhalt scheint beim Scrollen durch. */
+.tabbar {
+  position: fixed;
+  left: 14px;
+  right: 14px;
+  bottom: calc(12px + env(safe-area-inset-bottom));
+  z-index: 50;
+  display: flex;
+  padding: 5px;
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-lg);
+}
+@supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .tabbar {
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    backdrop-filter: blur(20px) saturate(180%);
+    border-color: var(--glass-border);
+    box-shadow: var(--glass-shadow);
+  }
+}
+.tabbar-item {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 4px 7px;
+  border-radius: 999px;
+  color: var(--ink-3);
+  cursor: pointer;
+  transition: background 150ms, color 150ms;
+}
+.tabbar-item .tabbar-label { font-size: 10px; line-height: 1; }
+.tabbar-item.active {
+  color: var(--ink);
+  background: var(--glass-bg-strong);
+  box-shadow: var(--shadow-sm);
+}
+
 /* ---------- Mobile overrides ---------- */
 @media (max-width: 780px) {
-  .topbar { padding: 0 16px; }
+  .topbar { padding: env(safe-area-inset-top) 16px 0; }
   .topbar .search-global { display: none; }
-  /* Bottom-Tabbar ist ~62px hoch plus safe-area-inset-bottom (Home-Indicator).
-     Wir reservieren entsprechend mehr Platz, damit auf neueren iPhones mit
-     grossem Home-Indicator nichts hinter der Tabbar verschwindet. */
-  .content { padding: 20px 16px calc(80px + env(safe-area-inset-bottom)); }
+  /* Schwebende Tab-Bar: 12px Abstand + ~58px Kapsel + Luft, plus
+     safe-area-inset-bottom (Home-Indicator). Wir reservieren entsprechend
+     Platz, damit nichts hinter der Kapsel verschwindet. */
+  .content { padding: 20px 16px calc(96px + env(safe-area-inset-bottom)); }
   .page-header h1 { font-size: 38px; }
   .page-header { flex-direction: column; align-items: flex-start; gap: 12px; margin-bottom: 20px; padding-bottom: 14px; }
 
