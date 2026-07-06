@@ -336,6 +336,12 @@ export function useMe(): { data: Member | null; loading: boolean; isDemo: boolea
       }
       setResolved(true);
       setLoading(false);
+    }).catch(() => {
+      // Netzwerk-/Storage-Fehler darf NIE im ewigen Boot-Splash enden:
+      // resolved setzen und mit dem (evtl. gecachten) Stand weiterarbeiten.
+      if (cancelled) return;
+      setResolved(true);
+      setLoading(false);
     });
     return () => { cancelled = true; };
   }, [dataSource, hydrated, tick]);
