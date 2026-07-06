@@ -4,8 +4,10 @@ import { type ReactNode } from "react";
 import { useMe } from "@/lib/hooks";
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
-  const { data: me, loading } = useMe();
-  if (loading) return <div style={{ padding: 40, color: "var(--ink-3)" }}>Lade...</div>;
+  const { data: me, resolved } = useMe();
+  // resolved statt loading: loading ist auch während stiller Hintergrund-
+  // Revalidierung true — das liess bei jedem Besuch kurz "Lade..." aufblitzen.
+  if (!resolved) return <div style={{ padding: 40, color: "var(--ink-3)" }}>Lade...</div>;
   if (!me) return null;
   if (!me.isAdmin) {
     return (

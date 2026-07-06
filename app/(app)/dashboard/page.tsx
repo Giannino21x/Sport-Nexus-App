@@ -12,8 +12,8 @@ import { getEventAttendeeCountsAction } from "@/app/actions/guestoo";
 export default function DashboardPage() {
   const router = useRouter();
   const { data: me } = useMe();
-  const { data: members } = useMembers();
-  const { data: events } = useEvents();
+  const { data: members, resolved: membersReady } = useMembers();
+  const { data: events, resolved: eventsReady } = useEvents();
   const { isRegistered } = useMyRegistrations();
 
   const [now, setNow] = useState(() => new Date());
@@ -110,11 +110,13 @@ export default function DashboardPage() {
   const profilePct = Math.round((profileFilled / profileTotal) * 100);
   const profileMissing = profileChecks.filter((c) => !c.filled).map((c) => c.label);
 
+  // Erste Ladung (noch nichts im Cache): "–" statt 0 zeigen — eine falsche 0,
+  // die dann zur echten Zahl umspringt, wirkt wie ein Flicker.
   const stats = [
-    { k: "Mitglieder", v: members.length, sub: "im Netzwerk" },
-    { k: "Kommende Events", v: upcoming.length, sub: "angekündigt" },
-    { k: "Angemeldete Events", v: registeredUpcomingCount, sub: `von ${upcoming.length} möglichen` },
-    { k: "Matchmaking", v: matchSuggestions.length, sub: "Vorschläge für dich" },
+    { k: "Mitglieder", v: membersReady ? members.length : "–", sub: "im Netzwerk" },
+    { k: "Kommende Events", v: eventsReady ? upcoming.length : "–", sub: "angekündigt" },
+    { k: "Angemeldete Events", v: eventsReady ? registeredUpcomingCount : "–", sub: eventsReady ? `von ${upcoming.length} möglichen` : "wird geladen" },
+    { k: "Matchmaking", v: membersReady ? matchSuggestions.length : "–", sub: "Vorschläge für dich" },
   ];
 
   return (

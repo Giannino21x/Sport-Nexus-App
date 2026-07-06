@@ -20,6 +20,51 @@ export function reload(key: ReloadKey) {
   listeners[key].forEach((l) => l());
 }
 
+// ---------- Live-Daten-Cache (SWR-Muster, persistent) ----------
+// Die Hooks halten ihren State nur pro Mount — ohne Cache lädt jeder
+// Tab-Wechsel alles neu von Supabase und die Seite flackert leer auf.
+// Der Cache lebt (a) modul-weit über Seitenwechsel hinweg und (b) via
+// localStorage über App-Kaltstarts hinweg: Beim Öffnen rendert die App
+// sofort den letzten bekannten Stand (Zahlen, Listen, eigener User) und
+// revalidiert leise im Hintergrund — kein "die Zahl lädt noch"-Flicker.
+// User-spezifische Teile (notifications/conversations) sind mit der
+// Member-DB-Id keyed und greifen nur für denselben User; beim Logout
+// wird alles geleert (clearLiveCache in der AppShell).
+type LiveCache = {
+  me?: { member: Member | null; dbId: string | null };
+  members?: Member[];
+  events?: SnEvent[];
+  notifications?: { key: string; data: Notif[] };
+  conversations?: { key: string; data: Conversation[] };
+};
+
+const CACHE_KEY = "sn_live_cache_v1";
+
+const liveCache: LiveCache = (() => {
+  if (typeof window === "undefined") return {};
+  try {
+    return JSON.parse(window.localStorage.getItem(CACHE_KEY) || "{}") as LiveCache;
+  } catch {
+    return {};
+  }
+})();
+
+function persistLiveCache() {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(CACHE_KEY, JSON.stringify(liveCache));
+  } catch {
+    // Quota voll o.ä. — Cache ist nur Beschleunigung, nie Wahrheit.
+  }
+}
+
+export function clearLiveCache() {
+  (Object.keys(liveCache) as (keyof LiveCache)[]).forEach((k) => delete liveCache[k]);
+  if (typeof window !== "undefined") {
+    try { window.localStorage.removeItem(CACHE_KEY); } catch {}
+  }
+}
+
 // Demo-mode avatar persistence: hardcoded MEMBERS have no avatar, so we mirror
 // the user's choice into localStorage and merge it back when reading.
 export const DEMO_AVATAR_KEY = "sn_demo_avatar";
@@ -167,7 +212,7 @@ function rowToEvent(r: Row): SnEvent {
 export function useMembers() {
   const { dataSource, hydrated } = useSettings();
   const tick = useReloadTick("members");
-  const [live, setLive] = useState<Member[] | null>(null);
+  const [live, setLive] = useState<Member[] | null>(() => liveCache.members ?? null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -178,7 +223,12 @@ export function useMembers() {
     supabase.from("members").select("*").order("last", { ascending: true }).then(({ data, error }) => {
       if (cancelled) return;
       if (error || !data) setLive([]);
-      else setLive(data.map(rowToMember));
+      else {
+        const arr = data.map(rowToMember);
+        liveCache.members = arr;
+        persistLiveCache();
+        setLive(arr);
+      }
       setLoading(false);
     });
     return () => { cancelled = true; };
@@ -189,15 +239,18 @@ export function useMembers() {
     const merged = demoAvatar
       ? MEMBERS.map((m) => (m.id === ME_ID ? { ...m, avatarUrl: demoAvatar } : m))
       : MEMBERS;
-    return { data: merged, loading: false, isDemo: true };
+    return { data: merged, loading: false, isDemo: true, resolved: true };
   }
-  return { data: live ?? [], loading, isDemo: false };
+  // resolved = mindestens einmal Daten da (frisch oder aus dem Cache) —
+  // UI kann damit "–" statt einer falschen 0 zeigen, ohne bei stiller
+  // Hintergrund-Revalidierung (loading) erneut zu flackern.
+  return { data: live ?? [], loading, isDemo: false, resolved: live !== null };
 }
 
 export function useEvents() {
   const { dataSource, hydrated } = useSettings();
   const tick = useReloadTick("events");
-  const [live, setLive] = useState<SnEvent[] | null>(null);
+  const [live, setLive] = useState<SnEvent[] | null>(() => liveCache.events ?? null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -212,14 +265,19 @@ export function useEvents() {
       .then(({ data, error }) => {
         if (cancelled) return;
         if (error || !data) setLive([]);
-        else setLive(data.map(rowToEvent));
+        else {
+          const arr = data.map(rowToEvent);
+          liveCache.events = arr;
+          persistLiveCache();
+          setLive(arr);
+        }
         setLoading(false);
       });
     return () => { cancelled = true; };
   }, [dataSource, hydrated, tick]);
 
-  if (!hydrated || dataSource === "demo") return { data: demoEventsWithDerivedStatus(), loading: false, isDemo: true };
-  return { data: live ?? [], loading, isDemo: false };
+  if (!hydrated || dataSource === "demo") return { data: demoEventsWithDerivedStatus(), loading: false, isDemo: true, resolved: true };
+  return { data: live ?? [], loading, isDemo: false, resolved: live !== null };
 }
 
 export function useMember(id: string) {
@@ -234,12 +292,16 @@ export function useEvent(id: string) {
   return { data: ev, loading, isDemo };
 }
 
-export function useMe(): { data: Member | null; loading: boolean; isDemo: boolean; dbId: string | null } {
+export function useMe(): { data: Member | null; loading: boolean; isDemo: boolean; dbId: string | null; resolved: boolean } {
   const { dataSource, hydrated } = useSettings();
   const tick = useReloadTick("members");
-  const [liveMember, setLiveMember] = useState<Member | null>(null);
-  const [liveDbId, setLiveDbId] = useState<string | null>(null);
+  const [liveMember, setLiveMember] = useState<Member | null>(() => liveCache.me?.member ?? null);
+  const [liveDbId, setLiveDbId] = useState<string | null>(() => liveCache.me?.dbId ?? null);
   const [loading, setLoading] = useState(false);
+  // resolved = die Session-Frage ist beantwortet (erste Live-Antwort da oder
+  // im Cache). Solange false, zeigt die AppShell den Boot-Splash — es dürfen
+  // nie Demo-Daten oder "Nicht eingeloggt" für Live-User aufblitzen.
+  const [resolved, setResolved] = useState(() => liveCache.me !== undefined);
 
   useEffect(() => {
     if (!hydrated || dataSource !== "live") return;
@@ -249,20 +311,30 @@ export function useMe(): { data: Member | null; loading: boolean; isDemo: boolea
     supabase.auth.getUser().then(async ({ data: { user } }) => {
       if (cancelled) return;
       if (!user) {
+        // Ausgeloggt: kompletten Cache leeren, damit beim nächsten Login
+        // (evtl. anderer User) keine fremden Daten aufblitzen.
+        clearLiveCache();
         setLiveMember(null);
         setLiveDbId(null);
+        setResolved(true);
         setLoading(false);
         return;
       }
       const { data } = await supabase.from("members").select("*").eq("auth_id", user.id).maybeSingle();
       if (cancelled) return;
       if (data) {
-        setLiveMember(rowToMember(data));
+        const member = rowToMember(data);
+        liveCache.me = { member, dbId: String(data.id) };
+        persistLiveCache();
+        setLiveMember(member);
         setLiveDbId(String(data.id));
       } else {
+        liveCache.me = { member: null, dbId: null };
+        persistLiveCache();
         setLiveMember(null);
         setLiveDbId(null);
       }
+      setResolved(true);
       setLoading(false);
     });
     return () => { cancelled = true; };
@@ -276,9 +348,11 @@ export function useMe(): { data: Member | null; loading: boolean; isDemo: boolea
       loading: false,
       isDemo: true,
       dbId: null,
+      // Vor der Hydration ist die Session ungeklärt — Shell zeigt Splash.
+      resolved: hydrated,
     };
   }
-  return { data: liveMember, loading, isDemo: false, dbId: liveDbId };
+  return { data: liveMember, loading, isDemo: false, dbId: liveDbId, resolved };
 }
 
 export type Conversation = {
@@ -292,7 +366,9 @@ export type Conversation = {
 export function useConversations(meDbId: string | null) {
   const { dataSource, hydrated } = useSettings();
   const tick = useReloadTick("messages");
-  const [convos, setConvos] = useState<Conversation[]>([]);
+  const [convos, setConvos] = useState<Conversation[]>(() =>
+    liveCache.conversations?.key === meDbId ? liveCache.conversations.data : [],
+  );
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -353,6 +429,8 @@ export function useConversations(meDbId: string | null) {
           return { other, otherDbId: dbId, last: agg.last, time: agg.time, unread: agg.unread };
         })
         .filter((x): x is Conversation => x !== null);
+      liveCache.conversations = { key: meDbId, data: result };
+      persistLiveCache();
       setConvos(result);
       setLoading(false);
     })();
@@ -445,7 +523,9 @@ const DEMO_NOTIFS: Notif[] = [
 export function useNotifications(meDbId: string | null) {
   const { dataSource, hydrated } = useSettings();
   const tick = useReloadTick("notifications");
-  const [live, setLive] = useState<Notif[]>([]);
+  const [live, setLive] = useState<Notif[]>(() =>
+    liveCache.notifications?.key === meDbId ? liveCache.notifications.data : [],
+  );
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -461,16 +541,17 @@ export function useNotifications(meDbId: string | null) {
       .limit(10)
       .then(({ data }) => {
         if (cancelled) return;
-        setLive(
-          (data ?? []).map((r) => ({
-            id: String(r.id),
-            kind: String(r.kind),
-            title: String(r.title),
-            preview: String(r.preview ?? ""),
-            unread: Boolean(r.unread),
-            time: formatRelativeTime(String(r.created_at)),
-          })),
-        );
+        const mapped = (data ?? []).map((r) => ({
+          id: String(r.id),
+          kind: String(r.kind),
+          title: String(r.title),
+          preview: String(r.preview ?? ""),
+          unread: Boolean(r.unread),
+          time: formatRelativeTime(String(r.created_at)),
+        }));
+        liveCache.notifications = { key: meDbId, data: mapped };
+        persistLiveCache();
+        setLive(mapped);
         setLoading(false);
       });
     return () => { cancelled = true; };

@@ -44,14 +44,14 @@
      Schichten: (1) tiefe Transluzenz + starker Blur mit Saturation-Boost,
      (2) Specular-Lichtkante oben (--glass-rim), (3) diagonaler Sheen
      (--glass-sheen als ::before-Overlay), (4) weiche Tiefenschatten. */
-  --glass-bg: rgba(255, 255, 255, 0.5);
-  --glass-bg-strong: rgba(255, 255, 255, 0.85);
-  --glass-border: rgba(255, 255, 255, 0.55);
-  --glass-hairline: rgba(0, 0, 0, 0.08);
-  --glass-rim: inset 0 1px 1px rgba(255, 255, 255, 0.85), inset 0 -1px 1px rgba(255, 255, 255, 0.25);
-  --glass-sheen: linear-gradient(115deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.12) 28%, rgba(255, 255, 255, 0) 52%, rgba(255, 255, 255, 0.2) 100%);
-  --glass-shadow: 0 10px 36px rgba(0, 0, 0, 0.16), 0 2px 8px rgba(0, 0, 0, 0.08);
-  --glass-blur: blur(28px) saturate(190%);
+  --glass-bg: rgba(255, 255, 255, 0.42);
+  --glass-bg-strong: rgba(255, 255, 255, 0.88);
+  --glass-border: rgba(255, 255, 255, 0.45);
+  --glass-hairline: rgba(0, 0, 0, 0.06);
+  --glass-rim: inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  --glass-sheen: linear-gradient(115deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.06) 30%, rgba(255, 255, 255, 0) 55%, rgba(255, 255, 255, 0.1) 100%);
+  --glass-shadow: 0 12px 40px rgba(0, 0, 0, 0.14), 0 2px 10px rgba(0, 0, 0, 0.05);
+  --glass-blur: blur(40px) saturate(180%);
 
   --font-display: var(--font-bricolage), "Azo Sans", "Manrope", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-sans: var(--font-manrope), "Azo Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -86,13 +86,13 @@
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow: 0 2px 8px rgba(0, 0, 0, 0.5), 0 8px 24px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 4px 16px rgba(0, 0, 0, 0.6), 0 16px 48px rgba(0, 0, 0, 0.5);
-  --glass-bg: rgba(18, 18, 18, 0.45);
-  --glass-bg-strong: rgba(44, 44, 46, 0.85);
-  --glass-border: rgba(255, 255, 255, 0.14);
-  --glass-hairline: rgba(255, 255, 255, 0.1);
-  --glass-rim: inset 0 1px 1px rgba(255, 255, 255, 0.18), inset 0 -1px 1px rgba(255, 255, 255, 0.06);
-  --glass-sheen: linear-gradient(115deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 28%, rgba(255, 255, 255, 0) 52%, rgba(255, 255, 255, 0.06) 100%);
-  --glass-shadow: 0 10px 36px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
+  --glass-bg: rgba(20, 20, 22, 0.4);
+  --glass-bg-strong: rgba(58, 58, 60, 0.9);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-hairline: rgba(255, 255, 255, 0.08);
+  --glass-rim: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  --glass-sheen: linear-gradient(115deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 30%, rgba(255, 255, 255, 0) 55%, rgba(255, 255, 255, 0.03) 100%);
+  --glass-shadow: 0 12px 40px rgba(0, 0, 0, 0.55), 0 2px 10px rgba(0, 0, 0, 0.35);
 }
 
 /* SN Blau als Akzent (Sekundärfarbe in Akzentrolle) */
@@ -211,6 +211,10 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   height: 100dvh;
   overflow-y: auto;
   overflow-x: hidden;
+  /* Kein Scroll-Chaining: am Listenende darf nicht die Seite dahinter
+     weiterscrollen (fühlte sich im Drawer auf iOS kaputt an). */
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -723,14 +727,14 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
     border-color: var(--glass-border);
     box-shadow: var(--glass-shadow), var(--glass-rim);
   }
-  /* Diagonaler Sheen — die "Licht läuft übers Glas"-Schicht */
+  /* Diagonaler Sheen — die "Licht läuft übers Glas"-Schicht, bewusst dezent */
   .tabbar::before {
     content: "";
     position: absolute;
     inset: 0;
     border-radius: inherit;
     background: var(--glass-sheen);
-    opacity: 0.6;
+    opacity: 0.5;
     pointer-events: none;
   }
   .tabbar > * { position: relative; }
@@ -746,13 +750,54 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   border-radius: 999px;
   color: var(--ink-3);
   cursor: pointer;
-  transition: background 150ms, color 150ms;
+  transition: background 220ms cubic-bezier(0.2, 0.8, 0.2, 1), color 160ms;
 }
 .tabbar-item .tabbar-label { font-size: 10px; line-height: 1; }
 .tabbar-item.active {
   color: var(--ink);
   background: var(--glass-bg-strong);
   box-shadow: var(--shadow-sm);
+}
+
+/* ---------- Boot-Splash ----------
+   Neutraler erster Frame, bis die Session geklärt ist: verhindert das
+   Aufblitzen von Demo-Daten oder "Nicht eingeloggt" beim App-Start. */
+.boot-splash {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--bg);
+  z-index: 500;
+}
+.boot-splash img {
+  width: 52px;
+  height: auto;
+  animation: boot-pulse 1.5s ease-in-out infinite;
+}
+@keyframes boot-pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+
+/* ---------- Responsive Chrome-Weiche (CSS statt JS) ----------
+   Desktop-Sidebar vs. Mobile-Tabbar wird rein per Media-Query umgeschaltet.
+   Die isMobile-Erkennung in JS greift erst NACH dem ersten Render — würde
+   das Chrome davon abhängen, blitzt beim Laden das falsche Layout auf. */
+.topbar .breadcrumbs .crumbs-desktop { display: flex; align-items: center; gap: 8px; }
+.topbar .breadcrumbs .crumbs-mobile { display: flex; align-items: center; }
+.topbar .topbar-avatar-mobile { display: flex; align-items: center; }
+@media (max-width: 779px) {
+  .app { grid-template-columns: 1fr !important; }
+  .sidebar-desktop { display: none !important; }
+  .sidebar-collapse-btn { display: none !important; }
+  .crumbs-desktop { display: none !important; }
+}
+@media (min-width: 780px) {
+  .tabbar { display: none !important; }
+  .topbar-hamburger { display: none !important; }
+  .crumbs-mobile { display: none !important; }
+  .topbar-avatar-mobile { display: none !important; }
 }
 
 /* ---------- Mobile overrides ---------- */

@@ -10,7 +10,7 @@ import { LogoWordmark } from "./logo-wordmark";
 import { NotificationsPopover } from "./notifications-popover";
 import { PhotoGate } from "./photo-gate";
 import { useSettings } from "./settings-context";
-import { useEvents, useMe, useMembers, useNotifications } from "@/lib/hooks";
+import { clearLiveCache, useEvents, useMe, useMembers, useNotifications } from "@/lib/hooks";
 import { signOutAction } from "@/app/actions/auth";
 
 type NavItem = { k: string; href: string; label: string; icon: IconName; badge?: number; dot?: boolean; beta?: boolean };
@@ -19,7 +19,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const { theme, setTheme, dataSource } = useSettings();
-  const { data: me, dbId: meDbId } = useMe();
+  const { data: me, dbId: meDbId, resolved: meResolved } = useMe();
   const { data: events } = useEvents();
   const { data: notifs } = useNotifications(meDbId);
 
@@ -64,6 +64,21 @@ export function AppShell({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("resize", h);
   }, []);
 
+  // Ausgeloggt (Session geklärt, kein User): direkt zum Login — der User
+  // sieht nur den Boot-Splash, nie einen "Nicht eingeloggt"-Zwischenschritt.
+  useEffect(() => {
+    if (meResolved && !me) router.replace("/login");
+  }, [meResolved, me, router]);
+
+  // Hintergrund-Scroll sperren, solange der Drawer offen ist — sonst
+  // scrollt auf iOS die Seite hinter dem Menü mit (fühlt sich kaputt an).
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [mobileMenuOpen]);
+
   const upcoming = useMemo(() => events.filter((e) => e.status === "upcoming"), [events]);
   const unreadCount = notifs.filter((n) => n.unread).length;
 
@@ -97,6 +112,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         pathname === "/profile" ? "Profil bearbeiten" : "Dashboard");
 
   const handleLogout = async () => {
+    // Persistenter Live-Cache gehört zum User — beim Abmelden leeren.
+    clearLiveCache();
     if (dataSource === "live") {
       await signOutAction();
     } else {
@@ -104,41 +121,40 @@ export function AppShell({ children }: { children: ReactNode }) {
     }
   };
 
-  if (!me) {
-    // In live mode when signed out: still render shell (middleware only protects /login redirect)
-    // Show minimal placeholder — user likely needs to login
+  if (!meResolved || !me) {
+    // Boot-Splash: erste Antwort der Session steht noch aus (oder der
+    // Redirect zu /login läuft gerade). Wird auch serverseitig so gerendert —
+    // dadurch blitzen beim Laden nie Demo-Daten oder Platzhalter auf.
     return (
-      <div style={{ padding: 40 }}>
-        <div className="serif" style={{ fontSize: 24 }}>Nicht eingeloggt</div>
-        <Link href="/login" className="btn btn-primary" style={{ marginTop: 14 }}>
-          Zum Login
-        </Link>
+      <div className="boot-splash" aria-label="Lädt">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo-n.png" alt="SportNexus" />
       </div>
     );
   }
 
   return (
+    // Desktop/Mobile-Chrome wird per CSS-Media-Query ein-/ausgeblendet (nicht
+    // per isMobile-State): die JS-Erkennung greift erst nach dem ersten
+    // Render und liess auf dem Handy kurz das Desktop-Layout aufblitzen.
     <div className="app" data-mobile={isMobile} data-sidebar={sidebarCollapsed ? "collapsed" : "expanded"}>
-      {!isMobile && (
-        <button
-          type="button"
-          className="sidebar-collapse-btn"
-          onClick={toggleSidebar}
-          aria-label={sidebarCollapsed ? "Sidebar ausklappen" : "Sidebar einklappen"}
-          title={sidebarCollapsed ? "Sidebar ausklappen" : "Sidebar einklappen"}
-        >
-          <Icon
-            name="chevron"
-            size={12}
-            style={{
-              transform: sidebarCollapsed ? "rotate(0deg)" : "rotate(180deg)",
-              transition: "transform 160ms",
-            }}
-          />
-        </button>
-      )}
-      {!isMobile && (
-        <aside className="sidebar">
+      <button
+        type="button"
+        className="sidebar-collapse-btn"
+        onClick={toggleSidebar}
+        aria-label={sidebarCollapsed ? "Sidebar ausklappen" : "Sidebar einklappen"}
+        title={sidebarCollapsed ? "Sidebar ausklappen" : "Sidebar einklappen"}
+      >
+        <Icon
+          name="chevron"
+          size={12}
+          style={{
+            transform: sidebarCollapsed ? "rotate(0deg)" : "rotate(180deg)",
+            transition: "transform 160ms",
+          }}
+        />
+      </button>
+      <aside className="sidebar sidebar-desktop">
           <div className="brand">
             <div className="brand-logo-wrap brand-logo-full">
               <LogoWordmark height={22} invert={theme === "dark"} />
@@ -216,33 +232,27 @@ export function AppShell({ children }: { children: ReactNode }) {
             </div>
           </Link>
         </aside>
-      )}
 
       <div className="main">
         <div className="topbar">
-          {isMobile && (
-            <button className="icon-btn" onClick={() => setMobileMenuOpen(true)} style={{ marginRight: 2 }}>
-              <Icon name="menu" size={18} />
-            </button>
-          )}
+          <button className="icon-btn topbar-hamburger" onClick={() => setMobileMenuOpen(true)} style={{ marginRight: 2 }}>
+            <Icon name="menu" size={18} />
+          </button>
           <div className="breadcrumbs">
-            {isMobile ? (
+            <span className="crumbs-mobile">
               <LogoWordmark height={18} invert={theme === "dark"} />
-            ) : (
-              <>
-                <span>SportNexus</span>
-                <span>/</span>
-                <span className="crumb-current">{currentNavLabel}</span>
-              </>
-            )}
+            </span>
+            <span className="crumbs-desktop">
+              <span>SportNexus</span>
+              <span>/</span>
+              <span className="crumb-current">{currentNavLabel}</span>
+            </span>
           </div>
-          {!isMobile && (
-            <div className="search-global" onClick={() => setPaletteOpen(true)} role="button" tabIndex={0}>
-              <Icon name="search" size={14} />
-              <span style={{ flex: 1 }}>Mitglieder, Events, Seiten suchen...</span>
-              <kbd>⌘K</kbd>
-            </div>
-          )}
+          <div className="search-global" onClick={() => setPaletteOpen(true)} role="button" tabIndex={0}>
+            <Icon name="search" size={14} />
+            <span style={{ flex: 1 }}>Mitglieder, Events, Seiten suchen...</span>
+            <kbd>⌘K</kbd>
+          </div>
           <div style={{ position: "relative" }}>
             <button className="icon-btn" onClick={() => setNotifsOpen(!notifsOpen)}>
               <Icon name="bell" />
@@ -259,34 +269,34 @@ export function AppShell({ children }: { children: ReactNode }) {
           >
             <Icon name={theme === "dark" ? "sun" : "moon"} />
           </button>
-          {isMobile && <Avatar first={me.first} last={me.last} color={me.color} size={30} url={me.avatarUrl} />}
+          <span className="topbar-avatar-mobile">
+            <Avatar first={me.first} last={me.last} color={me.color} size={30} url={me.avatarUrl} />
+          </span>
         </div>
 
         <div className="content">{children}</div>
       </div>
 
-      {isMobile && (
-        <div className="tabbar">
-          {[
-            { href: "/dashboard", icon: "home" as const, l: "Home" },
-            { href: "/directory", icon: "users" as const, l: "Members" },
-            { href: "/events", icon: "calendar" as const, l: "Events" },
-            { href: "/messages", icon: "message" as const, l: "Chat" },
-            { href: "/profile", icon: "user" as const, l: "Profil" },
-          ].map((it) => (
-            <Link
-              key={it.href}
-              href={it.href}
-              className={"tabbar-item" + (isActive(it.href) ? " active" : "")}
-            >
-              <Icon name={it.icon} size={19} />
-              <span className="tabbar-label">{it.l}</span>
-            </Link>
-          ))}
-        </div>
-      )}
+      <div className="tabbar">
+        {[
+          { href: "/dashboard", icon: "home" as const, l: "Home" },
+          { href: "/directory", icon: "users" as const, l: "Members" },
+          { href: "/events", icon: "calendar" as const, l: "Events" },
+          { href: "/messages", icon: "message" as const, l: "Chat" },
+          { href: "/profile", icon: "user" as const, l: "Profil" },
+        ].map((it) => (
+          <Link
+            key={it.href}
+            href={it.href}
+            className={"tabbar-item" + (isActive(it.href) ? " active" : "")}
+          >
+            <Icon name={it.icon} size={19} />
+            <span className="tabbar-label">{it.l}</span>
+          </Link>
+        ))}
+      </div>
 
-      {isMobile && mobileMenuOpen && (
+      {mobileMenuOpen && (
         <div
           onClick={() => setMobileMenuOpen(false)}
           style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", zIndex: 100 }}
@@ -294,7 +304,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <aside
             onClick={(e) => e.stopPropagation()}
             className="sidebar sidebar-drawer"
-            style={{ position: "fixed", top: 0, left: 0, width: 260, height: "100vh" }}
+            style={{ position: "fixed", top: 0, left: 0, width: 260, height: "100dvh" }}
           >
             <div className="brand"><LogoWordmark height={22} invert={theme === "dark"} /></div>
             {navItems.map((item) => (

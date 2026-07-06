@@ -49,7 +49,12 @@ export const viewport: Viewport = {
 // den Inhalt schon nativ unter die Status-Bar; dort würde env(safe-area-
 // inset-top) obendrauf doppeln ("Titel kommt zu weit runter"). Im Browser
 // ist env() ohnehin 0. Läuft inline vor dem ersten Paint (kein Layout-Flash).
-const edgeDetect = `try{if(/SportNexusEdge/.test(navigator.userAgent)||window.matchMedia("(display-mode: standalone)").matches||navigator.standalone===true){document.documentElement.setAttribute("data-shell","edge")}}catch(e){}`;
+// Zusätzlich: Theme/Accent aus localStorage VOR dem ersten Paint auf <html>
+// stempeln — sonst blitzt bei Dark-Mode-Nutzern beim Laden erst das helle
+// Theme auf, bevor der SettingsProvider (nach der Hydration) umschaltet.
+const edgeDetect =
+  `try{if(/SportNexusEdge/.test(navigator.userAgent)||window.matchMedia("(display-mode: standalone)").matches||navigator.standalone===true){document.documentElement.setAttribute("data-shell","edge")}}catch(e){}` +
+  `try{var s=JSON.parse(localStorage.getItem("sn_state_v2")||"{}");if(s.theme==="dark"){document.documentElement.setAttribute("data-theme","dark")}if(s.accent==="navy"||s.accent==="mono"){document.documentElement.setAttribute("data-accent",s.accent)}}catch(e){}`;
 
 export default function RootLayout({
   children,
