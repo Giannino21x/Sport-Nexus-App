@@ -425,19 +425,26 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
     backdrop-filter: var(--glass-blur);
   }
 }
-/* Nicht-Edge-Hüllen (alte App-Store-Hülle mit contentInset 'always' bzw. ein
-   Binary ohne UA-Token): beim Runterscrollen pinnt die sticky Topbar an der
-   physischen Bildschirmkante — ohne Safe-Area-Padding sitzen die Icons dann
-   unter Uhr/Dynamic Island. Deshalb hier IMMER env()-Padding; das anfängliche
-   Doppel-Inset (nativer contentInset + Padding) hebt der negative margin-top
-   wieder auf. Netto-Layouthöhe bleibt 58px (Höhe + Margin kürzen sich),
-   .content und die .messages-wrap-Höhenformel verschieben sich nicht.
-   Browser: env()=0 → komplette No-Op. Edge-Hülle mit UA-Token: data-shell=
-   "edge" → Regel greift nicht, dort regelt --safe-top das Padding. */
+/* Nicht-Edge-Hüllen (alte App-Store-Hülle mit contentInset 'always'): der
+   Sticky-Anker liegt dort in Ruhe UNTER der Status-Bar und wandert beim
+   Scrollen zur physischen Bildschirmkante (wie Safaris URL-Leiste). Ein
+   KONSTANTES env()-Padding ist deshalb immer in einem der beiden Zustände
+   falsch: ohne Padding sitzen die Icons beim Scrollen unter Uhr/Dynamic
+   Island, mit Padding pinnt die Leiste in Ruhe 59px zu tief und überlappt
+   den Seitenkopf ("Guten Tag"). Lösung: das Padding wächst mit dem Scroll-
+   Fortschritt mit — app-shell.tsx schreibt --sn-scroll (px) auf :root, hier
+   auf env(safe-area-inset-top) geclampt. Der Anker wandert um exakt den
+   gescrollten Betrag nach oben, das Padding gleicht ihn 1:1 aus → die Icons
+   stehen während des GESAMTEN Scrollens auf konstanter Bildschirmhöhe, und
+   in Ruhe (Scroll 0) ist die Geometrie unverändert. Höhe + negativer Margin
+   kürzen sich weg (Netto-Flusshöhe konstant 58px — Inhalt springt nie).
+   Browser: env()=0 → Clamp auf 0 → No-Op. Edge-Hülle mit UA-Token:
+   data-shell="edge" → Regel greift nicht, dort regelt --safe-top alles. */
 :root:not([data-shell="edge"]) .topbar {
-  height: calc(58px + env(safe-area-inset-top));
-  padding-top: env(safe-area-inset-top);
-  margin-top: calc(-1 * env(safe-area-inset-top));
+  --topbar-pin: min(var(--sn-scroll, 0px), env(safe-area-inset-top));
+  height: calc(58px + var(--topbar-pin));
+  padding-top: var(--topbar-pin);
+  margin-top: calc(-1 * var(--topbar-pin));
 }
 .topbar .breadcrumbs { font-size: 13px; color: var(--ink-3); display: flex; align-items: center; gap: 8px; }
 .topbar .breadcrumbs .crumb-current { color: var(--ink); }

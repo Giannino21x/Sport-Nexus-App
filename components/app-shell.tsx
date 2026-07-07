@@ -74,6 +74,26 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (meResolved && !me) router.replace("/login");
   }, [meResolved, me, router]);
 
+  // Nicht-Edge-Hüllen (alte App-Store-Hülle, contentInset 'always'): der
+  // Sticky-Anker der Topbar wandert beim Scrollen unter die Status-Bar.
+  // --sn-scroll füttert das mitwachsende Safe-Area-Padding der Topbar
+  // (globals.css clampt auf env(safe-area-inset-top)). In JS auf 120px
+  // gedeckelt, damit nach der Sättigung keine Style-Writes mehr anfallen.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (root.getAttribute("data-shell") === "edge") return;
+    let last = -1;
+    const onScroll = () => {
+      const v = Math.min(Math.max(window.scrollY, 0), 120);
+      if (v === last) return;
+      last = v;
+      root.style.setProperty("--sn-scroll", v + "px");
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   // Hintergrund-Scroll sperren, solange der Drawer offen ist — sonst
   // scrollt auf iOS die Seite hinter dem Menü mit (fühlt sich kaputt an).
   useEffect(() => {
