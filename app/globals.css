@@ -446,6 +446,24 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   padding-top: var(--topbar-pin);
   margin-top: calc(-1 * var(--topbar-pin));
 }
+/* Edge-Hülle, Mobile: Topbar FIXED statt sticky. Beim Rubber-Band-Overscroll
+   (ganz nach oben ziehen) reitet eine sticky Leiste mit dem Inhalt nach unten
+   und hinterlässt weissen Leerraum darüber. Fixed bleibt an der physischen
+   Bildschirmkante — der Inhalt zieht beim Bounce UNTER der Glasleiste weg
+   (natives iOS-Gefühl). .main kompensiert die aus dem Fluss genommene Höhe;
+   Netto-Position des Inhalts bleibt identisch. Nur Mobile gegated: am
+   Desktop (PWA ≥780px) würde left:0/right:0 die Sidebar überdecken. */
+@media (max-width: 780px) {
+  :root[data-shell="edge"] .topbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+  }
+  :root[data-shell="edge"] .main {
+    padding-top: calc(58px + var(--safe-top));
+  }
+}
 .topbar .breadcrumbs { font-size: 13px; color: var(--ink-3); display: flex; align-items: center; gap: 8px; }
 .topbar .breadcrumbs .crumb-current { color: var(--ink); }
 .topbar .search-global {
