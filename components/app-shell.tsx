@@ -147,64 +147,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // TEMPORÄRE Shell-Diagnose (2026-07-07, nach Analyse wieder entfernen):
-  // sendet NUR in der nativen Hülle (window.Capacitor) einmal pro Session
-  // die echten Viewport-/Safe-Area-Messwerte an /api/shell-diag, damit das
-  // Verhalten der installierten Binary-Generationen (contentInset 'always'
-  // vs. 'never', UA-Token ja/nein) mit Gerätedaten statt Hypothesen geklärt
-  // werden kann. Zwei Messungen (sofort + nach 1.5s Settle).
-  useEffect(() => {
-    const w = window as unknown as { Capacitor?: { getPlatform?: () => string } };
-    if (!w.Capacitor) return;
-    try {
-      if (sessionStorage.getItem("sn_diag_v1")) return;
-      sessionStorage.setItem("sn_diag_v1", "1");
-    } catch {}
-    const measure = () => {
-      const probe = document.createElement("div");
-      probe.style.cssText =
-        "position:fixed;top:0;left:0;visibility:hidden;pointer-events:none;" +
-        "padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)";
-      document.body.appendChild(probe);
-      const cs = getComputedStyle(probe);
-      const envTop = cs.paddingTop;
-      const envBottom = cs.paddingBottom;
-      probe.remove();
-      const topbar = document.querySelector(".topbar")?.getBoundingClientRect();
-      const content = document.querySelector(".content")?.getBoundingClientRect();
-      return {
-        t: Date.now(),
-        dataShell: document.documentElement.getAttribute("data-shell"),
-        scrollY: window.scrollY,
-        innerH: window.innerHeight,
-        innerW: window.innerWidth,
-        outerH: window.outerHeight,
-        screenH: window.screen.height,
-        screenW: window.screen.width,
-        vvH: window.visualViewport?.height,
-        vvTop: window.visualViewport?.offsetTop,
-        vvPageTop: window.visualViewport?.pageTop,
-        dpr: window.devicePixelRatio,
-        envTop,
-        envBottom,
-        topbarTop: topbar?.top,
-        topbarH: topbar?.height,
-        contentTop: content?.top,
-      };
-    };
-    const first = measure();
-    const timer = setTimeout(() => {
-      const body = JSON.stringify({
-        ua: navigator.userAgent,
-        platform: w.Capacitor?.getPlatform?.(),
-        first,
-        settled: measure(),
-      });
-      fetch("/api/shell-diag", { method: "POST", body }).catch(() => {});
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, []);
-
   // Hintergrund-Scroll sperren, solange der Drawer offen ist — sonst
   // scrollt auf iOS die Seite hinter dem Menü mit (fühlt sich kaputt an).
   useEffect(() => {
