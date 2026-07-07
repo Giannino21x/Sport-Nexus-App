@@ -2,7 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Avatar } from "./avatar";
 import { CommandPalette } from "./command-palette";
 import { Icon, type IconName } from "./icon";
@@ -33,6 +33,14 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { data: members } = useMembers();
+  const mainRef = useRef<HTMLDivElement>(null);
+
+  // Edge-Hülle: .main ist der Scroller (Body ist overflow:hidden, damit der
+  // native Rubber-Band nie greift). Window-Scroll-Reset von Next läuft dann
+  // ins Leere — bei Seitenwechsel selbst nach oben setzen.
+  useEffect(() => {
+    mainRef.current?.scrollTo(0, 0);
+  }, [pathname]);
 
   useEffect(() => {
     try {
@@ -360,7 +368,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </Link>
         </aside>
 
-      <div className="main">
+      <div className="main" ref={mainRef}>
         <div className="topbar">
           <button className="icon-btn topbar-hamburger" onClick={() => setMobileMenuOpen(true)} style={{ marginRight: 2 }}>
             <Icon name="menu" size={18} />

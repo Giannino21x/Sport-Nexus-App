@@ -473,11 +473,28 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   :root[data-shell="edge"] .topbar::before {
     height: 40vh;
   }
-  /* Zusätzlicher Riegel gegen Overscroll-Bounce, wo WebKit ihn respektiert
-     (harmlos, wo nicht). Der Touch-Guard in app-shell.tsx macht die
-     eigentliche Arbeit. */
+  /* DETERMINISTISCHER Bounce-Killer: der native Rubber-Band läuft auf der
+     UIScrollView-Ebene und ignoriert JS-preventDefault und CSS-Positionen
+     (Gerätetest 2026-07-07). Er greift aber nur, wenn das DOKUMENT
+     scrollbaren Überhang hat. Deshalb scrollt in der Edge-Hülle nicht der
+     Body, sondern .main als innerer Container: das Dokument ist exakt
+     viewport-hoch, iOS hat nichts zum Ziehen — die fixe Topbar bleibt per
+     Konstruktion stehen, Inhalt scrollt unter dem Glas. app-shell.tsx setzt
+     .main bei Seitenwechsel auf scrollTop 0 (Window-Scroll gibt es nicht
+     mehr). */
   :root[data-shell="edge"] body {
+    overflow: hidden;
+    height: 100dvh;
     overscroll-behavior-y: none;
+  }
+  :root[data-shell="edge"] .app {
+    height: 100dvh;
+  }
+  :root[data-shell="edge"] .main {
+    height: 100dvh;
+    overflow-y: auto;
+    overscroll-behavior-y: none;
+    -webkit-overflow-scrolling: touch;
   }
 }
 .topbar .breadcrumbs { font-size: 13px; color: var(--ink-3); display: flex; align-items: center; gap: 8px; }
