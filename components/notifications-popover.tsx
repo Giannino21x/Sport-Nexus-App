@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import { Icon, type IconName } from "./icon";
 import type { Notif } from "@/lib/hooks";
 
@@ -12,7 +13,7 @@ function iconFor(kind: string): IconName {
 }
 
 export function NotificationsPopover({ notifs, onClose }: Props) {
-  return (
+  const panel = (
     <>
       {/* Mobile-Backdrop — auf kleinen Screens schliesst ein Tap ausserhalb das Panel.
           Auf Desktop weiter Click-Outside via parent. */}
@@ -68,4 +69,15 @@ export function NotificationsPopover({ notifs, onClose }: Props) {
       </div>
     </>
   );
+
+  // Mobile: Bottom-Sheet + Backdrop als Portal auf <body>. Innerhalb der
+  // Topbar wäre position:fixed kaputt — deren backdrop-filter (Liquid Glass)
+  // macht sie zum Containing Block für fixed-Nachfahren, Sheet und Backdrop
+  // ankerten dann an der Leiste statt am Bildschirm. Desktop bleibt in-place,
+  // weil das Popover dort absolut am Bell-Button dockt.
+  // (Rendert nur nach Klick, also garantiert client-seitig.)
+  if (typeof window !== "undefined" && window.matchMedia("(max-width: 780px)").matches) {
+    return createPortal(panel, document.body);
+  }
+  return panel;
 }

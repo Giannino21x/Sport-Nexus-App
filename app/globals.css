@@ -425,6 +425,20 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
     backdrop-filter: var(--glass-blur);
   }
 }
+/* Nicht-Edge-Hüllen (alte App-Store-Hülle mit contentInset 'always' bzw. ein
+   Binary ohne UA-Token): beim Runterscrollen pinnt die sticky Topbar an der
+   physischen Bildschirmkante — ohne Safe-Area-Padding sitzen die Icons dann
+   unter Uhr/Dynamic Island. Deshalb hier IMMER env()-Padding; das anfängliche
+   Doppel-Inset (nativer contentInset + Padding) hebt der negative margin-top
+   wieder auf. Netto-Layouthöhe bleibt 58px (Höhe + Margin kürzen sich),
+   .content und die .messages-wrap-Höhenformel verschieben sich nicht.
+   Browser: env()=0 → komplette No-Op. Edge-Hülle mit UA-Token: data-shell=
+   "edge" → Regel greift nicht, dort regelt --safe-top das Padding. */
+:root:not([data-shell="edge"]) .topbar {
+  height: calc(58px + env(safe-area-inset-top));
+  padding-top: env(safe-area-inset-top);
+  margin-top: calc(-1 * env(safe-area-inset-top));
+}
 .topbar .breadcrumbs { font-size: 13px; color: var(--ink-3); display: flex; align-items: center; gap: 8px; }
 .topbar .breadcrumbs .crumb-current { color: var(--ink); }
 .topbar .search-global {
@@ -687,7 +701,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
     max-width: none;
     top: auto;
     right: auto;
-    max-height: calc(100dvh - 156px - env(safe-area-inset-bottom));
+    /* env(top) mit abziehen: das Sheet darf auch bei langer Liste nicht in
+       die Topbar-/Status-Bar-Zone hineinwachsen (alle Hüllen, Browser env=0). */
+    max-height: calc(100dvh - 156px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   }
   .notif-popover .notif-list {
     max-height: none;
