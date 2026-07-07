@@ -105,6 +105,40 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Edge-Hülle: Über-Ziehen am SEITENANFANG (Top-Rubber-Band) unterbinden.
+  // Der Bounce läuft in der WKWebView auf der nativen Scroll-Ebene und zieht
+  // die ganze Web-Ebene samt fixer Topbar mit nach unten (Logo rutscht weg,
+  // Blank Space). preventDefault auf dem ersten Down-Pull bei scrollY<=0
+  // stoppt die Geste, BEVOR der native Pan beginnt. Gesten in intern
+  // scrollbaren Elementen (Chat-Listen, Drawer, Sheets) bleiben unberührt.
+  // data-shell wird pro Geste geprüft (die Erkennung kann beim allerersten
+  // Start erst nach dem Mount greifen).
+  useEffect(() => {
+    let startY = 0;
+    const onStart = (e: TouchEvent) => {
+      startY = e.touches[0]?.clientY ?? 0;
+    };
+    const onMove = (e: TouchEvent) => {
+      if (document.documentElement.getAttribute("data-shell") !== "edge") return;
+      if (e.touches.length !== 1) return;
+      const pullingDown = (e.touches[0]?.clientY ?? 0) > startY;
+      if (!pullingDown || window.scrollY > 0) return;
+      let el = e.target instanceof HTMLElement ? e.target : null;
+      while (el && el !== document.body) {
+        const s = getComputedStyle(el);
+        if (/(auto|scroll)/.test(s.overflowY) && el.scrollHeight > el.clientHeight) return;
+        el = el.parentElement;
+      }
+      e.preventDefault();
+    };
+    document.addEventListener("touchstart", onStart, { passive: true });
+    document.addEventListener("touchmove", onMove, { passive: false });
+    return () => {
+      document.removeEventListener("touchstart", onStart);
+      document.removeEventListener("touchmove", onMove);
+    };
+  }, []);
+
   // TEMPORÄRE Shell-Diagnose (2026-07-07, nach Analyse wieder entfernen):
   // sendet NUR in der nativen Hülle (window.Capacitor) einmal pro Session
   // die echten Viewport-/Safe-Area-Messwerte an /api/shell-diag, damit das

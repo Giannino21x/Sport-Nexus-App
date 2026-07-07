@@ -463,6 +463,22 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   :root[data-shell="edge"] .main {
     padding-top: calc(58px + var(--safe-top));
   }
+  /* Rubber-Band-Overscroll: der Bounce passiert in der WKWebView auf der
+     NATIVEN Scroll-Ebene — iOS verschiebt die ganze Web-Ebene inklusive
+     fixed-Elementen, kein CSS-Positionsmodus bleibt dabei stehen. Statt
+     eines weissen Lochs über der mitrutschenden Leiste zieht die Glaskappe
+     (::before, ragt von der Topbar nach oben) hier weit nach oben: beim
+     Über-Ziehen erscheint Glas statt Blank — wirkt wie ein sich dehnender
+     Header. Normal ist sie vollständig offscreen. */
+  :root[data-shell="edge"] .topbar::before {
+    height: 40vh;
+  }
+  /* Zusätzlicher Riegel gegen Overscroll-Bounce, wo WebKit ihn respektiert
+     (harmlos, wo nicht). Der Touch-Guard in app-shell.tsx macht die
+     eigentliche Arbeit. */
+  :root[data-shell="edge"] body {
+    overscroll-behavior-y: none;
+  }
 }
 .topbar .breadcrumbs { font-size: 13px; color: var(--ink-3); display: flex; align-items: center; gap: 8px; }
 .topbar .breadcrumbs .crumb-current { color: var(--ink); }
