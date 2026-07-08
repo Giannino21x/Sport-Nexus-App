@@ -473,29 +473,40 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   :root[data-shell="edge"] .topbar::before {
     height: 40vh;
   }
-  /* DETERMINISTISCHER Bounce-Killer: der native Rubber-Band läuft auf der
-     UIScrollView-Ebene und ignoriert JS-preventDefault und CSS-Positionen
-     (Gerätetest 2026-07-07). Er greift aber nur, wenn das DOKUMENT
-     scrollbaren Überhang hat. Deshalb scrollt in der Edge-Hülle nicht der
-     Body, sondern .main als innerer Container: das Dokument ist exakt
-     viewport-hoch, iOS hat nichts zum Ziehen — die fixe Topbar bleibt per
-     Konstruktion stehen, Inhalt scrollt unter dem Glas. app-shell.tsx setzt
-     .main bei Seitenwechsel auf scrollTop 0 (Window-Scroll gibt es nicht
-     mehr). */
-  :root[data-shell="edge"] body {
-    overflow: hidden;
-    height: 100dvh;
-    overscroll-behavior-y: none;
-  }
-  :root[data-shell="edge"] .app {
-    height: 100dvh;
-  }
-  :root[data-shell="edge"] .main {
-    height: 100dvh;
-    overflow-y: auto;
-    overscroll-behavior-y: none;
-    -webkit-overflow-scrolling: touch;
-  }
+}
+/* DETERMINISTISCHER Bounce-Killer: der native Rubber-Band läuft auf der
+   UIScrollView-Ebene und ignoriert JS-preventDefault und CSS-Positionen
+   (Gerätetest 2026-07-07). Er greift aber nur, wenn das DOKUMENT
+   scrollbaren Überhang hat. Deshalb scrollt in der Edge-Hülle nicht der
+   Body, sondern .main als innerer Container: das Dokument ist exakt
+   viewport-hoch, iOS hat nichts zum Ziehen — die fixe Topbar bleibt per
+   Konstruktion stehen, Inhalt scrollt unter dem Glas. app-shell.tsx setzt
+   .main bei Seitenwechsel auf scrollTop 0 (Window-Scroll gibt es nicht
+   mehr).
+   BEWUSST OHNE Mobile-Media-Query (User-Report 2026-07-08, Rotation): im
+   Querformat (iPhone-Breite > 780px → Desktop-Layout) scrollte sonst wieder
+   der BODY nativ, und die WKWebView liess beim Zurückdrehen einen Content-
+   Offset stranden — die ganze Web-Ebene hing danach dauerhaft zu tief
+   ("Logo zu weit unten"). Die Edge-Hülle scrollt deshalb IMMER im Container;
+   die Topbar bleibt am Desktop sticky und klebt dann am .main-Scrollport.
+   overflow-x hidden: mit overflow-y:auto würde overflow-x sonst zu 'auto'
+   aufgelöst — jedes überbreite Element machte die Seite horizontal
+   wischbar (User-Report Event-Detail). */
+:root[data-shell="edge"] body {
+  overflow: hidden;
+  height: 100dvh;
+  overscroll-behavior-y: none;
+}
+:root[data-shell="edge"] .app {
+  height: 100dvh;
+  min-height: 0;
+}
+:root[data-shell="edge"] .main {
+  height: 100dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
 }
 .topbar .breadcrumbs { font-size: 13px; color: var(--ink-3); display: flex; align-items: center; gap: 8px; }
 .topbar .breadcrumbs .crumb-current { color: var(--ink); }
@@ -906,6 +917,11 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 
 /* ---------- Mobile overrides ---------- */
 @media (max-width: 780px) {
+  /* Horizontal-Guard für Body-Scroller (Browser, alte App-Hülle): ein
+     überbreites Element darf die Seite nie seitwärts wischbar machen.
+     clip statt hidden: erzeugt keinen Scroll-Container, vertikal bleibt
+     alles beim Root-Scroll. */
+  html { overflow-x: clip; }
   .topbar { padding: var(--safe-top) 16px 0; }
   .topbar .search-global { display: none; }
   /* Schwebende Tab-Bar: 12px Abstand + ~58px Kapsel + Luft, plus
@@ -987,7 +1003,12 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 }
 
 @media (max-width: 900px) {
-  .dash-grid { grid-template-columns: 1fr !important; }
+  /* minmax(0,1fr) statt 1fr: ein nacktes 1fr hat ein CONTENT-Minimum — eine
+     einzige nowrap-Zeile (z.B. der Maps-Link "Venue, Adresse" auf der Event-
+     Detailseite) macht den Track breiter als den Viewport und die ganze
+     Seite horizontal wischbar. Mit 0-Minimum bleibt der Track exakt
+     Container-breit und innere Ellipsen greifen. */
+  .dash-grid { grid-template-columns: minmax(0, 1fr) !important; }
 }
 
 /* small helpers */

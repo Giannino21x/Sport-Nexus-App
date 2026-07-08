@@ -147,6 +147,31 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Edge-Hülle: Rotation-Sicherheitsnetz. Beim Drehen kann die WKWebView auf
+  // der NATIVEN Scroll-Ebene einen Content-Offset stranden lassen — die ganze
+  // Web-Ebene hängt danach dauerhaft verschoben (Logo/Topbar zu tief), ohne
+  // dass ein Web-Scrollwert das zeigt. Das Dokument selbst ist in der Edge-
+  // Hülle nie scrollbar (Container-Scroll), window.scrollTo(0,0) ist daher
+  // layoutneutral und setzt nur den nativen Offset zurück. Gestaffelt, weil
+  // die WKWebView nach der Rotation erst nach mehreren Frames settelt.
+  useEffect(() => {
+    let timers: ReturnType<typeof setTimeout>[] = [];
+    const reset = () => {
+      if (document.documentElement.getAttribute("data-shell") !== "edge") return;
+      timers.forEach(clearTimeout);
+      timers = [0, 150, 450, 1000].map((t) =>
+        setTimeout(() => window.scrollTo(0, 0), t),
+      );
+    };
+    window.addEventListener("orientationchange", reset);
+    window.addEventListener("resize", reset);
+    return () => {
+      window.removeEventListener("orientationchange", reset);
+      window.removeEventListener("resize", reset);
+      timers.forEach(clearTimeout);
+    };
+  }, []);
+
   // Hintergrund-Scroll sperren, solange der Drawer offen ist — sonst
   // scrollt auf iOS die Seite hinter dem Menü mit (fühlt sich kaputt an).
   useEffect(() => {
