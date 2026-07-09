@@ -147,79 +147,47 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Edge-Hülle: Rotation-Sicherheitsnetz. Beim Drehen kann die WKWebView auf
-  // der NATIVEN Scroll-Ebene einen (auch negativen) Content-Offset stranden
-  // lassen — die ganze Web-Ebene hängt danach dauerhaft verschoben (Logo/
-  // Topbar zu tief), ohne dass ein Web-Scrollwert das zeigt. Ein blosses
-  // window.scrollTo(0,0) greift dann NICHT: das Dokument ist in der Edge-
-  // Hülle nie scrollbar (Container-Scroll), scrollY meldet bereits 0 und
-  // WebKit optimiert den Call weg, ohne den nativen Offset neu zu schreiben
-  // (Gerätetest 2026-07-09: Abstand nach Drehen weiterhin falsch). Deshalb
-  // ein echter Nudge: das Dokument für zwei Frames um 2px scrollbar machen
-  // und 0→1→0 scrollen — die Scroll-Position ändert sich real, WebKit MUSS
-  // den nativen Offset schreiben und überschreibt damit den gestrandeten
-  // Wert. Layoutneutral: html wird nur nach unten 2px länger, fixe Elemente
-  // hängen am Viewport. Gestaffelt, weil die WKWebView nach der Rotation
-  // erst nach mehreren Frames settelt.
-  useEffect(() => {
-    let timers: ReturnType<typeof setTimeout>[] = [];
-    const nudge = () => {
-      if (document.documentElement.getAttribute("data-shell") !== "edge") return;
-      // Tastatur-Guard: resize feuert auch beim Keyboard-Ein-/Ausblenden, und
-      // iOS verschiebt den nativen Offset dann GEWOLLT (fokussiertes Input
-      // sichtbar halten). Solange ein Eingabefeld fokussiert ist: Finger weg.
-      const ae = document.activeElement;
-      if (
-        ae instanceof HTMLElement &&
-        (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.isContentEditable)
-      ) return;
-      const root = document.documentElement;
-      const prevHeight = root.style.height;
-      root.style.height = "calc(100% + 2px)";
-      window.scrollTo(0, 1);
-      requestAnimationFrame(() => {
-        window.scrollTo(0, 0);
-        requestAnimationFrame(() => {
-          root.style.height = prevHeight;
-        });
-      });
-    };
-    const reset = () => {
-      timers.forEach(clearTimeout);
-      timers = [50, 250, 700, 1500].map((t) => setTimeout(nudge, t));
-    };
-    reset();
-    window.addEventListener("orientationchange", reset);
-    window.addEventListener("resize", reset);
-    return () => {
-      window.removeEventListener("orientationchange", reset);
-      window.removeEventListener("resize", reset);
-      timers.forEach(clearTimeout);
-    };
-  }, []);
+  // (Scroll-Nudge-Sicherheitsnetz wieder entfernt, 2026-07-09: Gerätebefund
+  // zeigte, dass die Rotations-Verschiebung ein nativer WebView-INSET ist,
+  // kein Scroll-Offset — der Nudge lief nachweislich, half nichts und
+  // scrollte das Dokument nach jeder Rotation mehrfach um 1px, was die
+  // fixe Tab-Bar sichtbar flackern liess.)
 
   // Edge-Hülle: Rotations-Inset-Kompensation. Gerätebefund (shell_diag
-  // "rot1", 2026-07-09): Nach Drehen+Zurückdrehen rückt die WKWebView die
-  // Web-Ebene NATIV wieder ein (innerHeight 780 statt 874 = Safe-Area oben
-  // 62 + unten 34 abgezogen) — dieselbe Geometrie wie die alte 'always'-
-  // Hülle, dauerhaft bis zum App-Neustart. env(safe-area-inset-top) meldet
-  // dabei WEITER 62px → --safe-top polstert obendrauf = doppelter Abstand
-  // (weisser Streifen zwischen Status-Icons und Logo). Der native Inset ist
-  // aus JS nicht rücksetzbar (Web-Geometrie meldet 0/0, Scroll-Nudge läuft
-  // ins Leere) — also kompensieren: eingerückte Geometrie erkennen
-  // (innerHeight ≥40px unter der erwarteten Vollhöhe, Orientierung beachten
-  // — screen.width/height sind auf iOS orientierungsFEST) und --safe-top
-  // inline auf 0 zwingen; das Layout entspricht dann exakt der bewährten
-  // 'always'-Hülle. Zurück auf Vollhöhe (env-Padding) sobald die WebView
-  // wieder randlos misst. Das nächste Binary pinnt die Geometrie nativ
-  // (ViewController), dann greift die Kompensation nie mehr.
-  // Tastatur-Guard wie beim Nudge: bei fokussiertem Input nicht messen
-  // (Keyboard kann innerHeight transient verändern).
+  // rot1/rot2, 2026-07-09): iOS wechselt die WKWebView nach Rotationen
+  // zwischen VIER nativen Geometrien — randlos (innerHeight 874), nur unten
+  // eingerückt (840), nur oben (812), beides (780) — teils dauerhaft bis
+  // zum App-Neustart. env(safe-area-inset-top) ist dabei NICHT
+  // vertrauenswürdig: im eingerückten Zustand meldet es weiter 62px
+  // (→ Doppelabstand, weisser Streifen überm Logo), nach dem Zurückheilen
+  // auf randlos kann es stale 0 melden (→ Topbar unter der Uhr). Deshalb
+  // steuert im Capacitor-Fall NUR noch JS das Top-Padding, als expliziter
+  // px-Wert: oben eingerückt (Vollhöhe − innerHeight ≥ 40px im Hochformat;
+  // schneidet sauber zwischen Nur-unten 34 und Oben 62/94) → 0px, randlos
+  // → gemerkte Safe-Area-Höhe aus localStorage (sn_env_top, geseedet aus
+  // der env-Probe, sobald sie je >0 lieferte — env lügt nie NACH OBEN).
+  // Querformat: iPhones haben oben keine Safe-Area → 0px. screen.width/
+  // height drehen auf iOS nicht mit → Vollhöhe orientierungsfest rechnen.
+  // Idempotente Style-Writes (Flacker-Schutz), gestaffelte Nachmessung
+  // (WKWebView settelt spät), Tastatur-Guard (Keyboard ändert innerHeight).
+  // Das nächste Binary pinnt die Geometrie nativ (ViewController), dann
+  // bleibt es dauerhaft beim randlosen Zweig.
   useEffect(() => {
     const w = window as unknown as { Capacitor?: unknown };
     if (!w.Capacitor) return;
     const root = document.documentElement;
     let timers: ReturnType<typeof setTimeout>[] = [];
+    let lastApplied: string | null = null;
+    const probeEnvTop = () => {
+      const p = document.createElement("div");
+      p.style.cssText =
+        "position:fixed;top:0;visibility:hidden;pointer-events:none;" +
+        "padding-top:env(safe-area-inset-top)";
+      document.body.appendChild(p);
+      const v = parseFloat(getComputedStyle(p).paddingTop) || 0;
+      p.remove();
+      return v;
+    };
     const apply = () => {
       if (root.getAttribute("data-shell") !== "edge") return;
       const ae = document.activeElement;
@@ -228,19 +196,26 @@ export function AppShell({ children }: { children: ReactNode }) {
         (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.isContentEditable)
       ) return;
       const portrait = window.innerHeight >= window.innerWidth;
-      const expected = portrait
-        ? Math.max(window.screen.width, window.screen.height)
-        : Math.min(window.screen.width, window.screen.height);
-      if (window.innerHeight >= expected - 40) {
-        root.style.removeProperty("--safe-top");
-      } else {
-        root.style.setProperty("--safe-top", "0px");
+      let target = "0px";
+      if (portrait) {
+        const fullH = Math.max(window.screen.width, window.screen.height);
+        const insetTotal = fullH - window.innerHeight;
+        let stored = 0;
+        try { stored = parseFloat(localStorage.getItem("sn_env_top") || "0") || 0; } catch {}
+        const env = probeEnvTop();
+        if (env > stored) {
+          stored = env;
+          try { localStorage.setItem("sn_env_top", String(env)); } catch {}
+        }
+        target = insetTotal >= 40 ? "0px" : stored > 0 ? stored + "px" : env + "px";
       }
+      if (target === lastApplied) return;
+      lastApplied = target;
+      root.style.setProperty("--safe-top", target);
     };
     const kick = () => {
       timers.forEach(clearTimeout);
       apply();
-      // WKWebView settelt nach Rotation/Start spät — gestaffelt nachmessen.
       timers = [200, 600, 1200, 2500].map((t) => setTimeout(apply, t));
     };
     kick();
@@ -303,7 +278,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     const send = (kind: string, series: unknown) => {
       if (sends >= 6) return;
       sends++;
-      const body = JSON.stringify({ tag: "rot1", kind, ua: navigator.userAgent, series });
+      const body = JSON.stringify({ tag: "rot2", kind, ua: navigator.userAgent, series });
       fetch("/api/shell-diag", { method: "POST", body }).catch(() => {});
     };
     const baseTimer = setTimeout(() => send("baseline", [snap()]), 2000);
