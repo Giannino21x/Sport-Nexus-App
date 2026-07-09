@@ -198,6 +198,61 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // Edge-Hülle: Rotations-Inset-Kompensation. Gerätebefund (shell_diag
+  // "rot1", 2026-07-09): Nach Drehen+Zurückdrehen rückt die WKWebView die
+  // Web-Ebene NATIV wieder ein (innerHeight 780 statt 874 = Safe-Area oben
+  // 62 + unten 34 abgezogen) — dieselbe Geometrie wie die alte 'always'-
+  // Hülle, dauerhaft bis zum App-Neustart. env(safe-area-inset-top) meldet
+  // dabei WEITER 62px → --safe-top polstert obendrauf = doppelter Abstand
+  // (weisser Streifen zwischen Status-Icons und Logo). Der native Inset ist
+  // aus JS nicht rücksetzbar (Web-Geometrie meldet 0/0, Scroll-Nudge läuft
+  // ins Leere) — also kompensieren: eingerückte Geometrie erkennen
+  // (innerHeight ≥40px unter der erwarteten Vollhöhe, Orientierung beachten
+  // — screen.width/height sind auf iOS orientierungsFEST) und --safe-top
+  // inline auf 0 zwingen; das Layout entspricht dann exakt der bewährten
+  // 'always'-Hülle. Zurück auf Vollhöhe (env-Padding) sobald die WebView
+  // wieder randlos misst. Das nächste Binary pinnt die Geometrie nativ
+  // (ViewController), dann greift die Kompensation nie mehr.
+  // Tastatur-Guard wie beim Nudge: bei fokussiertem Input nicht messen
+  // (Keyboard kann innerHeight transient verändern).
+  useEffect(() => {
+    const w = window as unknown as { Capacitor?: unknown };
+    if (!w.Capacitor) return;
+    const root = document.documentElement;
+    let timers: ReturnType<typeof setTimeout>[] = [];
+    const apply = () => {
+      if (root.getAttribute("data-shell") !== "edge") return;
+      const ae = document.activeElement;
+      if (
+        ae instanceof HTMLElement &&
+        (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.isContentEditable)
+      ) return;
+      const portrait = window.innerHeight >= window.innerWidth;
+      const expected = portrait
+        ? Math.max(window.screen.width, window.screen.height)
+        : Math.min(window.screen.width, window.screen.height);
+      if (window.innerHeight >= expected - 40) {
+        root.style.removeProperty("--safe-top");
+      } else {
+        root.style.setProperty("--safe-top", "0px");
+      }
+    };
+    const kick = () => {
+      timers.forEach(clearTimeout);
+      apply();
+      // WKWebView settelt nach Rotation/Start spät — gestaffelt nachmessen.
+      timers = [200, 600, 1200, 2500].map((t) => setTimeout(apply, t));
+    };
+    kick();
+    window.addEventListener("orientationchange", kick);
+    window.addEventListener("resize", kick);
+    return () => {
+      window.removeEventListener("orientationchange", kick);
+      window.removeEventListener("resize", kick);
+      timers.forEach(clearTimeout);
+    };
+  }, []);
+
   // TEMPORÄRE Rotations-Diagnose (2026-07-09, nach Analyse entfernen):
   // Der weisse Streifen oben nach Drehen+Zurückdrehen überlebt sowohl das
   // scrollTo-Netz als auch den echten Scroll-Nudge — Verdacht: die
