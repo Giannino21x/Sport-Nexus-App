@@ -198,6 +198,78 @@ export function AppShell({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // TEMPORÄRE Rotations-Diagnose (2026-07-09, nach Analyse entfernen):
+  // Der weisse Streifen oben nach Drehen+Zurückdrehen überlebt sowohl das
+  // scrollTo-Netz als auch den echten Scroll-Nudge — Verdacht: die
+  // Verschiebung liegt auf einer Ebene, die JS nicht sieht (WKWebView-Frame
+  // oder contentInset statt contentOffset). Beacon sendet nur in der
+  // nativen Hülle (window.Capacitor) pro Rotation eine Snapshot-Serie
+  // (0.3s/1.5s/3s) an /api/shell-diag → Supabase shell_diag. Ein Baseline-
+  // Snapshot beim Start bestätigt zugleich, dass das Gerät den neuen
+  // Web-Stand fährt (tag rot1).
+  useEffect(() => {
+    const w = window as unknown as { Capacitor?: { getPlatform?: () => string } };
+    if (!w.Capacitor) return;
+    let sends = 0;
+    const snap = () => {
+      const probe = document.createElement("div");
+      probe.style.cssText =
+        "position:fixed;top:0;left:0;visibility:hidden;pointer-events:none;" +
+        "padding-top:env(safe-area-inset-top);padding-bottom:env(safe-area-inset-bottom)";
+      document.body.appendChild(probe);
+      const cs = getComputedStyle(probe);
+      const envTop = cs.paddingTop;
+      const envBottom = cs.paddingBottom;
+      probe.remove();
+      const topbar = document.querySelector(".topbar")?.getBoundingClientRect();
+      const content = document.querySelector(".content")?.getBoundingClientRect();
+      const main = document.querySelector(".main");
+      return {
+        t: Date.now(),
+        dataShell: document.documentElement.getAttribute("data-shell"),
+        scrollY: window.scrollY,
+        docH: document.documentElement.scrollHeight,
+        innerH: window.innerHeight,
+        innerW: window.innerWidth,
+        screenH: window.screen.height,
+        screenW: window.screen.width,
+        vvH: window.visualViewport?.height,
+        vvTop: window.visualViewport?.offsetTop,
+        vvPageTop: window.visualViewport?.pageTop,
+        envTop,
+        envBottom,
+        topbarTop: topbar?.top,
+        topbarH: topbar?.height,
+        contentTop: content?.top,
+        mainScrollTop: main?.scrollTop,
+        safeTopVar: getComputedStyle(document.documentElement).getPropertyValue("--safe-top"),
+      };
+    };
+    const send = (kind: string, series: unknown) => {
+      if (sends >= 6) return;
+      sends++;
+      const body = JSON.stringify({ tag: "rot1", kind, ua: navigator.userAgent, series });
+      fetch("/api/shell-diag", { method: "POST", body }).catch(() => {});
+    };
+    const baseTimer = setTimeout(() => send("baseline", [snap()]), 2000);
+    let rotTimers: ReturnType<typeof setTimeout>[] = [];
+    const onRotate = () => {
+      rotTimers.forEach(clearTimeout);
+      const series: unknown[] = [];
+      rotTimers = [
+        setTimeout(() => series.push(snap()), 300),
+        setTimeout(() => series.push(snap()), 1500),
+        setTimeout(() => { series.push(snap()); send("rotation", series); }, 3000),
+      ];
+    };
+    window.addEventListener("orientationchange", onRotate);
+    return () => {
+      clearTimeout(baseTimer);
+      rotTimers.forEach(clearTimeout);
+      window.removeEventListener("orientationchange", onRotate);
+    };
+  }, []);
+
   // Hintergrund-Scroll sperren, solange der Drawer offen ist — sonst
   // scrollt auf iOS die Seite hinter dem Menü mit (fühlt sich kaputt an).
   useEffect(() => {
