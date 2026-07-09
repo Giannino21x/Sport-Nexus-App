@@ -148,21 +148,47 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
 
   // Edge-Hülle: Rotation-Sicherheitsnetz. Beim Drehen kann die WKWebView auf
-  // der NATIVEN Scroll-Ebene einen Content-Offset stranden lassen — die ganze
-  // Web-Ebene hängt danach dauerhaft verschoben (Logo/Topbar zu tief), ohne
-  // dass ein Web-Scrollwert das zeigt. Das Dokument selbst ist in der Edge-
-  // Hülle nie scrollbar (Container-Scroll), window.scrollTo(0,0) ist daher
-  // layoutneutral und setzt nur den nativen Offset zurück. Gestaffelt, weil
-  // die WKWebView nach der Rotation erst nach mehreren Frames settelt.
+  // der NATIVEN Scroll-Ebene einen (auch negativen) Content-Offset stranden
+  // lassen — die ganze Web-Ebene hängt danach dauerhaft verschoben (Logo/
+  // Topbar zu tief), ohne dass ein Web-Scrollwert das zeigt. Ein blosses
+  // window.scrollTo(0,0) greift dann NICHT: das Dokument ist in der Edge-
+  // Hülle nie scrollbar (Container-Scroll), scrollY meldet bereits 0 und
+  // WebKit optimiert den Call weg, ohne den nativen Offset neu zu schreiben
+  // (Gerätetest 2026-07-09: Abstand nach Drehen weiterhin falsch). Deshalb
+  // ein echter Nudge: das Dokument für zwei Frames um 2px scrollbar machen
+  // und 0→1→0 scrollen — die Scroll-Position ändert sich real, WebKit MUSS
+  // den nativen Offset schreiben und überschreibt damit den gestrandeten
+  // Wert. Layoutneutral: html wird nur nach unten 2px länger, fixe Elemente
+  // hängen am Viewport. Gestaffelt, weil die WKWebView nach der Rotation
+  // erst nach mehreren Frames settelt.
   useEffect(() => {
     let timers: ReturnType<typeof setTimeout>[] = [];
-    const reset = () => {
+    const nudge = () => {
       if (document.documentElement.getAttribute("data-shell") !== "edge") return;
-      timers.forEach(clearTimeout);
-      timers = [0, 150, 450, 1000].map((t) =>
-        setTimeout(() => window.scrollTo(0, 0), t),
-      );
+      // Tastatur-Guard: resize feuert auch beim Keyboard-Ein-/Ausblenden, und
+      // iOS verschiebt den nativen Offset dann GEWOLLT (fokussiertes Input
+      // sichtbar halten). Solange ein Eingabefeld fokussiert ist: Finger weg.
+      const ae = document.activeElement;
+      if (
+        ae instanceof HTMLElement &&
+        (ae.tagName === "INPUT" || ae.tagName === "TEXTAREA" || ae.isContentEditable)
+      ) return;
+      const root = document.documentElement;
+      const prevHeight = root.style.height;
+      root.style.height = "calc(100% + 2px)";
+      window.scrollTo(0, 1);
+      requestAnimationFrame(() => {
+        window.scrollTo(0, 0);
+        requestAnimationFrame(() => {
+          root.style.height = prevHeight;
+        });
+      });
     };
+    const reset = () => {
+      timers.forEach(clearTimeout);
+      timers = [50, 250, 700, 1500].map((t) => setTimeout(nudge, t));
+    };
+    reset();
     window.addEventListener("orientationchange", reset);
     window.addEventListener("resize", reset);
     return () => {
