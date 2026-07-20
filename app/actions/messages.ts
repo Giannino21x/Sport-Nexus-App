@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { newMessageEmail, sendEmail } from "@/lib/email";
 
@@ -102,8 +103,10 @@ export async function sendMessageAction(recipientDbId: string, body: string): Pr
   });
   if (error) return { error: error.message };
 
-  // Email-Benachrichtigung — best effort, blockiert den Send-Path nicht.
-  void notifyRecipient({ supabase, meId: me.id, recipientId: recipientDbId, body: trimmed });
+  // Email-Benachrichtigung — via after(): läuft nach der Response, aber Vercel
+  // hält die Function am Leben (waitUntil). Ein nacktes `void ...` wurde beim
+  // Einfrieren der Lambda abgebrochen → Mails kamen nie an (Pascal-Feedback).
+  after(() => notifyRecipient({ supabase, meId: me.id, recipientId: recipientDbId, body: trimmed }));
 
   revalidatePath("/messages");
   return {};
@@ -156,7 +159,7 @@ export async function sendMessageWithAttachmentAction(
   });
   if (error) return { error: error.message };
 
-  void notifyRecipient({ supabase, meId: me.id, recipientId: recipientDbId, body: body || "(Bild)", hasAttachment: true });
+  after(() => notifyRecipient({ supabase, meId: me.id, recipientId: recipientDbId, body: body || "(Bild)", hasAttachment: true }));
 
   revalidatePath("/messages");
   return {};
