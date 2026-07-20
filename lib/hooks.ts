@@ -390,6 +390,10 @@ export function useConversations(meDbId: string | null) {
     liveCache.conversations?.key === meDbId ? liveCache.conversations.data : [],
   );
   const [loading, setLoading] = useState(false);
+  // resolved = mindestens einmal Daten für DIESEN User da (frisch oder Cache).
+  // Solange false, zeigt die UI Skeletons statt "Keine Konversationen" —
+  // loading allein reicht nicht, weil meDbId selbst erst async auflöst.
+  const [resolved, setResolved] = useState(() => liveCache.conversations?.key === meDbId && meDbId !== null);
 
   useEffect(() => {
     if (!hydrated || dataSource !== "live" || !meDbId) {
@@ -409,6 +413,7 @@ export function useConversations(meDbId: string | null) {
         if (!cancelled) {
           setConvos([]);
           setLoading(false);
+          setResolved(true);
         }
         return;
       }
@@ -435,6 +440,7 @@ export function useConversations(meDbId: string | null) {
       if (otherIds.length === 0) {
         setConvos([]);
         setLoading(false);
+        setResolved(true);
         return;
       }
       const { data: others } = await supabase.from("members").select("*").in("id", otherIds);
@@ -453,11 +459,12 @@ export function useConversations(meDbId: string | null) {
       persistLiveCache();
       setConvos(result);
       setLoading(false);
+      setResolved(true);
     })();
     return () => { cancelled = true; };
   }, [dataSource, hydrated, meDbId, tick]);
 
-  return { data: convos, loading };
+  return { data: convos, loading, resolved };
 }
 
 function formatRelativeTime(iso: string): string {
@@ -490,8 +497,15 @@ export function useThreadMessages(meDbId: string | null, otherDbId: string | nul
   const tick = useReloadTick("messages");
   const [msgs, setMsgs] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(false);
+  // resolved = erste Antwort für den AKTUELLEN Thread da — die UI zeigt bis
+  // dahin Skeleton-Bubbles statt "Noch keine Nachrichten".
+  const [resolved, setResolved] = useState(false);
 
   useEffect(() => {
+    // Thread-Wechsel: resolved zurücksetzen, sonst zeigt der neue Thread
+    // kurz den (leeren) Zustand des alten.
+     
+    setResolved(false);
     if (!hydrated || dataSource !== "live" || !meDbId || !otherDbId) {
       setMsgs([]);
       return;
@@ -518,11 +532,12 @@ export function useThreadMessages(meDbId: string | null, otherDbId: string | nul
         })),
       );
       setLoading(false);
+      setResolved(true);
     })();
     return () => { cancelled = true; };
   }, [dataSource, hydrated, meDbId, otherDbId, tick]);
 
-  return { data: msgs, loading };
+  return { data: msgs, loading, resolved };
 }
 
 export type Notif = {

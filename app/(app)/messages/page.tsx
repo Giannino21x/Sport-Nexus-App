@@ -39,7 +39,7 @@ function MessagesInner() {
   const { dataSource } = useSettings();
   const { data: me, dbId: meDbId } = useMe();
   const { data: members } = useMembers();
-  const { data: liveConvos, loading: convosLoading } = useConversations(meDbId);
+  const { data: liveConvos, resolved: convosResolved } = useConversations(meDbId);
 
   // Demo conversations (static, client-side memory)
   const demoConvosRef = useMemo<Conversation[]>(
@@ -100,7 +100,7 @@ function MessagesInner() {
   const activeConvo = convos.find((c) => c.otherDbId === activeDbId) ?? null;
   const activeMember: Member | null = activeConvo?.other ?? (toParam ? members.find((m) => m.id === toParam) ?? null : convos[0]?.other ?? null);
 
-  const { data: liveMsgs } = useThreadMessages(meDbId, dataSource === "live" ? activeDbId : null);
+  const { data: liveMsgs, resolved: threadResolved } = useThreadMessages(meDbId, dataSource === "live" ? activeDbId : null);
 
   const [demoMsgs, setDemoMsgs] = useState<ChatMessage[]>([]);
   useEffect(() => {
@@ -384,7 +384,7 @@ function MessagesInner() {
         <div className="messages-grid card">
           {showList && (
             <div className="messages-list">
-              {convos.length === 0 && dataSource === "live" && convosLoading ? (
+              {dataSource === "live" && !convosResolved ? (
                 // Erste Ladung: Skeleton-Zeilen in Konversations-Massen.
                 <>
                   {Array.from({ length: 5 }).map((_, i) => (
@@ -501,7 +501,23 @@ function MessagesInner() {
                     onScroll={onThreadScroll}
                     style={{ flex: 1, minHeight: 0, padding: isMobile ? 14 : 24, background: "var(--bg-sunken)", overflowY: "auto", overscrollBehavior: "contain", position: "relative" }}
                   >
-                    {msgs.length === 0 ? (
+                    {dataSource === "live" && !threadResolved ? (
+                      // Skeleton-Bubbles, solange der Thread lädt — sonst
+                      // blitzt "Noch keine Nachrichten" auf.
+                      <div>
+                        <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+                          <SkelCircle size={28} />
+                          <Skel w={200} h={38} r={14} />
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14 }}>
+                          <Skel w={240} h={38} r={14} />
+                        </div>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <SkelCircle size={28} />
+                          <Skel w={160} h={38} r={14} />
+                        </div>
+                      </div>
+                    ) : msgs.length === 0 ? (
                       <div style={{ textAlign: "center", color: "var(--ink-3)", fontSize: 13, marginTop: 40 }}>
                         Noch keine Nachrichten. Schreib den ersten Gruß!
                       </div>
