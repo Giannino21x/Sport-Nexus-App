@@ -792,6 +792,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
    kann (13.5px Bubble-Text liest sich auf dem Handy zu klein). */
 .msg-bubble { font-size: 13.5px; line-height: 1.45; }
 .msg-time { font-size: 10.5px; }
+.msg-col { max-width: 440px; }
 .messages-inner {
   padding: 28px 40px 40px;
   max-width: 1600px;
@@ -998,17 +999,25 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   /* Chat-Text auf dem Handy grösser — 13.5px Bubbles waren zu klein. */
   .msg-bubble { font-size: 15px; }
   .msg-time { font-size: 11px; }
-  /* Beim Schreiben (Composer-Input fokussiert = Tastatur offen): Die Tab-Bar
-     ist dann ohnehin nicht bedienbar bzw. schiebt sich vor den Composer, und
-     ihr 84px-Platzhalter presst die sichtbare Chatfläche auf ein Minimum —
-     also Kapsel ausblenden und das tote Padding kollabieren. Browser ohne
-     :has() ignorieren die Regeln einfach (Zustand wie bisher). */
-  body:has(.messages-composer input:focus) .tabbar {
+  /* Bubbles nicht über die volle Breite laufen lassen (Messenger-Standard
+     ~80% — sonst ist links/rechts nicht mehr ablesbar, wer spricht). */
+  .msg-col { max-width: 82%; }
+  /* Offener Thread (thread-open, nur mobil) = Vollbild-Chat nach
+     Messenger-Muster: Karte randlos ohne Rahmen, Tab-Bar aus (Zurück steht
+     im Thread-Kopf), Composer nur mit kleinem Abstand. Vorher frassen
+     Seiten-Header, Kartenränder und der 84px-Tab-Bar-Platzhalter zusammen
+     fast die halbe Höhe. Browser ohne :has() zeigen die Tab-Bar weiter —
+     der Chat ist trotzdem randlos. */
+  .messages-wrap.thread-open .messages-inner { padding: 0; }
+  .messages-wrap.thread-open .messages-grid {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .messages-wrap.thread-open .messages-composer { padding: 10px 12px 12px; }
+  body:has(.messages-wrap.thread-open) .tabbar {
     opacity: 0;
     pointer-events: none;
-  }
-  body:has(.messages-composer input:focus) .messages-composer {
-    padding-bottom: calc(10px + env(safe-area-inset-bottom));
   }
   .tweaks-body {
     max-height: none;

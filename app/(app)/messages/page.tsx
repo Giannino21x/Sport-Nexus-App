@@ -370,7 +370,10 @@ function MessagesInner() {
   const showThread = !isMobile || !!activeDbId;
 
   return (
-    <div className="messages-wrap">
+    // thread-open (nur mobil im offenen Chat): schaltet in globals.css auf
+    // Vollbild-Chat um — randlose Karte, Tab-Bar ausgeblendet, kompakter
+    // Composer. Messenger-Muster statt "Karte in einer Seite".
+    <div className={"messages-wrap" + (isMobile && activeDbId ? " thread-open" : "")}>
       <div className="messages-inner">
         {/* Mobil im offenen Thread keinen Seiten-Header: der Chat bekommt die
             volle Höhe (Zurück + Name stehen im Thread-Kopf), statt dass Titel
@@ -594,9 +597,9 @@ function MessagesInner() {
                         className="icon-btn"
                         title="Anhängen"
                         style={{
-                          width: 38,
-                          height: 38,
-                          borderRadius: "var(--radius)",
+                          width: 40,
+                          height: 40,
+                          borderRadius: 999,
                           border: "1px solid var(--line)",
                           background: plusOpen || emojiOpen ? "var(--bg-sunken)" : "var(--bg-elevated)",
                           color: "var(--ink-2)",
@@ -623,14 +626,15 @@ function MessagesInner() {
                         value={draft}
                         onChange={(e) => setDraft(e.target.value)}
                         disabled={attachmentPending}
-                        style={{ flex: 1 }}
+                        style={{ flex: 1, borderRadius: 999, padding: "10px 16px" }}
                       />
                       <button
                         type="submit"
                         className="btn btn-primary"
                         disabled={pending || attachmentPending || !draft.trim()}
+                        style={{ width: 40, height: 40, padding: 0, borderRadius: 999, flexShrink: 0, display: "inline-flex", alignItems: "center", justifyContent: "center" }}
                       >
-                        <Icon name="send" size={14} />
+                        <Icon name="send" size={15} />
                       </button>
                     </form>
                   </div>
@@ -855,7 +859,7 @@ function Msg({
           <Avatar first={avatar.first} last={avatar.last} color={avatar.color} size={28} url={avatar.avatarUrl} />
         </span>
       )}
-      <div style={{ maxWidth: 440, minWidth: 0, textAlign: align === "right" ? "right" : "left" }}>
+      <div className="msg-col" style={{ minWidth: 0, textAlign: align === "right" ? "right" : "left" }}>
         {attachmentUrl && (
           // Feste 4:3-Box: reserviert die Fläche, BEVOR signierte URL und Bild
           // geladen sind — sonst wächst die Bubble zweimal nach und der
