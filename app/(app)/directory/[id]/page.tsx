@@ -8,6 +8,7 @@ import { Icon } from "@/components/icon";
 import { useSettings } from "@/components/settings-context";
 import { reload, useEvents, useMe, useMember } from "@/lib/hooks";
 import { setMemberExtraAction, uploadMemberAvatarAction } from "@/app/actions/members";
+import { getMemberEventRegistrationsAction } from "@/app/actions/events";
 import {
   getMyTableWishesAction,
   toggleTableWishAction,
@@ -20,6 +21,19 @@ export default function MemberDetailPage() {
   const { data: me } = useMe();
   const { data: events } = useEvents();
   const isAdmin = Boolean(me?.isAdmin);
+
+  // Echte Anmeldungen dieses Members (Self-Marks + Guestoo-Sync) für die Karte
+  // „Angemeldete Events" — statt wie früher generisch die nächsten Events.
+  const memberDbId = m?.dbId ?? null;
+  const [regIds, setRegIds] = useState<string[] | null>(null);
+  useEffect(() => {
+    if (!memberDbId) return;
+    let cancelled = false;
+    getMemberEventRegistrationsAction(memberDbId).then((r) => {
+      if (!cancelled) setRegIds(r.ids);
+    });
+    return () => { cancelled = true; };
+  }, [memberDbId]);
 
   if (loading) return <div style={{ padding: 40, color: "var(--ink-3)" }}>Lade...</div>;
   if (!m) {
@@ -36,7 +50,11 @@ export default function MemberDetailPage() {
     );
   }
 
-  const upcomingEvents = events.filter((e) => e.status === "upcoming").slice(0, 2);
+  // Demo-Modus hat keine echten Anmeldungen → dort zeigen wir als fiktive
+  // Vorschau die nächsten zwei Events; live nur tatsächliche Anmeldungen.
+  const upcomingEvents = isDemo
+    ? events.filter((e) => e.status === "upcoming").slice(0, 2)
+    : events.filter((e) => e.status === "upcoming" && (regIds ?? []).includes(e.id));
 
   return (
     <div>
@@ -217,7 +235,12 @@ export default function MemberDetailPage() {
           </div>
 
           <div className="card" style={{ padding: 20 }}>
-            <div className="upper-label" style={{ marginBottom: 12 }}>Trifft man bei Events</div>
+            <div className="upper-label" style={{ marginBottom: 12 }}>Angemeldete Events</div>
+            {!isDemo && upcomingEvents.length === 0 && (
+              <div style={{ fontSize: 12.5, color: "var(--ink-3)", lineHeight: 1.5 }}>
+                {regIds === null ? "Lade..." : "Aktuell für kein kommendes Event angemeldet."}
+              </div>
+            )}
             {upcomingEvents.map((ev) => (
               <Link
                 key={ev.id}

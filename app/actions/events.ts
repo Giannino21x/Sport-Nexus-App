@@ -16,6 +16,8 @@ export type EventInput = {
   description?: string;
   long_description?: string;
   image_url?: string;
+  gallery_url?: string;
+  gallery_password?: string;
 };
 
 function slugify(s: string): string {
@@ -112,6 +114,8 @@ export async function updateEventAction(
   if (input.description !== undefined) patch.description = input.description;
   if (input.long_description !== undefined) patch.long_description = input.long_description;
   if (input.image_url !== undefined) patch.image_url = input.image_url;
+  if (input.gallery_url !== undefined) patch.gallery_url = input.gallery_url.trim();
+  if (input.gallery_password !== undefined) patch.gallery_password = input.gallery_password.trim();
 
   const { error } = await supabase.from("events").update(patch).eq("id", id);
   if (error) return { error: error.message };
@@ -178,6 +182,23 @@ export async function getMyEventRegistrationsAction(): Promise<{ ids: string[]; 
     .select("event_id")
     .eq("member_id", me.id);
   if (error) return { ids: [], auth: true, error: error.message };
+  return { ids: (data ?? []).map((r) => r.event_id), auth: true };
+}
+
+// Anmeldungen (event_ids) eines beliebigen Members — für die Member-Detailseite
+// („Angemeldete Events"). Liest event_registrations (RLS: für alle
+// authentifizierten Members lesbar); enthält Self-Marks UND den Guestoo-Sync.
+export async function getMemberEventRegistrationsAction(
+  memberDbId: string,
+): Promise<{ ids: string[]; auth: boolean }> {
+  if (!memberDbId) return { ids: [], auth: true };
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { ids: [], auth: false };
+  const { data } = await supabase
+    .from("event_registrations")
+    .select("event_id")
+    .eq("member_id", memberDbId);
   return { ids: (data ?? []).map((r) => r.event_id), auth: true };
 }
 

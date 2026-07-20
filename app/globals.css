@@ -1025,7 +1025,10 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
    abgeschnitten wirkt (v.a. auf dem Handy). */
 .event-hero-media {
   position: relative;
-  aspect-ratio: 21 / 9;
+  /* 16/9 statt 21/9: mehr Höhe im Platzhalter, damit (quadratische) Guestoo-
+     Motive weniger Blur-Rand links/rechts zeigen (Pascal-Feedback). Breite
+     Bilder wechseln per JS auf object-fit: cover und füllen randlos. */
+  aspect-ratio: 16 / 9;
   background: var(--ink);
   overflow: hidden;
 }

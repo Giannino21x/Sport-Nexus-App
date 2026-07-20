@@ -53,7 +53,7 @@ export default function EventsPage() {
           <h1>
             {upcoming.length} <em style={{ color: "var(--accent)", fontStyle: "italic", fontSize: "0.9em" }}>kommende Events</em>
           </h1>
-          <div className="subtitle">Unterschiedliche Formate: Lunches, Sport-Events, Partneranlässe.</div>
+          <div className="subtitle">Hier findest Du alle SportNexus-Events.</div>
         </div>
         {isAdmin && (
           <div className="row">
@@ -68,11 +68,17 @@ export default function EventsPage() {
         <EventComposer onDone={() => { setComposerOpen(false); reload("events"); }} onCancel={() => setComposerOpen(false)} />
       )}
 
-      <div className="upper-label" style={{ marginBottom: 12 }}>Upcoming · {upcoming.length}</div>
+      {/* Kein "Upcoming"-Label mehr — die Zahl steht bereits im Seitentitel
+          (Pascal). Die vergangenen Events bekommen dafür einen deutlich
+          abgesetzten, fetten Titel in Schwarz. */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))", gap: 16, marginBottom: 40 }}>
         {upcoming.map((ev) => <EventCard key={ev.id} ev={ev} isAdmin={isAdmin} registered={isRegistered(ev.id)} count={ev.guestooId ? counts[ev.guestooId] : undefined} />)}
       </div>
-      <div className="upper-label" style={{ marginBottom: 12 }}>Past · {past.length}</div>
+      <div style={{ borderTop: "1px solid var(--line)", paddingTop: 28, marginBottom: 16 }}>
+        <div style={{ fontSize: 21, fontWeight: 700, color: "var(--ink)" }}>
+          {past.length} vergangene Events
+        </div>
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))", gap: 16 }}>
         {past.map((ev) => <EventCard key={ev.id} ev={ev} past isAdmin={isAdmin} />)}
       </div>
@@ -182,6 +188,13 @@ function EventComposer({ onDone, onCancel }: { onDone: () => void; onCancel: () 
 
 function EventCard({ ev, past, isAdmin, registered, count }: { ev: SnEvent; past?: boolean; isAdmin?: boolean; registered?: boolean; count?: number | null }) {
   const d = new Date(ev.date);
+  // Breite Bilder (~16:9) füllen den Rahmen komplett (cover) — keine grauen
+  // Ränder. Nur bei quadratischen Guestoo-Motiven bleibt contain + Blur-Füllung.
+  const [coverFit, setCoverFit] = useState(false);
+  const onImgLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    if (img.naturalHeight > 0 && img.naturalWidth / img.naturalHeight >= 1.45) setCoverFit(true);
+  };
 
   const onDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -206,12 +219,13 @@ function EventCard({ ev, past, isAdmin, registered, count }: { ev: SnEvent; past
               loading="lazy"
               style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "blur(20px) brightness(0.5)", transform: "scale(1.2)" }}
             />
-            {/* Vollständiges Bild, mittig, nicht beschnitten. */}
+            {/* Vollständiges Bild, mittig; breite Motive als cover (füllt Rahmen). */}
             <img
               src={ev.img}
               alt=""
               loading="lazy"
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "contain", objectPosition: "center", filter: past ? "grayscale(0.3) brightness(0.92)" : "none" }}
+              onLoad={onImgLoad}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: coverFit ? "cover" : "contain", objectPosition: "center", filter: past ? "grayscale(0.3) brightness(0.92)" : "none" }}
             />
           </>
         )}

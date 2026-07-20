@@ -7,9 +7,11 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Avatar } from "@/components/avatar";
 import { Icon, type IconName } from "@/components/icon";
-import { useEvent, useMe, useMembers } from "@/lib/hooks";
+import { reload, useEvent, useMe, useMembers } from "@/lib/hooks";
 import { useMyRegistrations } from "@/lib/registrations";
 import { getEventAttendeesAction, getEventStatsAction, type EventAttendee, type EventStats } from "@/app/actions/guestoo";
+import { updateEventAction } from "@/app/actions/events";
+import { type SnEvent } from "@/lib/data";
 
 // Solange Guestoo das System of Record für Anmeldungen ist, leiten wir
 // Registration-Klicks zur Guestoo-Übersichtsseite. Wenn das Event eine
@@ -28,6 +30,9 @@ export default function EventDetailPage() {
   const [attendeesOpen, setAttendeesOpen] = useState(false);
   const [attendees, setAttendees] = useState<EventAttendee[] | null>(null);
   const [stats, setStats] = useState<EventStats | null>(null);
+  // Breite Bilder (~16:9) füllen den Hero komplett (cover) — keine grauen
+  // Blur-Ränder. Quadratische Guestoo-Motive behalten contain + Blur-Füllung.
+  const [heroCover, setHeroCover] = useState(false);
 
   // Verlässliche Anmeldezahlen über die ÖFFENTLICHE Guestoo-API (kein Login,
   // läuft nicht ab). Das ist die stabile Quelle für "X angemeldet / Y frei".
@@ -163,7 +168,11 @@ export default function EventDetailPage() {
                 src={ev.img}
                 alt={ev.subtitle || ev.title}
                 className="event-hero-img"
-                style={{ filter: past ? "grayscale(0.15) brightness(0.92)" : "none" }}
+                onLoad={(e) => {
+                  const img = e.currentTarget;
+                  if (img.naturalHeight > 0 && img.naturalWidth / img.naturalHeight >= 1.45) setHeroCover(true);
+                }}
+                style={{ objectFit: heroCover ? "cover" : undefined, filter: past ? "grayscale(0.15) brightness(0.92)" : "none" }}
               />
             </>
           )}
@@ -197,7 +206,14 @@ export default function EventDetailPage() {
         <div className="col" style={{ gap: 18 }}>
           <div className="card" style={{ padding: 28 }}>
             <div className="upper-label" style={{ marginBottom: 14 }}>Über diesen Event</div>
-            <div className="serif" style={{ fontSize: 22, lineHeight: 1.45 }}>{ev.long || ev.desc}</div>
+            {/* Bewusst normale Textstärke — die Serif-Displayschrift wirkte
+                Pascal zu fett/aggressiv. */}
+            <div style={{ fontSize: 15, lineHeight: 1.65, color: "var(--ink-2)", whiteSpace: "pre-line" }}>{ev.long || ev.desc}</div>
+            {!past && (
+              <div style={{ fontSize: 13, color: "var(--ink-3)", marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--line)", lineHeight: 1.55 }}>
+                Die Anmeldung läuft über Guestoo. Dort bekommst du auch die Anmelde-Bestätigung und Reminder-Mails.
+              </div>
+            )}
           </div>
 
           {ev.speakers.length > 0 && (
@@ -234,7 +250,187 @@ export default function EventDetailPage() {
             </div>
           )}
 
-          {/* "Wer kommt" wurde ans Seitenende verschoben (siehe AttendeesCard unten). */}
+          {/* Teilnehmer-Karte: direkt unterhalb von "Ablauf", gleiche Breite (Pascal). */}
+          <div className="card" style={{ padding: 24 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, gap: 10 }}>
+              <div className="upper-label">{past ? "Wer teilnahm" : "Wer kommt"}</div>
+              {attendingPreview.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setAttendeesOpen((v) => !v)}
+                  className="btn-text"
+                  style={{ padding: "4px 10px", fontSize: 12, color: "var(--ink-3)" }}
+                  aria-expanded={attendeesOpen}
+                >
+                  {attendeesOpen ? "Ausblenden" : `Alle ${totalAttendees} anzeigen`}
+                </button>
+              )}
+            </div>
+
+            {attendingPreview.length === 0 ? (
+              <>
+                {confirmed != null && confirmed > 0 && !past && (
+                  <div style={{ display: "flex", marginBottom: 12 }} aria-hidden="true">
+                    {Array.from({ length: Math.min(confirmed, 7) }).map((_, i) => (
+                      <span
+                        key={i}
+                        style={{ marginLeft: i === 0 ? 0 : -10, width: 40, height: 40, borderRadius: "50%", background: "var(--accent-soft)", border: "2px solid var(--bg-elevated)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent)" }}
+                      >
+                        <Icon name="user" size={18} />
+                      </span>
+                    ))}
+                    {confirmed > 7 && (
+                      <span style={{ marginLeft: -10, width: 40, height: 40, borderRadius: "50%", background: "var(--bg-sunken)", border: "2px solid var(--bg-elevated)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11.5, fontWeight: 500, color: "var(--ink-2)" }}>
+                        +{confirmed - 7}
+                      </span>
+                    )}
+                  </div>
+                )}
+                <div style={{ fontSize: 13, color: "var(--ink-3)", lineHeight: 1.5 }}>
+                {past ? (
+                  // Vergangene Events: "xx Personen" statt "xx Plätze" (Pascal).
+                  <>
+                    <strong style={{ color: "var(--ink)" }}>{confirmed ?? ev.guests}</strong> Personen nahmen teil.
+                  </>
+                ) : (
+                  <>
+                    {confirmed != null ? (
+                      <>
+                        <strong style={{ color: "var(--ink)" }}>{confirmed}</strong> von {maxSlots} Plätzen belegt
+                        {freeSlots != null ? ` · ${freeSlots} frei` : ""}.{" "}
+                      </>
+                    ) : (
+                      <>{ev.guests} Plätze.{" "}</>
+                    )}
+                    Anmeldung über Guestoo —{" "}
+                    <a href={guestooRegisterUrl} target="_blank" rel="noreferrer" style={{ color: "var(--accent)", textDecoration: "underline" }}>
+                      auf Guestoo ansehen ↗
+                    </a>
+                    .
+                  </>
+                )}
+                </div>
+              </>
+            ) : (
+            <>
+            <button
+              type="button"
+              onClick={() => setAttendeesOpen((v) => !v)}
+              aria-label={attendeesOpen ? "Anmeldungen ausblenden" : "Anmeldungen anzeigen"}
+              style={{
+                display: "flex",
+                marginBottom: 10,
+                background: "transparent",
+                border: "none",
+                padding: 0,
+                cursor: "pointer",
+              }}
+            >
+              {attendingPreview.map((m, i) => (
+                <span
+                  key={m.id}
+                  style={{ marginLeft: i === 0 ? 0 : -10, border: "2px solid var(--bg-elevated)", borderRadius: "50%", display: "inline-flex" }}
+                >
+                  <Avatar first={m.first} last={m.last} color={m.color} size={40} url={m.avatarUrl} />
+                </span>
+              ))}
+              {totalAttendees > attendingPreview.length && (
+                <span
+                  style={{
+                    marginLeft: -10,
+                    width: 40,
+                    height: 40,
+                    borderRadius: "50%",
+                    background: "var(--bg-sunken)",
+                    border: "2px solid var(--bg-elevated)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: 11.5,
+                    fontWeight: 500,
+                    color: "var(--ink-2)",
+                  }}
+                >
+                  +{totalAttendees - attendingPreview.length}
+                </span>
+              )}
+            </button>
+            <div style={{ fontSize: 12.5, color: "var(--ink-3)" }}>
+              {past
+                ? `${totalAttendees} Personen nahmen teil.`
+                : `${maxSlots} Plätze · ${totalAttendees} angemeldet${freeSlots != null ? ` · ${freeSlots} frei` : ""}`}
+            </div>
+            {attendeesOpen && (
+              <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--line)" }}>
+                <div className="upper-label" style={{ marginBottom: 10 }}>
+                  {past ? "Alle Teilnehmenden" : "Alle Anmeldungen"} · {attendeesFull.length}
+                </div>
+                <div style={{ maxHeight: 460, overflowY: "auto", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 4, marginRight: -6, paddingRight: 6 }}>
+                  {attendeesFull.map((m) => m.memberSlug ? (
+                    <Link
+                      key={m.id}
+                      href={`/directory/${m.memberSlug}`}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        padding: "8px 8px",
+                        borderRadius: 8,
+                        transition: "background 120ms",
+                      }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-sunken)"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                    >
+                      <Avatar first={m.first} last={m.last} color={m.color} size={34} url={m.avatarUrl} />
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 13.5, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {m.first} {m.last}
+                        </div>
+                        <div style={{ fontSize: 11.5, color: "var(--ink-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {m.role}{m.company ? ` · ${m.company}` : ""}
+                        </div>
+                      </div>
+                      <Icon name="arrow" size={14} className="text-ink-3" />
+                    </Link>
+                  ) : (
+                    <div
+                      key={m.id}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 12,
+                        padding: "8px 8px",
+                        borderRadius: 8,
+                      }}
+                    >
+                      <Avatar first={m.first} last={m.last} color={m.color} size={34} url={m.avatarUrl} />
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ fontSize: 13.5, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          {m.first} {m.last}
+                        </div>
+                        {m.company && (
+                          <div style={{ fontSize: 11.5, color: "var(--ink-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {m.company}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {totalAttendees > attendeesFull.length && (
+                  <div style={{ fontSize: 11.5, color: "var(--ink-4)", padding: "10px 8px 0" }}>
+                    +{totalAttendees - attendeesFull.length} weitere ohne Namensangabe.
+                  </div>
+                )}
+              </div>
+            )}
+            </>
+            )}
+          </div>
+
+          {/* Bildergallerie (nur vergangene Events): Link + Passwort werden von
+              Admins manuell gepflegt — Inline-Edit direkt hier auf der Seite. */}
+          {past && (ev.galleryUrl || me?.isAdmin) && <GalleryCard ev={ev} isAdmin={Boolean(me?.isAdmin)} />}
         </div>
 
         <div className="col" style={{ gap: 18 }}>
@@ -342,182 +538,94 @@ export default function EventDetailPage() {
           })()}
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* "Wer kommt" am Seitenende, standardmässig eingeklappt — die vollständige
-          Anmeldeliste kommt aus Guestoo und ist noch nicht abschliessend stabil. */}
-      <div className="card" style={{ padding: 24, marginTop: 18 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, gap: 10 }}>
-          <div className="upper-label">{past ? "Das war dabei" : "Wer kommt"}</div>
-          {attendingPreview.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setAttendeesOpen((v) => !v)}
-              className="btn-text"
-              style={{ padding: "4px 10px", fontSize: 12, color: "var(--ink-3)" }}
-              aria-expanded={attendeesOpen}
-            >
-              {attendeesOpen ? "Ausblenden" : `Alle ${totalAttendees} anzeigen`}
-            </button>
-          )}
-        </div>
+// Bildergallerie-Karte für vergangene Events. Members sehen Link + Passwort,
+// Admins können beides direkt hier pflegen (updateEventAction).
+function GalleryCard({ ev, isAdmin }: { ev: SnEvent; isAdmin: boolean }) {
+  const [editing, setEditing] = useState(false);
+  const [url, setUrl] = useState(ev.galleryUrl ?? "");
+  const [pw, setPw] = useState(ev.galleryPassword ?? "");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
-        {attendingPreview.length === 0 ? (
-          <>
-            {confirmed != null && confirmed > 0 && !past && (
-              <div style={{ display: "flex", marginBottom: 12 }} aria-hidden="true">
-                {Array.from({ length: Math.min(confirmed, 7) }).map((_, i) => (
-                  <span
-                    key={i}
-                    style={{ marginLeft: i === 0 ? 0 : -10, width: 40, height: 40, borderRadius: "50%", background: "var(--accent-soft)", border: "2px solid var(--bg-elevated)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent)" }}
-                  >
-                    <Icon name="user" size={18} />
-                  </span>
-                ))}
-                {confirmed > 7 && (
-                  <span style={{ marginLeft: -10, width: 40, height: 40, borderRadius: "50%", background: "var(--bg-sunken)", border: "2px solid var(--bg-elevated)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11.5, fontWeight: 500, color: "var(--ink-2)" }}>
-                    +{confirmed - 7}
-                  </span>
-                )}
-              </div>
-            )}
-            <div style={{ fontSize: 13, color: "var(--ink-3)", lineHeight: 1.5 }}>
-            {confirmed != null ? (
-              <>
-                <strong style={{ color: "var(--ink)" }}>{confirmed}</strong> von {maxSlots} Plätzen belegt
-                {freeSlots != null ? ` · ${freeSlots} frei` : ""}.{" "}
-              </>
-            ) : (
-              <>{ev.guests} Plätze.{" "}</>
-            )}
-            {past ? (
-              "Dieses Event ist vorbei."
-            ) : (
-              <>
-                Anmeldung über Guestoo —{" "}
-                <a href={guestooRegisterUrl} target="_blank" rel="noreferrer" style={{ color: "var(--accent)", textDecoration: "underline" }}>
-                  auf Guestoo ansehen ↗
-                </a>
-                .
-              </>
-            )}
-            </div>
-          </>
-        ) : (
-        <>
-        <button
-          type="button"
-          onClick={() => setAttendeesOpen((v) => !v)}
-          aria-label={attendeesOpen ? "Anmeldungen ausblenden" : "Anmeldungen anzeigen"}
-          style={{
-            display: "flex",
-            marginBottom: 10,
-            background: "transparent",
-            border: "none",
-            padding: 0,
-            cursor: "pointer",
-          }}
-        >
-          {attendingPreview.map((m, i) => (
-            <span
-              key={m.id}
-              style={{ marginLeft: i === 0 ? 0 : -10, border: "2px solid var(--bg-elevated)", borderRadius: "50%", display: "inline-flex" }}
-            >
-              <Avatar first={m.first} last={m.last} color={m.color} size={40} url={m.avatarUrl} />
-            </span>
-          ))}
-          {totalAttendees > attendingPreview.length && (
-            <span
-              style={{
-                marginLeft: -10,
-                width: 40,
-                height: 40,
-                borderRadius: "50%",
-                background: "var(--bg-sunken)",
-                border: "2px solid var(--bg-elevated)",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: 11.5,
-                fontWeight: 500,
-                color: "var(--ink-2)",
-              }}
-            >
-              +{totalAttendees - attendingPreview.length}
-            </span>
-          )}
-        </button>
-        <div style={{ fontSize: 12.5, color: "var(--ink-3)" }}>
-          {past
-            ? `${totalAttendees} Mitglieder & Gäste waren dabei.`
-            : `${maxSlots} Plätze · ${totalAttendees} angemeldet${freeSlots != null ? ` · ${freeSlots} frei` : ""}`}
-        </div>
-        {attendeesOpen && (
-          <div style={{ marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--line)" }}>
-            <div className="upper-label" style={{ marginBottom: 10 }}>
-              {past ? "Alle Teilnehmenden" : "Alle Anmeldungen"} · {attendeesFull.length}
-            </div>
-            <div style={{ maxHeight: 460, overflowY: "auto", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 4, marginRight: -6, paddingRight: 6 }}>
-              {attendeesFull.map((m) => m.memberSlug ? (
-                <Link
-                  key={m.id}
-                  href={`/directory/${m.memberSlug}`}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    padding: "8px 8px",
-                    borderRadius: 8,
-                    transition: "background 120ms",
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-sunken)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                >
-                  <Avatar first={m.first} last={m.last} color={m.color} size={34} url={m.avatarUrl} />
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {m.first} {m.last}
-                    </div>
-                    <div style={{ fontSize: 11.5, color: "var(--ink-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {m.role}{m.company ? ` · ${m.company}` : ""}
-                    </div>
-                  </div>
-                  <Icon name="arrow" size={14} className="text-ink-3" />
-                </Link>
-              ) : (
-                <div
-                  key={m.id}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    padding: "8px 8px",
-                    borderRadius: 8,
-                  }}
-                >
-                  <Avatar first={m.first} last={m.last} color={m.color} size={34} url={m.avatarUrl} />
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div style={{ fontSize: 13.5, fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {m.first} {m.last}
-                    </div>
-                    {m.company && (
-                      <div style={{ fontSize: 11.5, color: "var(--ink-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                        {m.company}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-            {totalAttendees > attendeesFull.length && (
-              <div style={{ fontSize: 11.5, color: "var(--ink-4)", padding: "10px 8px 0" }}>
-                +{totalAttendees - attendeesFull.length} weitere ohne Namensangabe.
-              </div>
-            )}
-          </div>
-        )}
-        </>
+  const href = ev.galleryUrl
+    ? (ev.galleryUrl.startsWith("http") ? ev.galleryUrl : `https://${ev.galleryUrl}`)
+    : null;
+
+  const onSave = async () => {
+    setSaving(true);
+    setErr(null);
+    const r = await updateEventAction(ev.id, { gallery_url: url, gallery_password: pw });
+    setSaving(false);
+    if (r.error) { setErr(r.error); return; }
+    setEditing(false);
+    reload("events");
+  };
+
+  return (
+    <div className="card" style={{ padding: 24 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, gap: 10 }}>
+        <div className="upper-label">Bildergallerie</div>
+        {isAdmin && !editing && (
+          <button
+            type="button"
+            className="btn-text"
+            style={{ padding: "4px 10px", fontSize: 12, color: "var(--ink-3)" }}
+            onClick={() => setEditing(true)}
+          >
+            {ev.galleryUrl ? "Bearbeiten" : "Link hinterlegen"}
+          </button>
         )}
       </div>
+
+      {editing ? (
+        <div style={{ display: "grid", gap: 10 }}>
+          <div className="field">
+            <label className="field-label">Link zur Gallerie</label>
+            <input className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." autoFocus />
+          </div>
+          <div className="field">
+            <label className="field-label">Passwort <span style={{ color: "var(--ink-4)" }}>· optional</span></label>
+            <input className="input" value={pw} onChange={(e) => setPw(e.target.value)} placeholder="z.B. sportnexus2026" />
+          </div>
+          {err && <div style={{ fontSize: 12, color: "var(--danger)" }}>{err}</div>}
+          <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+            <button className="btn btn-ghost" onClick={() => { setEditing(false); setUrl(ev.galleryUrl ?? ""); setPw(ev.galleryPassword ?? ""); }} disabled={saving}>
+              Abbrechen
+            </button>
+            <button className="btn btn-primary" onClick={onSave} disabled={saving}>
+              {saving ? "Speichern..." : "Speichern"}
+            </button>
+          </div>
+        </div>
+      ) : href ? (
+        <>
+          <div style={{ fontSize: 13, color: "var(--ink-3)", marginBottom: 14, lineHeight: 1.55 }}>
+            Die Fotos zu diesem Event findest du in der Bildergallerie.
+          </div>
+          <a
+            href={href}
+            target="_blank"
+            rel="noreferrer"
+            className="btn btn-accent"
+            style={{ padding: "11px 18px", justifyContent: "center", display: "inline-flex" }}
+          >
+            Zur Bildergallerie <Icon name="arrow" size={14} />
+          </a>
+          {ev.galleryPassword && (
+            <div style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 12 }}>
+              Passwort: <code className="mono" style={{ background: "var(--bg-sunken)", border: "1px solid var(--line)", borderRadius: 6, padding: "2px 8px", fontSize: 12.5 }}>{ev.galleryPassword}</code>
+            </div>
+          )}
+        </>
+      ) : (
+        <div style={{ fontSize: 13, color: "var(--ink-3)", lineHeight: 1.55 }}>
+          Noch kein Gallerie-Link hinterlegt.
+        </div>
+      )}
     </div>
   );
 }

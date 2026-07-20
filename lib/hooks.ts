@@ -206,6 +206,8 @@ function rowToEvent(r: Row): SnEvent {
     agenda: (r.agenda as SnEvent["agenda"]) ?? [],
     long: rm(r.long_description),
     guestooId: r.guestoo_id ? String(r.guestoo_id) : undefined,
+    galleryUrl: r.gallery_url ? String(r.gallery_url) : undefined,
+    galleryPassword: r.gallery_password ? String(r.gallery_password) : undefined,
   };
 }
 

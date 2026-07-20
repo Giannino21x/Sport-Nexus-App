@@ -48,6 +48,10 @@ export type SnEvent = {
   agenda: EventAgendaItem[];
   long: string;
   guestooId?: string;
+  // Bildergallerie für vergangene Events (Pascal): Link + Passwort werden
+  // manuell von Admins gepflegt.
+  galleryUrl?: string;
+  galleryPassword?: string;
 };
 
 // Offizielle SportNexus-Taxonomie — 1:1 die Werte des HubSpot-Dropdowns
