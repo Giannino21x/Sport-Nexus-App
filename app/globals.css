@@ -824,7 +824,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   position: fixed;
   left: 14px;
   right: 14px;
-  bottom: calc(12px + env(safe-area-inset-bottom));
+  /* Näher an den Home-Indicator (iOS-26-Look): 6px + Safe-Area. Im Browser
+     (env=0) hält max() weiterhin 12px Abstand zur Viewport-Kante. */
+  bottom: max(calc(6px + env(safe-area-inset-bottom)), 12px);
   z-index: 50;
   display: flex;
   padding: 5px;

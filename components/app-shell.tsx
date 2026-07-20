@@ -256,6 +256,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       ]
     : [];
 
+  // Detailseiten: auf Mobile ersetzt ein Zurück-Pfeil den Hamburger in der
+  // fixen Glas-Topbar — der Inline-Zurück-Link im Inhalt scrollt unter die
+  // Leiste weg, sobald man liest, und war so kaum erreichbar.
+  const backTarget =
+    pathname.startsWith("/events/") ? "/events" :
+    pathname.startsWith("/directory/") ? "/directory" : null;
+
   const isActive = (href: string) => {
     // Exact-match-only paths: parents that would otherwise stay highlighted
     // while sub-routes are open (e.g. /admin would highlight on /admin/table-wishes).
@@ -397,9 +404,20 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div className="main" ref={mainRef}>
         <div className="topbar">
-          <button className="icon-btn topbar-hamburger" onClick={() => setMobileMenuOpen(true)} style={{ marginRight: 2 }}>
-            <Icon name="menu" size={18} />
-          </button>
+          {backTarget ? (
+            <button
+              className="icon-btn topbar-hamburger"
+              onClick={() => router.push(backTarget)}
+              aria-label="Zurück"
+              style={{ marginRight: 2 }}
+            >
+              <Icon name="chevron" size={16} style={{ transform: "rotate(180deg)" }} />
+            </button>
+          ) : (
+            <button className="icon-btn topbar-hamburger" onClick={() => setMobileMenuOpen(true)} style={{ marginRight: 2 }}>
+              <Icon name="menu" size={18} />
+            </button>
+          )}
           <div className="breadcrumbs">
             <span className="crumbs-mobile">
               <LogoWordmark height={18} invert={theme === "dark"} />
