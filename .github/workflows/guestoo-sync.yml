@@ -51,6 +51,9 @@ jobs:
       - name: Guestoo-Session erneuern (Headless-Login)
         run: npm run guestoo:refresh
 
+      - name: Neue Guestoo-Events importieren (fehlende, nicht archivierte)
+        run: node scripts/guestoo-import.mjs --auto --live
+
       - name: Event-Stammdaten synchronisieren (Venue/Adresse/Plätze)
         run: npm run guestoo:sync
 

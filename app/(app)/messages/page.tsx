@@ -9,6 +9,7 @@ import { ImagePreview } from "@/components/image-preview";
 import { useSettings } from "@/components/settings-context";
 import { reload, useConversations, useMe, useMembers, useThreadMessages, type ChatMessage, type Conversation } from "@/lib/hooks";
 import { markThreadReadAction, sendMessageAction, sendMessageWithAttachmentAction } from "@/app/actions/messages";
+import { createClient } from "@/lib/supabase/client";
 import { MEMBERS, type Member } from "@/lib/data";
 
 const EMOJIS = [
@@ -768,6 +769,31 @@ function formatMessageTime(iso: string): string {
   return sameDay ? `Heute · ${hh}:${mm}` : `${d.toLocaleDateString("de-CH", { day: "numeric", month: "short" })} · ${hh}:${mm}`;
 }
 
+// Chat-Anhänge liegen in einem PRIVATEN Bucket (seit 2026-07-20) — aus der
+// gespeicherten URL wird der Storage-Pfad extrahiert und eine kurzlebige
+// signierte URL erzeugt (nur für eingeloggte Members möglich). URLs ohne
+// Bucket-Bezug (Demo-Daten) werden unverändert durchgereicht.
+function useSignedAttachmentUrl(url?: string): string | null {
+  const marker = "/chat-attachments/";
+  const needsSigning = Boolean(url && url.includes(marker));
+  const [signed, setSigned] = useState<string | null>(null);
+  useEffect(() => {
+    if (!url || !needsSigning) return;
+    const path = decodeURIComponent(url.slice(url.indexOf(marker) + marker.length));
+    let cancelled = false;
+    createClient()
+      .storage.from("chat-attachments")
+      .createSignedUrl(path, 60 * 60)
+      .then(({ data }) => {
+        if (!cancelled) setSigned(data?.signedUrl ?? null);
+      });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- marker ist konstant
+  }, [url, needsSigning]);
+  if (!url) return null;
+  return needsSigning ? signed : url;
+}
+
 function Msg({
   align,
   text,
@@ -784,6 +810,7 @@ function Msg({
   ownStatus?: "sent" | "read";
 }) {
   const hasText = Boolean(text && text.trim());
+  const resolvedAttachmentUrl = useSignedAttachmentUrl(attachmentUrl);
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "flex-end", justifyContent: align === "right" ? "flex-end" : "flex-start", marginBottom: 14 }}>
       {align === "left" && avatar && (
@@ -794,7 +821,7 @@ function Msg({
         </span>
       )}
       <div style={{ maxWidth: 440, minWidth: 0, textAlign: align === "right" ? "right" : "left" }}>
-        {attachmentUrl && (
+        {attachmentUrl && resolvedAttachmentUrl && (
           <div
             style={{
               display: "inline-block",
@@ -811,7 +838,7 @@ function Msg({
             }}
           >
             <ImagePreview
-              src={attachmentUrl}
+              src={resolvedAttachmentUrl}
               alt="Anhang"
               rounded={false}
               thumbnailStyle={{ borderRadius: 0 }}

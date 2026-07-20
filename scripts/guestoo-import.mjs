@@ -12,6 +12,8 @@
 //   node scripts/guestoo-import.mjs --live
 //   node scripts/guestoo-import.mjs --names="büchel,streller,dudic"
 //   node scripts/guestoo-import.mjs --all          # ALLE noch fehlenden Events
+//   node scripts/guestoo-import.mjs --auto         # fehlende NICHT-archivierte
+//                                                  # Events (für den 6h-Cron)
 
 import { readFileSync } from "node:fs";
 import { argv } from "node:process";
@@ -25,6 +27,10 @@ const BASE = "https://app.guestoo.de";
 const TODAY = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zurich" }).format(new Date());
 const LIVE = argv.includes("--live");
 const ALL = argv.includes("--all");
+// --auto: fehlende, NICHT-archivierte Events (Cron-Modus). Kommende Events
+// stehen in Guestoo auf visibility=PRIVATE, vergangene werden archiviert —
+// der Archiv-Filter ist damit das verlässliche "ist noch aktuell"-Signal.
+const AUTO = argv.includes("--auto");
 const namesArg = argv.find((a) => a.startsWith("--names="));
 const NAMES = (namesArg ? namesArg.split("=")[1] : "büchel,streller,dudic")
   .split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
@@ -83,11 +89,12 @@ const { data: dbEvents } = await supabase.from("events").select("guestoo_id");
 const known = new Set((dbEvents ?? []).map((e) => e.guestoo_id).filter(Boolean));
 
 const picked = items.filter((g) =>
-  (ALL || NAMES.some((n) => g.displayName.toLowerCase().includes(n))) && !known.has(g.id),
+  (AUTO ? !g.archived : ALL || NAMES.some((n) => g.displayName.toLowerCase().includes(n))) &&
+  !known.has(g.id),
 );
 
 console.log(`=== Guestoo-Import (${LIVE ? "LIVE" : "DRY-RUN"}) ===`);
-console.log(`Filter: ${ALL ? "ALLE fehlenden" : NAMES.join(", ")} | ${picked.length} zu importieren\n`);
+console.log(`Filter: ${AUTO ? "AUTO (fehlende, nicht archivierte)" : ALL ? "ALLE fehlenden" : NAMES.join(", ")} | ${picked.length} zu importieren\n`);
 
 let done = 0;
 for (const g of picked) {
