@@ -7,6 +7,7 @@ import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
 import { useSettings } from "@/components/settings-context";
 import { reload, useMe, writeDemoAvatar } from "@/lib/hooks";
+import { normalizeAvatarFile } from "@/lib/image";
 import { BRANCHES, LOCATIONS, ROLES, SPORTS, type Member } from "@/lib/data";
 import {
   removeAvatarAction,
@@ -121,7 +122,9 @@ export default function ProfilePage() {
 
     setAvatarPending(true);
     const fd = new FormData();
-    fd.append("file", file);
+    // Riesige Originale vor dem Upload sauber auf max. 1600px verkleinern —
+    // kleine Dateien bleiben unangetastet (lib/image.ts).
+    fd.append("file", await normalizeAvatarFile(file));
     try {
       const r = await uploadAvatarAction(fd);
       if (r.error) {

@@ -8,6 +8,7 @@ import { Icon } from "@/components/icon";
 import { useSettings } from "@/components/settings-context";
 import { reload, useEvents, useMe, useMember } from "@/lib/hooks";
 import { setMemberExtraAction, uploadMemberAvatarAction } from "@/app/actions/members";
+import { normalizeAvatarFile } from "@/lib/image";
 import { getMemberEventRegistrationsAction } from "@/app/actions/events";
 import { Skel, SkelCircle, SkelLines } from "@/components/skeleton";
 import {
@@ -403,7 +404,8 @@ function AdminAvatarUpload({ memberDbId, hasPhoto }: { memberDbId: string; hasPh
     setBusy(true);
     try {
       const fd = new FormData();
-      fd.append("file", file);
+      // Riesige Originale vor dem Upload auf max. 1600px verkleinern.
+      fd.append("file", await normalizeAvatarFile(file));
       const r = await uploadMemberAvatarAction(memberDbId, fd);
       if (r.error) {
         setErr(r.error);

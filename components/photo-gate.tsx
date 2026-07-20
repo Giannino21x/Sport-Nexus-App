@@ -6,6 +6,7 @@ import { Icon } from "@/components/icon";
 import { clearLiveCache, reload, useMe } from "@/lib/hooks";
 import { signOutAction } from "@/app/actions/auth";
 import { uploadAvatarAction } from "@/app/actions/members";
+import { normalizeAvatarFile } from "@/lib/image";
 
 const ALLOWED = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
 
@@ -36,7 +37,8 @@ export function PhotoGate() {
     setBusy(true);
     try {
       const fd = new FormData();
-      fd.append("file", file);
+      // Riesige Originale vor dem Upload auf max. 1600px verkleinern.
+      fd.append("file", await normalizeAvatarFile(file));
       const r = await uploadAvatarAction(fd);
       if (r.error) {
         setError(r.error);
@@ -198,7 +200,8 @@ function CameraCapture({
     const video = videoRef.current;
     if (!video || !video.videoWidth) return;
     const side = Math.min(video.videoWidth, video.videoHeight);
-    const out = Math.min(720, side);
+    // 1080 statt 720: Selfies wirkten auf Retina-Displays sonst leicht körnig.
+    const out = Math.min(1080, side);
     const canvas = document.createElement("canvas");
     canvas.width = out;
     canvas.height = out;
