@@ -372,15 +372,20 @@ function MessagesInner() {
   return (
     <div className="messages-wrap">
       <div className="messages-inner">
-        <div className="page-header" style={{ marginBottom: 14 }}>
-          <div>
-            <div className="upper-label">Messages</div>
-            <h1>Nachrichten</h1>
+        {/* Mobil im offenen Thread keinen Seiten-Header: der Chat bekommt die
+            volle Höhe (Zurück + Name stehen im Thread-Kopf), statt dass Titel
+            und "Neue Nachricht" ein Drittel des Screens belegen. */}
+        {!(isMobile && showThread) && (
+          <div className="page-header" style={{ marginBottom: 14 }}>
+            <div>
+              <div className="upper-label">Messages</div>
+              <h1>Nachrichten</h1>
+            </div>
+            <Link href="/directory" className="btn btn-accent">
+              <Icon name="plus" size={14} /> Neue Nachricht
+            </Link>
           </div>
-          <Link href="/directory" className="btn btn-accent">
-            <Icon name="plus" size={14} /> Neue Nachricht
-          </Link>
-        </div>
+        )}
         <div className="messages-grid card">
           {showList && (
             <div className="messages-list">
@@ -898,6 +903,7 @@ function Msg({
         )}
         {hasText && (
           <div
+            className="msg-bubble"
             style={{
               display: "inline-block",
               padding: "8px 12px",
@@ -909,8 +915,6 @@ function Msg({
               // eigenen Seite (statt wie vorher oben ins Leere).
               borderBottomLeftRadius: align === "left" ? 4 : 14,
               borderBottomRightRadius: align === "right" ? 4 : 14,
-              fontSize: 13.5,
-              lineHeight: 1.45,
               border: align === "left" ? "1px solid var(--line)" : "none",
               whiteSpace: "pre-wrap",
               overflowWrap: "anywhere",
@@ -921,9 +925,8 @@ function Msg({
           </div>
         )}
         <div
-          className="mono"
+          className="mono msg-time"
           style={{
-            fontSize: 10.5,
             color: "var(--ink-4)",
             marginTop: 4,
             display: "flex",
