@@ -103,6 +103,20 @@ for (const ev of events ?? []) {
     continue;
   }
 
+  // Teilnehmer-Snapshot für die App (Namensliste "Wer kommt"/"Wer teilnahm"):
+  // wird in events.attendees persistiert, weil die cookie-basierte Live-API in
+  // Prod nicht verlässlich verfügbar ist (Session-Ablauf/-Invalidierung).
+  const attendeeSnapshot = visitors
+    .filter((v) => ["CONFIRMED", "APPEARED"].includes((v.status || "").toUpperCase()))
+    .map((v) => ({
+      guestooId: v.id,
+      status: (v.status || "").toUpperCase(),
+      firstName: v.userAccount?.firstName ?? "",
+      lastName: v.userAccount?.lastName ?? "",
+      company: v.userAccount?.company ?? null,
+      registeredAt: v.confirmDate ?? v.registerDate ?? null,
+    }));
+
   // E-Mails der "angemeldeten" Visitors → Member-IDs.
   const regMemberIds = new Set();
   let unmatched = 0;
@@ -127,6 +141,14 @@ for (const ev of events ?? []) {
   totAdd += toAdd.length; totDel += toDel.length; totUnmatched += unmatched;
 
   if (DRY) continue;
+
+  {
+    const { error } = await supabase
+      .from("events")
+      .update({ attendees: attendeeSnapshot, attendees_synced_at: new Date().toISOString() })
+      .eq("id", ev.id);
+    if (error) console.error(`    ✗ attendees-snapshot: ${error.message}`);
+  }
 
   if (toAdd.length) {
     // insert-or-ignore: eine bestehende self-Markierung bleibt unangetastet.

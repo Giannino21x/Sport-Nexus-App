@@ -33,6 +33,27 @@ export async function getEventAttendeesAction(
   guestooEventId: string,
 ): Promise<{ items?: EventAttendee[]; total?: number; error?: string }> {
   if (!guestooEventId) return { error: "Keine Guestoo-ID übergeben." };
+
+  // Teilnehmernamen sind personenbezogene Daten — nur für eingeloggte Members.
+  const authCheck = await createClient();
+  const { data: { user } } = await authCheck.auth.getUser();
+  if (!user) return { error: "Nicht eingeloggt." };
+
+  // Primärquelle: der DB-Snapshot aus dem 6h-Sync (events.attendees). Die
+  // cookie-basierte Live-API ist in Prod nicht verlässlich — Guestoo-Sessions
+  // laufen ab bzw. werden durch die Cron-Logins invalidiert, wodurch die
+  // Namensliste sonst still verschwindet.
+  const supabase = authCheck;
+  const { data: ev } = await supabase
+    .from("events")
+    .select("attendees")
+    .eq("guestoo_id", guestooEventId)
+    .maybeSingle();
+  const snapshot = Array.isArray(ev?.attendees) ? (ev.attendees as EventAttendee[]) : [];
+  if (snapshot.length > 0) return { items: snapshot, total: snapshot.length };
+
+  // Fallback (z.B. Event frisch verknüpft, Sync noch nicht gelaufen): Live-API
+  // best effort — schlägt sie fehl, gibt es wie bisher einen stillen Fehler.
   try {
     const visitors = await searchGuestooVisitors(guestooEventId, {
       statuses: ["CONFIRMED", "APPEARED"],
@@ -135,7 +156,9 @@ export async function syncGuestooIdsAction(): Promise<{
     const candidate = ev.guestoo_id
       ? guestooEvents.find((g) => g.id === ev.guestoo_id)
       : guestooEvents.find((g) => {
-          const gDate = new Date(g.startDate).toISOString().slice(0, 10);
+          // In Europe/Zurich formatieren — toISOString (UTC) würde Events mit
+          // Start zwischen 00:00 und 02:00 CH-Zeit auf den Vortag schieben.
+          const gDate = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zurich" }).format(new Date(g.startDate));
           if (gDate !== isoDate) return false;
           const gTitle = norm(g.displayName);
           if (evCity) {
