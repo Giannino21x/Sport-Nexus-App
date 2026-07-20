@@ -11,6 +11,7 @@
 //   node scripts/guestoo-import.mjs
 //   node scripts/guestoo-import.mjs --live
 //   node scripts/guestoo-import.mjs --names="büchel,streller,dudic"
+//   node scripts/guestoo-import.mjs --all          # ALLE noch fehlenden Events
 
 import { readFileSync } from "node:fs";
 import { argv } from "node:process";
@@ -21,8 +22,9 @@ const env = Object.fromEntries(
     .map((l) => { const i = l.indexOf("="); return [l.slice(0, i), l.slice(i + 1)]; }),
 );
 const BASE = "https://app.guestoo.de";
-const TODAY = "2026-06-16";
+const TODAY = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zurich" }).format(new Date());
 const LIVE = argv.includes("--live");
+const ALL = argv.includes("--all");
 const namesArg = argv.find((a) => a.startsWith("--names="));
 const NAMES = (namesArg ? namesArg.split("=")[1] : "büchel,streller,dudic")
   .split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
@@ -81,11 +83,11 @@ const { data: dbEvents } = await supabase.from("events").select("guestoo_id");
 const known = new Set((dbEvents ?? []).map((e) => e.guestoo_id).filter(Boolean));
 
 const picked = items.filter((g) =>
-  NAMES.some((n) => g.displayName.toLowerCase().includes(n)) && !known.has(g.id),
+  (ALL || NAMES.some((n) => g.displayName.toLowerCase().includes(n))) && !known.has(g.id),
 );
 
 console.log(`=== Guestoo-Import (${LIVE ? "LIVE" : "DRY-RUN"}) ===`);
-console.log(`Namen-Filter: ${NAMES.join(", ")} | ${picked.length} zu importieren\n`);
+console.log(`Filter: ${ALL ? "ALLE fehlenden" : NAMES.join(", ")} | ${picked.length} zu importieren\n`);
 
 let done = 0;
 for (const g of picked) {
