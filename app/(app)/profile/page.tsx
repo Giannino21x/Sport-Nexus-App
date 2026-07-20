@@ -106,7 +106,8 @@ export default function ProfilePage() {
       // Demo: no server upload — persist a downscaled data URL in localStorage
       // so the avatar survives navigation and reloads.
       try {
-        const dataUrl = await resizeImageToDataUrl(file, 320);
+        // 640 statt 320: auf Retina-Displays wirkte der Demo-Avatar körnig.
+        const dataUrl = await resizeImageToDataUrl(file, 640);
         setLocalAvatarUrl(dataUrl);
         writeDemoAvatar(dataUrl);
         URL.revokeObjectURL(previewUrl);

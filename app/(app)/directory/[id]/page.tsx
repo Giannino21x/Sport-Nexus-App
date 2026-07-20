@@ -9,6 +9,7 @@ import { useSettings } from "@/components/settings-context";
 import { reload, useEvents, useMe, useMember } from "@/lib/hooks";
 import { setMemberExtraAction, uploadMemberAvatarAction } from "@/app/actions/members";
 import { getMemberEventRegistrationsAction } from "@/app/actions/events";
+import { Skel, SkelCircle, SkelLines } from "@/components/skeleton";
 import {
   getMyTableWishesAction,
   toggleTableWishAction,
@@ -27,7 +28,7 @@ function formatSinceLong(s: string): string {
 export default function MemberDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
-  const { data: m, loading, isDemo } = useMember(id);
+  const { data: m, isDemo, resolved } = useMember(id);
   const { data: me } = useMe();
   const { data: events } = useEvents();
   const isAdmin = Boolean(me?.isAdmin);
@@ -45,7 +46,49 @@ export default function MemberDetailPage() {
     return () => { cancelled = true; };
   }, [memberDbId]);
 
-  if (loading) return <div style={{ padding: 40, color: "var(--ink-3)" }}>Lade...</div>;
+  // Skeleton in den echten Layout-Massen, solange die erste Antwort aussteht —
+  // "nicht gefunden" erst NACH aufgelösten Daten (kein Flash).
+  if (!resolved && !m) {
+    return (
+      <div>
+        <Link href="/directory" className="btn btn-text" style={{ marginBottom: 12, padding: "6px 10px", fontSize: 12.5, color: "var(--ink-3)", display: "inline-flex" }}>
+          ← Zurück zum Directory
+        </Link>
+        <div className="card" style={{ padding: 0, overflow: "hidden", marginBottom: 18 }}>
+          <Skel h={140} r={0} />
+          <div style={{ padding: "18px 28px 24px", display: "flex", gap: 18, alignItems: "flex-end" }}>
+            <SkelCircle size={96} style={{ marginTop: -48, border: "4px solid var(--bg-elevated)" }} />
+            <div style={{ flex: 1, display: "grid", gap: 8, paddingBottom: 6 }}>
+              <Skel w={220} h={26} />
+              <Skel w={160} h={13} />
+            </div>
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)", gap: 18 }} className="dash-grid">
+          <div className="col" style={{ gap: 18 }}>
+            <div className="card" style={{ padding: 24 }}>
+              <Skel w={60} h={12} style={{ marginBottom: 16 }} />
+              <SkelLines n={3} h={13} />
+            </div>
+            <div className="card" style={{ padding: 24 }}>
+              <Skel w={110} h={12} style={{ marginBottom: 16 }} />
+              <SkelLines n={5} h={13} />
+            </div>
+          </div>
+          <div className="col" style={{ gap: 18 }}>
+            <div className="card" style={{ padding: 20 }}>
+              <Skel w={70} h={12} style={{ marginBottom: 14 }} />
+              <SkelLines n={3} h={13} />
+            </div>
+            <div className="card" style={{ padding: 20 }}>
+              <Skel w={140} h={12} style={{ marginBottom: 14 }} />
+              <SkelLines n={2} h={13} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (!m) {
     return (
       <div>
@@ -243,9 +286,21 @@ export default function MemberDetailPage() {
           <div className="card" style={{ padding: 20 }}>
             <div className="upper-label" style={{ marginBottom: 12 }}>Angemeldete Events</div>
             {!isDemo && upcomingEvents.length === 0 && (
-              <div style={{ fontSize: 12.5, color: "var(--ink-3)", lineHeight: 1.5 }}>
-                {regIds === null ? "Lade..." : "Aktuell für kein kommendes Event angemeldet."}
-              </div>
+              regIds === null ? (
+                <div style={{ display: "grid", gap: 10 }}>
+                  <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
+                    <Skel w={36} h={30} r={6} />
+                    <div style={{ flex: 1, display: "grid", gap: 6 }}>
+                      <Skel w="70%" h={12} />
+                      <Skel w="45%" h={10} />
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div style={{ fontSize: 12.5, color: "var(--ink-3)", lineHeight: 1.5 }}>
+                  Aktuell für kein kommendes Event angemeldet.
+                </div>
+              )
             )}
             {upcomingEvents.map((ev) => (
               <Link

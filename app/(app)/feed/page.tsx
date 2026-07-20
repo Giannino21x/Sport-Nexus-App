@@ -6,6 +6,7 @@ import { Icon } from "@/components/icon";
 import { ImagePreview } from "@/components/image-preview";
 import { useSettings } from "@/components/settings-context";
 import { reload, useMe, usePosts, usePostReplies, type Post, type PostReply } from "@/lib/hooks";
+import { Skel, SkelCircle, SkelLines } from "@/components/skeleton";
 import {
   createPostAction,
   createPostWithImageAction,
@@ -21,7 +22,7 @@ type LikeOverride = { liked: boolean; likes: number };
 export default function FeedPage() {
   const { dataSource } = useSettings();
   const { data: me, dbId: meDbId } = useMe();
-  const { data: posts } = usePosts(meDbId);
+  const { data: posts, loading: postsLoading } = usePosts(meDbId);
 
   const [composerOpen, setComposerOpen] = useState(false);
   const [draft, setDraft] = useState("");
@@ -308,7 +309,23 @@ export default function FeedPage() {
         className="dash-grid"
       >
         <div className="col" style={{ gap: 14 }}>
-          {allPosts.length === 0 ? (
+          {allPosts.length === 0 && dataSource === "live" && postsLoading ? (
+            // Erste Ladung: Post-Skeletons statt leerem Zustand, der aufpoppt.
+            <>
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="card" style={{ padding: 20 }}>
+                  <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 14 }}>
+                    <SkelCircle size={40} />
+                    <div style={{ flex: 1, display: "grid", gap: 6 }}>
+                      <Skel w="35%" h={13} />
+                      <Skel w="25%" h={10} />
+                    </div>
+                  </div>
+                  <SkelLines n={3} h={12} />
+                </div>
+              ))}
+            </>
+          ) : allPosts.length === 0 ? (
             <div className="card" style={{ padding: 32, textAlign: "center", color: "var(--ink-3)" }}>
               Noch keine Posts. Sei der Erste!
             </div>

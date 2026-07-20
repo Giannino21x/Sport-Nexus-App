@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/icon";
+import { Skel } from "@/components/skeleton";
 import { useMe } from "@/lib/hooks";
 import {
   listAllTableWishesAction,
@@ -72,7 +73,16 @@ export default function AdminTableWishesPage() {
       )}
 
       {items === null ? (
-        <div style={{ padding: 24, color: "var(--ink-3)" }}>Lade...</div>
+        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr", gap: 14, padding: "16px 14px", borderTop: i === 0 ? "none" : "1px solid var(--line)" }}>
+              <Skel w="70%" h={13} />
+              <Skel w="70%" h={13} />
+              <Skel w={80} h={13} />
+              <Skel w={140} h={24} r={999} />
+            </div>
+          ))}
+        </div>
       ) : items.length === 0 ? (
         <div className="card" style={{ padding: 32, textAlign: "center", color: "var(--ink-3)" }}>
           Noch keine Tischwünsche gemeldet.

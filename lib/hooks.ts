@@ -293,15 +293,17 @@ export function useEvents() {
 }
 
 export function useMember(id: string) {
-  const { data, loading, isDemo } = useMembers();
+  const { data, loading, isDemo, resolved } = useMembers();
   const m = useMemo(() => data.find((x) => x.id === id) ?? null, [data, id]);
-  return { data: m, loading, isDemo };
+  // resolved: erst wenn mindestens einmal Daten da sind, darf die UI
+  // "nicht gefunden" zeigen — vorher Skeleton (kein Flash).
+  return { data: m, loading, isDemo, resolved };
 }
 
 export function useEvent(id: string) {
-  const { data, loading, isDemo } = useEvents();
+  const { data, loading, isDemo, resolved } = useEvents();
   const ev = useMemo(() => data.find((x) => x.id === id) ?? null, [data, id]);
-  return { data: ev, loading, isDemo };
+  return { data: ev, loading, isDemo, resolved };
 }
 
 export function useMe(): { data: Member | null; loading: boolean; isDemo: boolean; dbId: string | null; resolved: boolean } {

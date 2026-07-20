@@ -1078,3 +1078,47 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   .event-hero-body { padding: 18px 18px 18px; gap: 12px; }
   .event-hero-date .day { font-size: 34px; }
 }
+
+/* ---------- Graceful Loading ----------
+   Skeleton-Placeholder mit dezentem Schimmer, sanfte Bild-Fade-ins und ein
+   weicher Seiten-Übergang. Placeholder spiegeln die echten Layout-Masse,
+   damit beim Datenwechsel nichts springt. */
+:root { --skel-shine: rgba(0, 0, 0, 0.05); }
+[data-theme="dark"] { --skel-shine: rgba(255, 255, 255, 0.07); }
+
+.skel {
+  position: relative;
+  overflow: hidden;
+  background: var(--bg-sunken);
+  border-radius: 8px;
+  display: block;
+}
+.skel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, var(--skel-shine), transparent);
+  animation: skel-shine 1.5s ease-in-out infinite;
+}
+@keyframes skel-shine {
+  100% { transform: translateX(100%); }
+}
+
+/* Bilder blenden weich ein, sobald sie geladen sind (classList "loaded"
+   kommt per onLoad bzw. ref-Check für gecachte Bilder). */
+.img-fade { opacity: 0; transition: opacity 0.4s ease; }
+.img-fade.loaded { opacity: 1; }
+
+/* Seiteninhalt beim Routenwechsel sanft einblenden. */
+.page-enter { animation: page-enter 0.26s ease both; }
+@keyframes page-enter {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skel::after { animation: none; }
+  .page-enter { animation: none; }
+  .img-fade { transition: none; opacity: 1; }
+}

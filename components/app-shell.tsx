@@ -436,7 +436,11 @@ export function AppShell({ children }: { children: ReactNode }) {
           </span>
         </div>
 
-        <div className="content">{children}</div>
+        {/* key={pathname}: remountet den Wrapper pro Routenwechsel, damit die
+            page-enter-Animation bei jeder Navigation sauber neu läuft. */}
+        <div className="content">
+          <div key={pathname} className="page-enter">{children}</div>
+        </div>
       </div>
 
       <div className="tabbar">

@@ -26,6 +26,11 @@ export function Avatar({ first = "", last = "", color = "#C7916A", size = 40, sq
         <img
           src={url as string}
           alt={`${first} ${last}`.trim()}
+          className="img-fade"
+          // ref-Check fängt bereits gecachte Bilder ab, deren onLoad vor der
+          // Hydration gefeuert hat — sonst blieben sie unsichtbar.
+          ref={(el) => { if (el?.complete) el.classList.add("loaded"); }}
+          onLoad={(e) => e.currentTarget.classList.add("loaded")}
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
         />
       ) : (

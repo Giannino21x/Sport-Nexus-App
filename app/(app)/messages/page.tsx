@@ -11,6 +11,7 @@ import { reload, useConversations, useMe, useMembers, useThreadMessages, type Ch
 import { markThreadReadAction, sendMessageAction, sendMessageWithAttachmentAction } from "@/app/actions/messages";
 import { createClient } from "@/lib/supabase/client";
 import { MEMBERS, type Member } from "@/lib/data";
+import { Skel, SkelCircle } from "@/components/skeleton";
 
 const EMOJIS = [
   "😀", "😄", "😁", "😊", "😉", "😍", "😎", "🤔",
@@ -38,7 +39,7 @@ function MessagesInner() {
   const { dataSource } = useSettings();
   const { data: me, dbId: meDbId } = useMe();
   const { data: members } = useMembers();
-  const { data: liveConvos } = useConversations(meDbId);
+  const { data: liveConvos, loading: convosLoading } = useConversations(meDbId);
 
   // Demo conversations (static, client-side memory)
   const demoConvosRef = useMemo<Conversation[]>(
@@ -383,7 +384,20 @@ function MessagesInner() {
         <div className="messages-grid card">
           {showList && (
             <div className="messages-list">
-              {convos.length === 0 ? (
+              {convos.length === 0 && dataSource === "live" && convosLoading ? (
+                // Erste Ladung: Skeleton-Zeilen in Konversations-Massen.
+                <>
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div key={i} style={{ display: "flex", gap: 12, padding: "14px 16px", borderBottom: "1px solid var(--line)", alignItems: "center" }}>
+                      <SkelCircle size={40} />
+                      <div style={{ flex: 1, display: "grid", gap: 7 }}>
+                        <Skel w="55%" h={13} />
+                        <Skel w="80%" h={11} />
+                      </div>
+                    </div>
+                  ))}
+                </>
+              ) : convos.length === 0 ? (
                 <div style={{ padding: 24, fontSize: 13, color: "var(--ink-3)", textAlign: "center" }}>
                   Keine Konversationen.<br />
                   <Link href="/directory" className="btn btn-text" style={{ marginTop: 10, display: "inline-flex" }}>
@@ -788,7 +802,7 @@ function useSignedAttachmentUrl(url?: string): string | null {
         if (!cancelled) setSigned(data?.signedUrl ?? null);
       });
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- marker ist konstant
+     
   }, [url, needsSigning]);
   if (!url) return null;
   return needsSigning ? signed : url;

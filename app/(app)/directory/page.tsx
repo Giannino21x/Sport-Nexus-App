@@ -9,13 +9,14 @@ import { Icon } from "@/components/icon";
 import { useSettings } from "@/components/settings-context";
 import { BRANCHES, type Member } from "@/lib/data";
 import { useMembers } from "@/lib/hooks";
+import { Skel, SkelCircle, SkelLines } from "@/components/skeleton";
 
 const isAdminExtra = (s: string | undefined | null) =>
   (s ?? "").trim().toLowerCase() === "admin";
 
 export default function DirectoryPage() {
   const { layout, cardStyle } = useSettings();
-  const { data: members } = useMembers();
+  const { data: members, resolved } = useMembers();
   const [q, setQ] = useState("");
   const [filters, setFilters] = useState({ branch: "", sub: "", work: "", home: "", role: "" });
   const [sort, setSort] = useState<"last" | "first" | "company">("last");
@@ -78,6 +79,39 @@ export default function DirectoryPage() {
     setQ("");
     setFilters({ branch: "", sub: "", work: "", home: "", role: "" });
   };
+
+  // Erste Ladung (kein Cache): Skeleton-Karten in den echten Layout-Massen.
+  if (!resolved) {
+    return (
+      <div>
+        <div className="page-header">
+          <div>
+            <div className="upper-label">Member</div>
+            <h1><Skel w={200} h={34} style={{ marginTop: 4 }} /></h1>
+            <div className="subtitle">Entdecke die SportNexus Community.</div>
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 260px), 1fr))", gap: 14 }}>
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="card" style={{ padding: 18 }}>
+              <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 14 }}>
+                <SkelCircle size={52} />
+                <div style={{ flex: 1, display: "grid", gap: 7 }}>
+                  <Skel w="70%" h={14} />
+                  <Skel w="50%" h={11} />
+                </div>
+              </div>
+              <SkelLines n={2} h={11} />
+              <div style={{ display: "flex", gap: 6, marginTop: 14 }}>
+                <Skel w={110} h={22} r={999} />
+                <Skel w={70} h={22} r={999} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>

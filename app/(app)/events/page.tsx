@@ -10,9 +10,10 @@ import { reload, useEvents, useMe } from "@/lib/hooks";
 import { useMyRegistrations } from "@/lib/registrations";
 import { createEventAction, deleteEventAction, type EventInput } from "@/app/actions/events";
 import { getEventAttendeeCountsAction } from "@/app/actions/guestoo";
+import { Skel, SkelLines } from "@/components/skeleton";
 
 export default function EventsPage() {
-  const { data: events } = useEvents();
+  const { data: events, resolved } = useEvents();
   const { data: me } = useMe();
   const { isRegistered } = useMyRegistrations();
   const isAdmin = Boolean(me?.isAdmin);
@@ -44,6 +45,34 @@ export default function EventsPage() {
   }, [countsKey]);
 
   const [composerOpen, setComposerOpen] = useState(false);
+
+  // Erste Ladung (kein Cache): Skeleton-Karten in den echten Layout-Massen
+  // statt leerer Seite, die dann aufpoppt.
+  if (!resolved) {
+    return (
+      <div>
+        <div className="page-header">
+          <div>
+            <div className="upper-label">Events</div>
+            <h1><Skel w={260} h={34} style={{ marginTop: 4 }} /></h1>
+            <div className="subtitle">Hier findest Du alle SportNexus-Events.</div>
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))", gap: 16 }}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="card" style={{ padding: 0, overflow: "hidden" }}>
+              <Skel h="auto" r={0} style={{ aspectRatio: "16/9" }} />
+              <div style={{ padding: 18 }}>
+                <Skel w="55%" h={14} />
+                <Skel w="80%" h={18} style={{ marginTop: 8 }} />
+                <div style={{ marginTop: 12 }}><SkelLines n={2} /></div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -224,7 +253,9 @@ function EventCard({ ev, past, isAdmin, registered, count }: { ev: SnEvent; past
               src={ev.img}
               alt=""
               loading="lazy"
-              onLoad={onImgLoad}
+              className="img-fade"
+              ref={(el) => { if (el?.complete) el.classList.add("loaded"); }}
+              onLoad={(e) => { onImgLoad(e); e.currentTarget.classList.add("loaded"); }}
               style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: coverFit ? "cover" : "contain", objectPosition: "center", filter: past ? "grayscale(0.3) brightness(0.92)" : "none" }}
             />
           </>

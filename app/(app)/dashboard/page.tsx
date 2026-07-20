@@ -8,6 +8,7 @@ import { Icon } from "@/components/icon";
 import { useEvents, useMe, useMembers } from "@/lib/hooks";
 import { useMyRegistrations } from "@/lib/registrations";
 import { getEventAttendeeCountsAction } from "@/app/actions/guestoo";
+import { Skel, SkelCircle } from "@/components/skeleton";
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -110,13 +111,14 @@ export default function DashboardPage() {
   const profilePct = Math.round((profileFilled / profileTotal) * 100);
   const profileMissing = profileChecks.filter((c) => !c.filled).map((c) => c.label);
 
-  // Erste Ladung (noch nichts im Cache): "–" statt 0 zeigen — eine falsche 0,
-  // die dann zur echten Zahl umspringt, wirkt wie ein Flicker.
-  const stats = [
-    { k: "Mitglieder", v: membersReady ? members.length : "–", sub: "im Netzwerk" },
-    { k: "Kommende Events", v: eventsReady ? upcoming.length : "–", sub: "angekündigt" },
-    { k: "Angemeldete Events", v: eventsReady ? registeredUpcomingCount : "–", sub: eventsReady ? `von ${upcoming.length} möglichen` : "wird geladen" },
-    { k: "Matchmaking", v: membersReady ? matchSuggestions.length : "–", sub: "Vorschläge für dich" },
+  // Erste Ladung (noch nichts im Cache): Skeleton statt 0 zeigen — eine falsche
+  // 0, die dann zur echten Zahl umspringt, wirkt wie ein Flicker.
+  const statSkel = <Skel w={48} h={30} style={{ marginTop: 5, marginBottom: 5 }} />;
+  const stats: { k: string; v: React.ReactNode; sub: string }[] = [
+    { k: "Mitglieder", v: membersReady ? members.length : statSkel, sub: "im Netzwerk" },
+    { k: "Kommende Events", v: eventsReady ? upcoming.length : statSkel, sub: "angekündigt" },
+    { k: "Angemeldete Events", v: eventsReady ? registeredUpcomingCount : statSkel, sub: eventsReady ? `von ${upcoming.length} möglichen` : "wird geladen" },
+    { k: "Matchmaking", v: membersReady ? matchSuggestions.length : statSkel, sub: "Vorschläge für dich" },
   ];
 
   return (
@@ -160,7 +162,22 @@ export default function DashboardPage() {
             </Link>
           </div>
           <div className="col" style={{ gap: 0 }}>
-            {upcoming.length === 0 && (
+            {!eventsReady && upcoming.length === 0 && (
+              // Skeleton-Zeilen in Event-Row-Massen, solange die erste Antwort aussteht.
+              <>
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} style={{ display: "grid", gridTemplateColumns: "68px 1fr auto", gap: 16, padding: "14px 0", borderTop: i === 0 ? "none" : "1px solid var(--line)", alignItems: "center" }}>
+                    <Skel w={52} h={52} r={10} style={{ margin: "0 auto" }} />
+                    <div style={{ display: "grid", gap: 7 }}>
+                      <Skel w="55%" h={14} />
+                      <Skel w="35%" h={11} />
+                    </div>
+                    <Skel w={70} h={12} />
+                  </div>
+                ))}
+              </>
+            )}
+            {eventsReady && upcoming.length === 0 && (
               <div style={{ padding: "20px 0", fontSize: 13, color: "var(--ink-3)", textAlign: "center" }}>
                 Noch keine Events angekündigt.
               </div>
@@ -228,7 +245,25 @@ export default function DashboardPage() {
         </div>
 
         <div className="col" style={{ gap: 18 }}>
-          {matchSuggestions.length > 0 ? (
+          {!membersReady ? (
+            // Matchmaking-Skeleton, solange Members noch laden — sonst blitzt
+            // kurz der "Noch keine Vorschläge"-Empty-State auf.
+            <div className="card" style={{ padding: 20 }}>
+              <Skel w={150} h={12} style={{ marginBottom: 14 }} />
+              <Skel w="80%" h={20} style={{ marginBottom: 16 }} />
+              <div style={{ display: "grid", gap: 10 }}>
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", padding: "8px 10px", borderRadius: 10, border: "1px solid var(--line)" }}>
+                    <SkelCircle size={34} />
+                    <div style={{ flex: 1, display: "grid", gap: 6 }}>
+                      <Skel w="60%" h={12} />
+                      <Skel w="45%" h={10} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : matchSuggestions.length > 0 ? (
             <div
               className="card"
               style={{ padding: 20, background: "linear-gradient(180deg, var(--accent-soft) 0%, var(--bg-elevated) 100%)", borderColor: "transparent" }}

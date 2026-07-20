@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/icon";
+import { Skel } from "@/components/skeleton";
 import { useMe } from "@/lib/hooks";
 import {
   listProfileChangesAction,
@@ -113,7 +114,15 @@ export default function AdminProfileChangesPage() {
       )}
 
       {items === null ? (
-        <div style={{ padding: 24, color: "var(--ink-3)" }}>Lade...</div>
+        <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} style={{ display: "flex", gap: 14, alignItems: "center", padding: "16px 14px", borderTop: i === 0 ? "none" : "1px solid var(--line)" }}>
+              <Skel w={140} h={13} />
+              <Skel w="40%" h={13} />
+              <Skel w={90} h={12} style={{ marginLeft: "auto" }} />
+            </div>
+          ))}
+        </div>
       ) : visible !== null && visible.length === 0 ? (
         <div className="card" style={{ padding: 32, textAlign: "center", color: "var(--ink-3)" }}>
           {items.length === 0

@@ -12,6 +12,7 @@ import { useMyRegistrations } from "@/lib/registrations";
 import { getEventAttendeesAction, getEventStatsAction, type EventAttendee, type EventStats } from "@/app/actions/guestoo";
 import { updateEventAction } from "@/app/actions/events";
 import { type SnEvent } from "@/lib/data";
+import { Skel, SkelLines } from "@/components/skeleton";
 
 // Solange Guestoo das System of Record für Anmeldungen ist, leiten wir
 // Registration-Klicks zur Guestoo-Übersichtsseite. Wenn das Event eine
@@ -22,7 +23,7 @@ const GUESTOO_PUBLIC_URL = "https://events.guestoo.de/sportnexus";
 export default function EventDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
-  const { data: ev, loading, isDemo } = useEvent(id);
+  const { data: ev, isDemo, resolved } = useEvent(id);
   const { data: members } = useMembers();
   const { data: me } = useMe();
   const { isRegistered, setRegistered } = useMyRegistrations();
@@ -73,7 +74,48 @@ export default function EventDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- nur bei neuen Anmeldungen/Event abgleichen
   }, [ev?.id, me?.id, attendees]);
 
-  if (loading) return <div style={{ padding: 40, color: "var(--ink-3)" }}>Lade...</div>;
+  // Skeleton in den echten Layout-Massen, solange die erste Antwort aussteht —
+  // "nicht gefunden" darf erst NACH aufgelösten Daten erscheinen (kein Flash).
+  if (!resolved && !ev) {
+    return (
+      <div>
+        <Link href="/events" className="btn btn-text" style={{ marginBottom: 12, padding: "6px 10px", fontSize: 12.5, color: "var(--ink-3)", display: "inline-flex" }}>
+          ← Zurück zu Events
+        </Link>
+        <div className="card" style={{ padding: 0, overflow: "hidden", marginBottom: 18 }}>
+          <Skel h="auto" r={0} style={{ aspectRatio: "16/9" }} />
+          <div style={{ padding: "24px 28px" }}>
+            <Skel w={140} h={12} />
+            <Skel w="60%" h={32} style={{ marginTop: 12 }} />
+            <Skel w="45%" h={13} style={{ marginTop: 16 }} />
+          </div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)", gap: 18 }} className="dash-grid">
+          <div className="col" style={{ gap: 18 }}>
+            <div className="card" style={{ padding: 28 }}>
+              <Skel w={130} h={12} style={{ marginBottom: 16 }} />
+              <SkelLines n={4} h={13} />
+            </div>
+            <div className="card" style={{ padding: 24 }}>
+              <Skel w={90} h={12} style={{ marginBottom: 16 }} />
+              <SkelLines n={3} h={13} />
+            </div>
+          </div>
+          <div className="col" style={{ gap: 18 }}>
+            <div className="card" style={{ padding: 22 }}>
+              <Skel w={110} h={12} style={{ marginBottom: 14 }} />
+              <SkelLines n={2} h={13} />
+              <Skel h={40} r={8} style={{ marginTop: 16 }} />
+            </div>
+            <div className="card" style={{ padding: 22 }}>
+              <Skel w={70} h={12} style={{ marginBottom: 14 }} />
+              <SkelLines n={4} h={13} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (!ev) {
     return (
       <div>
@@ -89,6 +131,12 @@ export default function EventDetailPage() {
 
   const d = new Date(ev.date);
   const past = ev.status === "past";
+  // Guestoo liefert unter dimension=Regular_2000 eine deutlich schärfere
+  // Variante — fürs grosse Hero (Retina!) nötig, sonst wirkt es körnig.
+  // Karten/Listen bleiben bei der leichten 1000er-Variante.
+  const heroSrc = ev.img && ev.img.includes("dimension=")
+    ? ev.img.replace(/dimension=[^&]+/, "dimension=Regular_2000")
+    : ev.img;
   // Live: ausschliesslich echte Guestoo-Anmeldungen. Demo: fiktive Members-
   // Vorschau (Demo-Daten haben keine Guestoo-Verknüpfung). Im Live-Modus zeigen
   // wir KEINE Platzhalter-Members und keine Fehlermeldung, wenn (noch) keine
@@ -163,14 +211,17 @@ export default function EventDetailPage() {
         <div className="event-hero-media">
           {ev.img && (
             <>
-              <img aria-hidden="true" src={ev.img} alt="" className="event-hero-bg" />
+              {/* Gleiche (scharfe) Quelle wie das Hauptbild — ein Download, aus dem Cache. */}
+              <img aria-hidden="true" src={heroSrc} alt="" className="event-hero-bg" />
               <img
-                src={ev.img}
+                src={heroSrc}
                 alt={ev.subtitle || ev.title}
-                className="event-hero-img"
+                className="event-hero-img img-fade"
+                ref={(el) => { if (el?.complete) el.classList.add("loaded"); }}
                 onLoad={(e) => {
                   const img = e.currentTarget;
                   if (img.naturalHeight > 0 && img.naturalWidth / img.naturalHeight >= 1.45) setHeroCover(true);
+                  img.classList.add("loaded");
                 }}
                 style={{ objectFit: heroCover ? "cover" : undefined, filter: past ? "grayscale(0.15) brightness(0.92)" : "none" }}
               />
