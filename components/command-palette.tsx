@@ -78,6 +78,16 @@ export function CommandPalette({
     return () => document.removeEventListener("keydown", h);
   }, [open, onClose]);
 
+  // Hintergrund-Scroll sperren, solange die Palette offen ist — gleiches
+  // Muster wie beim Mobile-Drawer in app-shell (sonst scrollt die Seite
+  // hinter dem Overlay mit).
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
   const items: Item[] = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) {
