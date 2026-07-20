@@ -87,27 +87,22 @@ export default function SettingsPage() {
           </Row>
         </div>
 
-        <div className="card" style={{ padding: 24 }}>
-          <div className="upper-label" style={{ marginBottom: 14 }}>Daten</div>
-
-          <Row
-            label="Datenquelle"
-            hint={
-              dataSource === "live"
-                ? "Live-Modus: deine Daten werden in Supabase gespeichert."
-                : "Demo-Modus: fiktive Daten, Änderungen bleiben lokal im Browser."
-            }
-          >
-            <SegmentGroup
-              options={[
-                { k: "live", l: "Live" },
-                { k: "demo", l: "Demo" },
-              ]}
-              value={dataSource}
-              onChange={(v) => setDataSource(v as Settings["dataSource"])}
-            />
-          </Row>
-        </div>
+        {/* Die Datenquelle-Umschaltung gibt es für Live-User nicht mehr —
+            niemand soll versehentlich im Demo-Modus (fiktive Daten) landen.
+            Im Demo-Modus bleibt die Karte als Ausstieg zurück zum Login. */}
+        {dataSource === "demo" && (
+          <div className="card" style={{ padding: 24 }}>
+            <div className="upper-label" style={{ marginBottom: 14 }}>Daten</div>
+            <Row
+              label="Datenquelle"
+              hint="Demo-Modus: fiktive Daten, Änderungen bleiben lokal im Browser."
+            >
+              <button className="btn btn-ghost" onClick={() => setDataSource("live")}>
+                Demo verlassen → Zum Login
+              </button>
+            </Row>
+          </div>
+        )}
 
       </div>
     </div>
