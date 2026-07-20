@@ -60,9 +60,11 @@ export default function ProfilePage() {
       ...me,
       linkedin: me.linkedin ?? "",
       additional: me.additional ?? "",
-      showMobile: true,
-      showEmail: true,
-      matchmaking: true,
+      // Echte DB-Werte übernehmen — ein hartes `true` hier hat die Privacy-
+      // Einstellungen der Members bei jedem Speichern still zurückgesetzt.
+      showMobile: me.showMobile ?? true,
+      showEmail: me.showEmail ?? true,
+      matchmaking: me.matchmaking ?? true,
     });
     setLocalAvatarUrl(me.avatarUrl ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -170,6 +172,15 @@ export default function ProfilePage() {
 
   const onSave = () => {
     setStatus({});
+    // Datumsfelder validieren BEVOR gespeichert wird — der Server setzt
+    // unparsebare Werte sonst kommentarlos auf null (= löscht sie).
+    const badDate = (v?: string) => {
+      const t = (v ?? "").trim();
+      if (!t) return false;
+      return !/^\d{1,2}\.\d{1,2}\.\d{4}$/.test(t) && !/^\d{4}-\d{2}-\d{2}$/.test(t);
+    };
+    if (badDate(form.since)) { setStatus({ error: "«Member seit» bitte im Format TT.MM.JJJJ angeben." }); return; }
+    if (badDate(form.dateOfBirth)) { setStatus({ error: "Geburtsdatum bitte im Format TT.MM.JJJJ angeben." }); return; }
     if (isDemo) {
       // Demo mode — just navigate back
       setStatus({ ok: true });
@@ -238,7 +249,7 @@ export default function ProfilePage() {
       )}
       {status.ok && (
         <div style={{ padding: "10px 14px", background: "var(--success)", color: "#FFFFFF", borderRadius: 8, marginBottom: 18, fontSize: 13, fontWeight: 500 }}>
-          Profil gespeichert.
+          {isDemo ? "Demo-Modus — Änderungen werden nicht gespeichert." : "Profil gespeichert."}
         </div>
       )}
 

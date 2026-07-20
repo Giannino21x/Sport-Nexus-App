@@ -1,8 +1,10 @@
 "use client";
 
+import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { Icon, type IconName } from "./icon";
-import type { Notif } from "@/lib/hooks";
+import { reload, type Notif } from "@/lib/hooks";
+import { markNotificationsReadAction } from "@/app/actions/notifications";
 
 type Props = { notifs: Notif[]; onClose: () => void };
 
@@ -13,6 +15,14 @@ function iconFor(kind: string): IconName {
 }
 
 export function NotificationsPopover({ notifs, onClose }: Props) {
+  // Beim Öffnen serverseitig als gelesen markieren; beim Schliessen die Liste
+  // neu laden, damit der Unread-Punkt an der Glocke verschwindet. (Im Popover
+  // selbst bleibt die Hervorhebung sichtbar, solange es offen ist.)
+  useEffect(() => {
+    markNotificationsReadAction().catch(() => {});
+    return () => { reload("notifications"); };
+  }, []);
+
   const panel = (
     <>
       {/* Mobile-Backdrop — auf kleinen Screens schliesst ein Tap ausserhalb das Panel.
@@ -48,7 +58,6 @@ export function NotificationsPopover({ notifs, onClose }: Props) {
                   gap: 12,
                   padding: "12px 16px",
                   borderBottom: "1px solid var(--line)",
-                  cursor: "pointer",
                   background: n.unread ? "var(--accent-soft)" : "transparent",
                   opacity: n.unread ? 1 : 0.7,
                 }}

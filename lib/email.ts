@@ -44,9 +44,9 @@ export type EmailPayload = {
 export async function sendEmail(p: EmailPayload): Promise<{ ok: true } | { ok: false; reason: string }> {
   const tx = getTransporter();
   if (!tx) {
-    if (process.env.NODE_ENV === "development") {
-      console.log("[email] (dev no-op — SMTP_PASS missing)", p.to, "—", p.subject);
-    }
+    // IMMER loggen (auch in Prod) — fehlt SMTP_PASS, fallen sonst Passwort-
+    // Reset- und Benachrichtigungs-Mails komplett still aus.
+    console.error("[email] SMTP_PASS fehlt — Mail NICHT versendet:", p.to, "—", p.subject);
     return { ok: false, reason: "SMTP_PASS missing" };
   }
   try {
@@ -87,9 +87,13 @@ export function newMessageEmail(opts: {
   hasAttachment?: boolean;
   recipientFirst?: string | null;
 }): { subject: string; html: string; text: string } {
-  const fullName = `${opts.sender.first} ${opts.sender.last}`.trim();
-  const role = [opts.sender.role, opts.sender.company].filter(Boolean).join(" · ");
-  const greeting = opts.recipientFirst ? `Hallo ${opts.recipientFirst},` : "Hallo,";
+  // Alle Profilfelder escapen — sie sind von Members frei editierbar und
+  // landen sonst als rohes HTML in einer vertrauenswürdigen SportNexus-Mail.
+  const esc = (s: string) =>
+    s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c] ?? c));
+  const fullName = esc(`${opts.sender.first} ${opts.sender.last}`.trim());
+  const role = esc([opts.sender.role, opts.sender.company].filter(Boolean).join(" · "));
+  const greeting = opts.recipientFirst ? `Hallo ${esc(opts.recipientFirst)},` : "Hallo,";
   const subject = `Neue Nachricht von ${fullName}`;
   const replyUrl = `${APP_URL}/messages?to=${encodeURIComponent(opts.sender.slug)}`;
   const profileUrl = `${APP_URL}/directory/${encodeURIComponent(opts.sender.slug)}`;
@@ -106,14 +110,16 @@ export function newMessageEmail(opts: {
 
   // Kontakt-Block für externe Follow-ups — nur sichtbar, wenn mindestens ein
   // freigegebenes Kontaktfeld vorhanden ist.
-  const linkedinHref = opts.sender.linkedin
+  const linkedinRaw = opts.sender.linkedin
     ? (opts.sender.linkedin.startsWith("http") ? opts.sender.linkedin : `https://${opts.sender.linkedin}`)
     : null;
-  const senderEmail = opts.sender.email?.trim() || null;
-  const senderMobile = opts.sender.mobile?.trim() || null;
+  // Nur echte http(s)-URLs in den href lassen (kein javascript: o.ä.).
+  const linkedinHref = linkedinRaw && /^https?:\/\/[\w.-]/i.test(linkedinRaw) ? esc(linkedinRaw) : null;
+  const senderEmail = opts.sender.email?.trim() ? esc(opts.sender.email.trim()) : null;
+  const senderMobile = opts.sender.mobile?.trim() ? esc(opts.sender.mobile.trim()) : null;
   const hasContact = Boolean(senderEmail || senderMobile || linkedinHref);
 
-  const contextLine = [opts.sender.branch, opts.sender.work].filter(Boolean).join(" · ");
+  const contextLine = esc([opts.sender.branch, opts.sender.work].filter(Boolean).join(" · "));
 
   const contactRows = hasContact
     ? `<table cellpadding="0" cellspacing="0" border="0" style="margin:18px 0; width:100%; background:#FAFAFA; border-radius:6px;">

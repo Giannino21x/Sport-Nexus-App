@@ -120,11 +120,16 @@ function AccountEmailCard({ profileEmail }: { profileEmail: string | null }) {
 
   useEffect(() => {
     let cancelled = false;
-    getAuthEmailAction().then((r) => {
-      if (cancelled) return;
-      setAuthEmail(r.email ?? null);
-      setLoading(false);
-    });
+    getAuthEmailAction()
+      .then((r) => {
+        if (cancelled) return;
+        setAuthEmail(r.email ?? null);
+        setLoading(false);
+      })
+      .catch(() => {
+        // Fehler nicht in ewigem "Wird geladen..." enden lassen.
+        if (!cancelled) setLoading(false);
+      });
     return () => { cancelled = true; };
   }, []);
 

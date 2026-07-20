@@ -20,7 +20,8 @@ function Callback() {
   useEffect(() => {
     const supabase = createClient();
     const nextParam = searchParams.get("next") ?? "/dashboard";
-    const next = nextParam.startsWith("/") ? nextParam : "/dashboard";
+    // "//evil.com" wäre eine protokoll-relative externe URL (Open Redirect).
+    const next = nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/dashboard";
 
     const fail = (reason: string) => {
       router.replace(`/login?error=${encodeURIComponent(reason)}`);

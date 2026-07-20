@@ -75,6 +75,9 @@ async function call<T>(path: string, init?: { method?: string; body?: unknown })
   const auth = readAuth();
   const res = await fetch(`${BASE}${path}`, {
     method: init?.method ?? "GET",
+    // Timeout: hängt Guestoo, dürfen Dashboard/Event-Seiten nicht bis zum
+    // Vercel-Function-Timeout mitwarten.
+    signal: AbortSignal.timeout(8000),
     headers: {
       Accept: "application/json, text/plain, */*",
       "User-Agent": "SportNexus/1.0 (server)",
@@ -135,6 +138,7 @@ export async function getPublicGuestooStats(eventId: string): Promise<GuestooPub
   const res = await fetch(`${BASE}/proxy/api/public/events/${eventId}?lang=de&forceLang=true`, {
     headers: { Accept: "application/json", "User-Agent": "SportNexus/1.0 (server)" },
     cache: "no-store",
+    signal: AbortSignal.timeout(8000),
   });
   if (!res.ok) throw new Error(`Guestoo public API ${res.status}`);
   const j = (await res.json()) as {

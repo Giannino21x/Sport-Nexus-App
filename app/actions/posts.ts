@@ -5,10 +5,14 @@ import { createClient } from "@/lib/supabase/server";
 
 const MAX_POST_IMAGE_BYTES = 25 * 1024 * 1024;
 const ALLOWED_POST_IMAGE_TYPES = new Set(["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"]);
+// Server-seitiges Längenlimit — die DB hat keins, und Multi-MB-Texte würden
+// Feed und Mail-Previews aufblähen.
+const MAX_POST_BODY = 5000;
 
 export async function createPostAction(body: string, tag = ""): Promise<{ error?: string }> {
   const trimmed = body.trim();
   if (!trimmed) return { error: "Post ist leer." };
+  if (trimmed.length > MAX_POST_BODY) return { error: `Post ist zu lang (max. ${MAX_POST_BODY} Zeichen).` };
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -51,7 +55,7 @@ export async function createPostWithImageAction(formData: FormData): Promise<{ e
     "image/gif": "gif",
   };
   const ext = extMap[file.type] ?? "jpg";
-  const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
 
   const bytes = new Uint8Array(await file.arrayBuffer());
   const { error: upErr } = await supabase.storage
@@ -80,16 +84,21 @@ export async function updatePostAction(
 ): Promise<{ error?: string }> {
   const trimmed = body.trim();
   if (!trimmed) return { error: "Post darf nicht leer sein." };
+  if (trimmed.length > MAX_POST_BODY) return { error: `Post ist zu lang (max. ${MAX_POST_BODY} Zeichen).` };
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Nicht eingeloggt." };
 
-  const { error } = await supabase
+  // RLS erlaubt nur eigene Posts — .select() macht den 0-Zeilen-Fall sichtbar,
+  // sonst meldet die Action bei fremden Posts fälschlich Erfolg.
+  const { data: updated, error } = await supabase
     .from("posts")
     .update({ body: trimmed, edited_at: new Date().toISOString() })
-    .eq("id", postId);
+    .eq("id", postId)
+    .select("id");
   if (error) return { error: error.message };
+  if (!updated || updated.length === 0) return { error: "Keine Berechtigung." };
 
   revalidatePath("/feed");
   return {};
@@ -100,8 +109,9 @@ export async function deletePostAction(postId: string): Promise<{ error?: string
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Nicht eingeloggt." };
 
-  const { error } = await supabase.from("posts").delete().eq("id", postId);
+  const { data: deleted, error } = await supabase.from("posts").delete().eq("id", postId).select("id");
   if (error) return { error: error.message };
+  if (!deleted || deleted.length === 0) return { error: "Keine Berechtigung." };
 
   revalidatePath("/feed");
   return {};
@@ -128,6 +138,7 @@ export async function createReplyAction(
 ): Promise<{ error?: string }> {
   const trimmed = body.trim();
   if (!trimmed) return { error: "Antwort ist leer." };
+  if (trimmed.length > MAX_POST_BODY) return { error: `Antwort ist zu lang (max. ${MAX_POST_BODY} Zeichen).` };
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -152,8 +163,9 @@ export async function deleteReplyAction(replyId: string): Promise<{ error?: stri
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Nicht eingeloggt." };
 
-  const { error } = await supabase.from("post_replies").delete().eq("id", replyId);
+  const { data: deleted, error } = await supabase.from("post_replies").delete().eq("id", replyId).select("id");
   if (error) return { error: error.message };
+  if (!deleted || deleted.length === 0) return { error: "Keine Berechtigung." };
 
   revalidatePath("/feed");
   return {};

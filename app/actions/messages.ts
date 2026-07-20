@@ -85,9 +85,12 @@ async function notifyRecipient(args: {
   }
 }
 
+const MAX_MESSAGE_BODY = 5000;
+
 export async function sendMessageAction(recipientDbId: string, body: string): Promise<{ error?: string }> {
   const trimmed = body.trim();
   if (!trimmed) return { error: "Nachricht ist leer." };
+  if (trimmed.length > MAX_MESSAGE_BODY) return { error: `Nachricht ist zu lang (max. ${MAX_MESSAGE_BODY} Zeichen).` };
 
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -140,7 +143,9 @@ export async function sendMessageWithAttachmentAction(
     "image/gif": "gif",
   };
   const ext = extMap[file.type] ?? "jpg";
-  const path = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  // UUID statt Timestamp+6 Zeichen: der Bucket ist public-read, die Pfad-
+  // Entropie ist damit der einzige Zugriffsschutz auf Chat-Bilder.
+  const path = `${user.id}/${crypto.randomUUID()}.${ext}`;
 
   const bytes = new Uint8Array(await file.arrayBuffer());
   const { error: upErr } = await supabase.storage

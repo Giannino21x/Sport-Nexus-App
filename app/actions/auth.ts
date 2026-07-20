@@ -7,6 +7,9 @@ import { createClient } from "@/lib/supabase/server";
 import { passwordResetEmail, sendEmail } from "@/lib/email";
 
 async function appOrigin() {
+  // Env-Wert bevorzugen — Request-Header (host/x-forwarded-host) sind ausserhalb
+  // von Vercel spoofbar, und der Origin landet im Passwort-Reset-Link.
+  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host");
   const proto =
@@ -36,43 +39,23 @@ export async function signInAction(prevState: { error?: string } | undefined, fo
   (await cookies()).set("sn-mode", "live", { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
 
   const next = String(formData.get("next") || "/dashboard");
-  redirect(next.startsWith("/") ? next : "/dashboard");
+  // Nur app-interne Pfade — "//evil.com" ist eine protokoll-relative externe
+  // URL und wäre ein Open Redirect nach erfolgreichem Login.
+  redirect(next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard");
 }
 
-export async function signUpAction(prevState: { error?: string; info?: string } | undefined, formData: FormData) {
-  const email = String(formData.get("email") || "").trim().toLowerCase();
-  const password = String(formData.get("password") || "");
-  const first = String(formData.get("first") || "").trim();
-  const last = String(formData.get("last") || "").trim();
-
-  if (!email || !password) return { error: "E-Mail und Passwort erforderlich." };
-  if (password.length < 8) return { error: "Passwort muss mindestens 8 Zeichen haben." };
-  if (!first || !last) return { error: "Vor- und Nachname erforderlich." };
-
-  // Create the auth user via admin API with email already confirmed, so we can sign them in
-  // immediately. This avoids requiring SMTP setup in Supabase for confirmation emails.
-  const admin = adminClient();
-  const { error: createErr } = await admin.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: { first, last },
-  });
-  if (createErr) {
-    // Friendly message for the most common case
-    if (createErr.message.toLowerCase().includes("already")) {
-      return { error: "Diese E-Mail ist bereits registriert." };
-    }
-    return { error: createErr.message };
-  }
-
-  // Sign the new user in (sets auth cookies)
-  const supabase = await createClient();
-  const { error: signInErr } = await supabase.auth.signInWithPassword({ email, password });
-  if (signInErr) return { error: signInErr.message };
-
-  (await cookies()).set("sn-mode", "live", { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
-  redirect("/dashboard");
+// SICHERHEIT: Selbstregistrierung ist DEAKTIVIERT. SportNexus ist ein
+// geschlossener Member-Club — Accounts entstehen ausschliesslich über das
+// Onboarding (scripts/hubspot-onboard.mjs) bzw. Admin-Invites. Die frühere
+// Implementierung (admin.createUser mit email_confirm:true) war ein offener
+// Endpoint: Kombiniert mit dem handle_new_user-Trigger (Auto-Link per
+// E-Mail-Match) hätte jeder mit Kenntnis einer Member-E-Mail dieses Profil
+// übernehmen können. Nicht reaktivieren ohne Invite-Token-Flow.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Signatur muss für useActionState erhalten bleiben
+export async function signUpAction(_prevState: { error?: string; info?: string } | undefined, _formData: FormData) {
+  return {
+    error: "Die Registrierung ist nur auf Einladung möglich. Melde dich bei uns, wenn du Mitglied werden möchtest.",
+  };
 }
 
 export async function signOutAction() {
@@ -128,7 +111,10 @@ export async function requestPasswordResetAction(
         recoveryUrl,
         recipientFirst,
       });
-      await sendEmail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+      const sent = await sendEmail({ to: email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+      // Serverseitig loggen, wenn der Versand scheitert — die User-Antwort
+      // bleibt bewusst neutral (keine Enumeration), aber wir müssen es sehen.
+      if (!sent.ok) console.error("[requestPasswordResetAction] Mail-Versand fehlgeschlagen:", sent.reason);
     } else if (linkErr) {
       // "User not found" ist hier der einzig erwartete Fall — bewusst still.
       const msg = linkErr.message.toLowerCase();

@@ -51,7 +51,7 @@ export default function EventsPage() {
         <div>
           <div className="upper-label">Events</div>
           <h1>
-            {upcoming.length} <em style={{ color: "var(--accent)", fontStyle: "italic", fontSize: "0.9em" }}>kommende Events</em>
+            {upcoming.length} <em style={{ color: "var(--accent)", fontStyle: "italic", fontSize: "0.9em" }}>{upcoming.length === 1 ? "kommendes Event" : "kommende Events"}</em>
           </h1>
           <div className="subtitle">Hier findest Du alle SportNexus-Events.</div>
         </div>
@@ -76,7 +76,7 @@ export default function EventsPage() {
       </div>
       <div style={{ borderTop: "1px solid var(--line)", paddingTop: 28, marginBottom: 16 }}>
         <div style={{ fontSize: 21, fontWeight: 700, color: "var(--ink)" }}>
-          {past.length} vergangene Events
+          {past.length} {past.length === 1 ? "vergangenes Event" : "vergangene Events"}
         </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(100%, 320px), 1fr))", gap: 16 }}>
@@ -285,7 +285,8 @@ function EventCard({ ev, past, isAdmin, registered, count }: { ev: SnEvent; past
         <div className="serif" style={{ fontSize: 20, lineHeight: 1.2, marginTop: 3 }}>{ev.subtitle}</div>
         <div style={{ fontSize: 13, color: "var(--ink-3)", marginTop: 8, lineHeight: 1.5 }}>{ev.desc}</div>
         <div style={{ display: "flex", gap: 14, marginTop: 12, fontSize: 11.5, color: "var(--ink-4)" }}>
-          <span>{ev.time}</span><span>{ev.venue}</span><span>{count != null ? `${count} angemeldet` : `~${ev.guests} Gäste`}</span>
+          {/* ev.guests = Kapazität, nicht Teilnehmer — als "Plätze" ausweisen. */}
+          <span>{ev.time}</span><span>{ev.venue}</span><span>{count != null ? `${count} angemeldet` : `${ev.guests} Plätze`}</span>
         </div>
         {!past && (
           <div style={{ marginTop: 12 }}>

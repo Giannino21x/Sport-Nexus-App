@@ -272,7 +272,11 @@ function MessagesInner() {
 
   useEffect(() => {
     if (dataSource === "live" && activeDbId) {
-      markThreadReadAction(activeDbId).catch(() => {});
+      // Nach dem Als-gelesen-Markieren die Konversationsliste neu laden —
+      // sonst bleibt der Unread-Badge stehen, bis man etwas sendet.
+      markThreadReadAction(activeDbId)
+        .then(() => reload("messages"))
+        .catch(() => {});
     }
   }, [dataSource, activeDbId]);
 

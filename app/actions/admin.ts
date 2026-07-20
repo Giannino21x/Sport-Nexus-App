@@ -31,7 +31,8 @@ export async function getAdminOverviewAction(): Promise<{ data?: AdminOverview; 
     .maybeSingle();
   if (!me?.is_admin) return { error: "Keine Berechtigung." };
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Zürcher Tagesdatum statt UTC — sonst zählt der Admin-Zähler nachts falsch.
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zurich" }).format(new Date());
 
   const [members, admins, events, wishes, profileChanges, recent] = await Promise.all([
     supabase.from("members").select("id", { count: "exact", head: true }),

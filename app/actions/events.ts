@@ -44,8 +44,10 @@ async function requireAdmin(): Promise<{ error?: string; memberId?: string }> {
 }
 
 function statusForDate(iso: string): "upcoming" | "past" {
-  const d = new Date(iso + "T23:59:59");
-  return d.getTime() < Date.now() ? "past" : "upcoming";
+  // Vergleich über das Zürcher Tagesdatum — der Server läuft in UTC, ein
+  // Date-Vergleich würde nachts (00:00–02:00 CH-Zeit) falsch kippen.
+  const todayZurich = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Zurich" }).format(new Date());
+  return iso < todayZurich ? "past" : "upcoming";
 }
 
 export async function createEventAction(input: EventInput): Promise<{ error?: string; id?: string }> {

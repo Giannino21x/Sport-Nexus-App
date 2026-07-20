@@ -35,10 +35,12 @@ function parseDateInput(v?: string): string | null {
   if (!v) return null;
   const trimmed = v.trim();
   if (!trimmed) return null;
-  const dotMatch = trimmed.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
+  // Auch einstellige Tage/Monate akzeptieren ("5.6.2024") — vorher wurde der
+  // Wert bei solchen Eingaben still auf null gesetzt (= gelöscht).
+  const dotMatch = trimmed.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
   if (dotMatch) {
     const [, d, m, y] = dotMatch;
-    return `${y}-${m}-${d}`;
+    return `${y}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`;
   }
   const isoMatch = trimmed.match(/^\d{4}-\d{2}-\d{2}$/);
   if (isoMatch) return trimmed;
@@ -78,6 +80,21 @@ export async function updateProfileAction(input: ProfileInput): Promise<{ error?
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: "Nicht eingeloggt." };
+
+  // Pragmatische Längenlimits — die DB hat keine, und Multi-MB-Felder würden
+  // Directory, Mail-Templates und Cache aufblähen.
+  const tooLong = (v: string | undefined, max: number) => (v ?? "").length > max;
+  if (tooLong(input.bio, 2000) || tooLong(input.offer, 2000) || tooLong(input.search, 2000)) {
+    return { error: "Bio/Angebot/Suche: max. 2000 Zeichen." };
+  }
+  const shortFields: (string | undefined)[] = [
+    input.first, input.last, input.company, input.role, input.branch, input.sub,
+    input.branch2, input.work, input.home, input.email, input.mobile, input.web,
+    input.linkedin, input.additional,
+  ];
+  if (shortFields.some((f) => tooLong(f, 300))) {
+    return { error: "Ein Feld überschreitet die maximale Länge (300 Zeichen)." };
+  }
 
   const since = parseDateInput(input.since);
   const dateOfBirth = parseDateInput(input.dateOfBirth);

@@ -85,7 +85,7 @@ export default function DirectoryPage() {
         <div>
           <div className="upper-label">Member</div>
           <h1>
-            {filtered.length} <em style={{ color: "var(--accent)", fontStyle: "italic", fontSize: "0.9em" }}>Mitglieder</em>
+            {filtered.length} <em style={{ color: "var(--accent)", fontStyle: "italic", fontSize: "0.9em" }}>{filtered.length === 1 ? "Mitglied" : "Mitglieder"}</em>
           </h1>
           <div className="subtitle">Entdecke die SportNexus Community.</div>
         </div>
@@ -266,20 +266,31 @@ function MemberCard({ m, cardStyle }: { m: Member; cardStyle: "default" | "photo
       <Link href={`/directory/${m.id}`} className="card" style={{ cursor: "pointer", padding: 0, overflow: "hidden", display: "block" }}>
         <div style={{ aspectRatio: "1/1", position: "relative", background: m.color }}>
           <div aria-hidden="true" className="avatar-stripes" />
-          <div
-            style={{
-              position: "absolute",
-              inset: 0,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontFamily: "var(--font-display)",
-              color: "rgba(255,255,255,0.9)",
-              fontSize: 72,
-            }}
-          >
-            {m.first[0]}{m.last[0]}
-          </div>
+          {/* Echtes Profilbild, wenn vorhanden — Initialen nur als Fallback.
+              (Vorher zeigte ausgerechnet die Foto-Ansicht nie das Foto.) */}
+          {m.avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={m.avatarUrl}
+              alt={`${m.first} ${m.last}`}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+            />
+          ) : (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontFamily: "var(--font-display)",
+                color: "rgba(255,255,255,0.9)",
+                fontSize: 72,
+              }}
+            >
+              {m.first[0]}{m.last[0]}
+            </div>
+          )}
           {m.extra && (
             isAdminExtra(m.extra) ? (
               <span style={{ position: "absolute", top: 10, left: 10, fontSize: 10, padding: "3px 9px", background: "#2563EB", color: "#FFFFFF", borderRadius: 999, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
@@ -294,8 +305,8 @@ function MemberCard({ m, cardStyle }: { m: Member; cardStyle: "default" | "photo
         </div>
         <div style={{ padding: 14 }}>
           <div style={{ fontSize: 15, fontWeight: 500 }}>{m.first} {m.last}</div>
-          <div style={{ fontSize: 13, color: "var(--ink-3)" }}>{m.role} · {m.company}</div>
-          <div style={{ fontSize: 11.5, color: "var(--ink-4)", marginTop: 10 }}>{m.branch} · {m.work}</div>
+          <div style={{ fontSize: 13, color: "var(--ink-3)" }}>{[m.role, m.company].filter(Boolean).join(" · ")}</div>
+          <div style={{ fontSize: 11.5, color: "var(--ink-4)", marginTop: 10 }}>{[m.branch, m.work].filter(Boolean).join(" · ")}</div>
         </div>
       </Link>
     );

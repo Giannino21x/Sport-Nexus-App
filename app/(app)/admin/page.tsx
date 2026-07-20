@@ -13,9 +13,10 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     if (dataSource !== "live") {
-      // Demo-Modus: Platzhalter-State, keine Server-Calls.
+      // Demo-Modus: keine Server-Calls — data bleibt null, die StatCards
+      // zeigen dann "—" statt scheinbar echter Nullen.
       // eslint-disable-next-line react-hooks/set-state-in-effect -- bewusster Demo-Reset
-      setData({ memberCount: 0, adminCount: 0, upcomingEventCount: 0, tableWishCount: 0, openProfileChangeCount: 0, recentWishes: [] });
+      setData(null);
       return;
     }
     let cancelled = false;

@@ -289,9 +289,15 @@ export default function EventDetailPage() {
                 <div style={{ fontSize: 13, color: "var(--ink-3)", lineHeight: 1.5 }}>
                 {past ? (
                   // Vergangene Events: "xx Personen" statt "xx Plätze" (Pascal).
-                  <>
-                    <strong style={{ color: "var(--ink)" }}>{confirmed ?? ev.guests}</strong> Personen nahmen teil.
-                  </>
+                  // Ohne verlässliche Zahl (confirmed) KEINE Kapazität als
+                  // Teilnehmerzahl ausgeben — dann neutral bleiben.
+                  confirmed != null ? (
+                    <>
+                      <strong style={{ color: "var(--ink)" }}>{confirmed}</strong> Personen nahmen teil.
+                    </>
+                  ) : (
+                    <>Dieses Event ist vorbei.</>
+                  )
                 ) : (
                   <>
                     {confirmed != null ? (
@@ -504,7 +510,9 @@ export default function EventDetailPage() {
             <DetailRow icon="calendar" label="Zeit" value={ev.time} />
             <DetailRow icon="building" label="Venue" value={ev.venue} />
             <DetailRow icon="map" label="Adresse" value={ev.address} />
-            <DetailRow icon="users" label="Gäste" value={`~${ev.guests} Teilnehmende`} />
+            {/* ev.guests ist die Kapazität (maxVisitor), nicht die Teilnehmerzahl —
+                deshalb ehrlich als "Plätze" ausweisen. */}
+            <DetailRow icon="users" label="Plätze" value={`${ev.guests} Plätze`} />
           </div>
 
           {(ev.address || ev.venue) && (() => {

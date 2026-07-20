@@ -32,6 +32,13 @@ type Item =
       icon: IconName;
     };
 
+function fmtEventDate(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(iso ?? "");
+  if (!m) return "";
+  return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
+    .toLocaleDateString("de-CH", { day: "numeric", month: "long", year: "numeric" });
+}
+
 const NAV_ITEMS: { id: string; label: string; sub: string; href: string; icon: IconName }[] = [
   { id: "nav-dashboard", label: "Dashboard", sub: "Startseite", href: "/dashboard", icon: "dashboard" },
   { id: "nav-directory", label: "Member Directory", sub: "Alle Mitglieder durchsuchen", href: "/directory", icon: "users" },
@@ -119,7 +126,9 @@ export function CommandPalette({
         kind: "event" as const,
         id: `event-${e.id}`,
         label: `${e.title} — ${e.city}`,
-        sub: `${e.subtitle} · ${new Date(e.date).toLocaleDateString("de-CH", { day: "numeric", month: "long", year: "numeric" })}`,
+        // Datum lokal zerlegen (kein new Date("YYYY-MM-DD") → UTC-Kippen) und
+        // leere Daten abfangen (sonst stünde wörtlich "Invalid Date").
+        sub: [e.subtitle, fmtEventDate(e.date)].filter(Boolean).join(" · "),
         href: `/events/${e.id}`,
       }));
     const navHits: Item[] = NAV_ITEMS
@@ -127,6 +136,13 @@ export function CommandPalette({
       .map((n) => ({ kind: "nav" as const, ...n }));
     return [...memberHits, ...eventHits, ...navHits];
   }, [query, members, events]);
+
+  // Auswahl sichtbar halten: bei Pfeiltasten-Navigation über den Viewport
+  // hinaus mitscrollen — sonst öffnet Enter ein unsichtbares Ziel.
+  useEffect(() => {
+    const el = listRef.current?.children[highlighted] as HTMLElement | undefined;
+    el?.scrollIntoView({ block: "nearest" });
+  }, [highlighted]);
 
   // Clamp highlighted index when the list changes
   useEffect(() => {

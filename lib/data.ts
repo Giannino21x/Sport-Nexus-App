@@ -25,6 +25,11 @@ export type Member = {
   color: string;
   avatarUrl?: string;
   linkedin?: string;
+  // Privacy-Toggles (DB-Default true) — müssen mitgeladen werden, sonst setzt
+  // das Profilformular sie beim Speichern still auf true zurück.
+  showMobile?: boolean;
+  showEmail?: boolean;
+  matchmaking?: boolean;
 };
 
 export type EventSpeaker = { name: string; role: string };

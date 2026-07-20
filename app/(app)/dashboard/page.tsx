@@ -61,10 +61,10 @@ export default function DashboardPage() {
 
   // Matchmaking: score every other member by shared signals — Branche zählt am
   // schwersten, dann Subbranche, geteilte Sportarten, gleicher Arbeitsort,
-  // gleicher Wohnort. Wer kein Profil ausgefüllt hat, sieht trotzdem Vorschläge
-  // (zufällige stabile Reihenfolge), damit das Modul nicht leer wirkt.
+  // gleicher Wohnort.
   const meHasSignal = Boolean(me.branch || me.sub || me.work || me.home || (me.sports ?? []).length > 0);
-  const others = members.filter((m) => m.id !== me.id);
+  // Members mit deaktiviertem "Im Matchmaking berücksichtigen" ausschliessen.
+  const others = members.filter((m) => m.id !== me.id && m.matchmaking !== false);
   const scored = others
     .map((m) => {
       let s = 0;
@@ -77,11 +77,11 @@ export default function DashboardPage() {
       return { m, s };
     })
     .sort((a, b) => b.s - a.s || a.m.id.localeCompare(b.m.id));
-  const matchSuggestions = (
-    meHasSignal && scored.some((x) => x.s > 0)
-      ? scored.filter((x) => x.s > 0)
-      : scored
-  )
+  // Nur ECHTE Matches (Score > 0) anzeigen — kein Auffüllen mit beliebigen
+  // Members, das würde "passt zu dir" vorgaukeln. Ohne Signale/Matches greift
+  // der Empty-State ("Profil vervollständigen" bzw. "Noch keine Vorschläge").
+  const matchSuggestions = scored
+    .filter((x) => x.s > 0)
     .slice(0, 3)
     .map((x) => x.m);
 
@@ -171,7 +171,7 @@ export default function DashboardPage() {
               const attendeesLabel =
                 liveCount !== undefined && liveCount !== null
                   ? `${liveCount} angemeldet${ev.guests ? ` · ${ev.guests} Plätze` : ""}`
-                  : `~${ev.guests} Gäste`;
+                  : `${ev.guests} Plätze`;
               return (
                 <div
                   key={ev.id}

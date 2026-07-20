@@ -62,8 +62,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
       }
     } catch {}
     // Cookie wins over localStorage for dataSource — the server (middleware) reads the cookie.
+    // Fehlt der Cookie (abgelaufen/gelöscht), gilt IMMER "live": ein alter
+    // localStorage-Stand mit dataSource:"demo" würde einem eingeloggten Member
+    // sonst kommentarlos wieder Demo-Daten zeigen. In den Demo-Modus kommt man
+    // nur bewusst über die Login-Seite (setzt den Cookie).
     const cookieMode = readModeCookie();
-    if (cookieMode) next = { ...next, dataSource: cookieMode };
+    next = { ...next, dataSource: cookieMode ?? "live" };
     setS(next);
     // Make sure cookie reflects the effective mode (e.g. from localStorage) so middleware agrees.
     writeModeCookie(next.dataSource);

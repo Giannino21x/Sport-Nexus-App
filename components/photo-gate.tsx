@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
-import { reload, useMe } from "@/lib/hooks";
+import { clearLiveCache, reload, useMe } from "@/lib/hooks";
 import { signOutAction } from "@/app/actions/auth";
 import { uploadAvatarAction } from "@/app/actions/members";
 
@@ -132,7 +132,12 @@ export function PhotoGate() {
 
         <button
           className="btn-text"
-          onClick={() => signOutAction()}
+          onClick={() => {
+            // Cache VOR dem Logout leeren (gleiches Muster wie app-shell) —
+            // sonst sieht der nächste User auf diesem Gerät kurz fremde Daten.
+            clearLiveCache();
+            signOutAction();
+          }}
           style={{ marginTop: 22, fontSize: 12, color: "var(--ink-4)", cursor: "pointer" }}
         >
           Abmelden

@@ -166,7 +166,7 @@ export default function MemberDetailPage() {
               label="Webseite"
               value={
                 m.web ? (
-                  <a href={`https://${m.web}`} target="_blank" rel="noreferrer" style={{ color: "var(--accent)", textDecoration: "underline" }}>
+                  <a href={m.web.startsWith("http") ? m.web : `https://${m.web}`} target="_blank" rel="noreferrer" style={{ color: "var(--accent)", textDecoration: "underline" }}>
                     {m.web}
                   </a>
                 ) : null
@@ -203,7 +203,10 @@ export default function MemberDetailPage() {
         <div className="col" style={{ gap: 18 }}>
           <div className="card" style={{ padding: 20 }}>
             <div className="upper-label" style={{ marginBottom: 10 }}>Kontakt</div>
-            {m.email && (
+            {/* Privacy-Toggles respektieren: Wer "sichtbar" deaktiviert hat,
+                dessen Kontaktdaten erscheinen hier NICHT (showX !== false,
+                weil ältere Rows das Feld evtl. nicht gesetzt haben = Default true). */}
+            {m.email && m.showEmail !== false && (
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", fontSize: 13 }}>
                 <Icon name="mail" size={14} className="text-ink-3" />
                 <a href={`mailto:${m.email}`} style={{ color: "var(--accent)", textDecoration: "underline" }}>
@@ -211,7 +214,7 @@ export default function MemberDetailPage() {
                 </a>
               </div>
             )}
-            {m.mobile && (
+            {m.mobile && m.showMobile !== false && (
               <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", fontSize: 13 }}>
                 <Icon name="phone" size={14} className="text-ink-3" />
                 <a href={`tel:${m.mobile.replace(/\s+/g, "")}`} style={{ color: "var(--accent)", textDecoration: "underline" }}>

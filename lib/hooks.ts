@@ -61,7 +61,14 @@ function persistLiveCache() {
 export function clearLiveCache() {
   (Object.keys(liveCache) as (keyof LiveCache)[]).forEach((k) => delete liveCache[k]);
   if (typeof window !== "undefined") {
-    try { window.localStorage.removeItem(CACHE_KEY); } catch {}
+    try {
+      window.localStorage.removeItem(CACHE_KEY);
+      // Auch die übrigen user-gebundenen Keys leeren — die Anmeldemarker
+      // (lib/registrations.ts) und der Demo-Avatar würden sonst dem nächsten
+      // User auf diesem Gerät angezeigt.
+      window.localStorage.removeItem("sn_event_registrations");
+      window.localStorage.removeItem("sn_demo_avatar");
+    } catch {}
   }
 }
 
@@ -155,6 +162,9 @@ function rowToMember(r: Row): Member {
     color: String(r.color ?? "#C7916A"),
     avatarUrl: r.avatar_url ? String(r.avatar_url) : undefined,
     linkedin: r.linkedin ? String(r.linkedin) : undefined,
+    showMobile: r.show_mobile == null ? true : Boolean(r.show_mobile),
+    showEmail: r.show_email == null ? true : Boolean(r.show_email),
+    matchmaking: r.matchmaking == null ? true : Boolean(r.matchmaking),
   };
 }
 
@@ -458,7 +468,9 @@ function formatRelativeTime(iso: string): string {
   if (days === 1) return "vor 1 Tag";
   if (days < 7) return `vor ${days} Tagen`;
   const weeks = Math.floor(days / 7);
-  return weeks === 1 ? "vor 1 Woche" : `vor ${weeks} Wochen`;
+  if (weeks <= 4) return weeks === 1 ? "vor 1 Woche" : `vor ${weeks} Wochen`;
+  // Ab ~1 Monat absolutes Datum — "vor 78 Wochen" hilft niemandem.
+  return new Date(iso).toLocaleDateString("de-CH", { day: "numeric", month: "short", year: "numeric" });
 }
 
 export type ChatMessage = {

@@ -46,6 +46,7 @@ export function useMyRegistrations() {
   useEffect(() => {
     let cancelled = false;
     // 1. Sofort aus dem lokalen Cache rendern.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- bewusste Cache-Hydration beim Mount
     setIds(readRaw());
     const sync = () => setIds(readRaw());
     listeners.add(sync);
@@ -76,7 +77,13 @@ export function useMyRegistrations() {
     const next = value ? [...curr, eventId] : curr.filter((x) => x !== eventId);
     writeRaw(next);
     // Serverseitig persistieren (no-op im Demo-Modus, dort zählt nur lokal).
-    setEventRegistrationAction(eventId, value).catch(() => {});
+    // Schlägt der Server-Write fehl, lokalen Marker zurückrollen — sonst zeigt
+    // dieses Gerät dauerhaft "angemeldet", während der Server nichts weiss.
+    setEventRegistrationAction(eventId, value)
+      .then((r) => {
+        if (r.auth && r.error) writeRaw(curr);
+      })
+      .catch(() => writeRaw(curr));
   }, []);
 
   const toggle = useCallback(
