@@ -851,10 +851,17 @@ function Msg({
         </span>
       )}
       <div style={{ maxWidth: 440, minWidth: 0, textAlign: align === "right" ? "right" : "left" }}>
-        {attachmentUrl && resolvedAttachmentUrl && (
+        {attachmentUrl && (
+          // Feste 4:3-Box: reserviert die Fläche, BEVOR signierte URL und Bild
+          // geladen sind — sonst wächst die Bubble zweimal nach und der
+          // Thread-Scroll springt. Vollbild (Klick) zeigt das Bild unbeschnitten.
           <div
             style={{
-              display: "inline-block",
+              display: "block",
+              width: 260,
+              maxWidth: "100%",
+              aspectRatio: "4 / 3",
+              marginLeft: align === "right" ? "auto" : 0,
               borderRadius: 14,
               // Tail-Eck unten (zum Avatar hin), aber nur wenn der Anhang das
               // unterste Element der Bubble ist (kein Text darunter).
@@ -864,15 +871,29 @@ function Msg({
               marginBottom: hasText ? 4 : 0,
               border: "1px solid var(--line)",
               background: "var(--bg-sunken)",
-              maxWidth: "100%",
+              position: "relative",
             }}
           >
-            <ImagePreview
-              src={resolvedAttachmentUrl}
-              alt="Anhang"
-              rounded={false}
-              thumbnailStyle={{ borderRadius: 0 }}
-            />
+            {resolvedAttachmentUrl ? (
+              <ImagePreview
+                src={resolvedAttachmentUrl}
+                alt="Anhang"
+                rounded={false}
+                thumbnail={
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={resolvedAttachmentUrl}
+                    alt="Anhang"
+                    className="img-fade"
+                    ref={(el) => { if (el?.complete) el.classList.add("loaded"); }}
+                    onLoad={(e) => e.currentTarget.classList.add("loaded")}
+                    style={{ display: "block", width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }}
+                  />
+                }
+              />
+            ) : (
+              <Skel h="100%" r={0} style={{ position: "absolute", inset: 0 }} />
+            )}
           </div>
         )}
         {hasText && (

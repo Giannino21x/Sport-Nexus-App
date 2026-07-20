@@ -501,11 +501,15 @@ export function useThreadMessages(meDbId: string | null, otherDbId: string | nul
   // dahin Skeleton-Bubbles statt "Noch keine Nachrichten".
   const [resolved, setResolved] = useState(false);
 
+  // resolved NUR beim Thread-Wechsel zurücksetzen — NICHT bei tick-Refetches
+  // (reload("messages") nach Mark-as-read/Senden). Sonst kollabiert der offene
+  // Thread bei jedem Hintergrund-Refresh kurz zum Skeleton und springt.
   useEffect(() => {
-    // Thread-Wechsel: resolved zurücksetzen, sonst zeigt der neue Thread
-    // kurz den (leeren) Zustand des alten.
      
     setResolved(false);
+  }, [meDbId, otherDbId, dataSource]);
+
+  useEffect(() => {
     if (!hydrated || dataSource !== "live" || !meDbId || !otherDbId) {
       setMsgs([]);
       return;
