@@ -497,7 +497,7 @@ export default function EventDetailPage() {
                 <>
                   <div className="upper-label" style={{ marginBottom: 10, color: "var(--success)" }}>Bereits angemeldet</div>
                   <div style={{ fontSize: 13, color: "var(--ink-3)", marginBottom: 16 }}>
-                    Du bist für dieses Event angemeldet. Bestätigung und Reminder-Mails kommen von Guestoo.
+                    Du bist für dieses Event angemeldet.
                   </div>
                   <a
                     href={guestooRegisterUrl}
@@ -518,16 +518,13 @@ export default function EventDetailPage() {
                 </>
               ) : (
                 <>
-                  <div className="upper-label" style={{ marginBottom: 10 }}>Registrieren</div>
+                  <div className="upper-label" style={{ marginBottom: 14 }}>Registrieren</div>
                   {freeSlots != null && (
-                    <div style={{ fontSize: 12.5, color: "var(--ink-2)", marginBottom: 10, fontWeight: 500 }}>
+                    <div style={{ fontSize: 12.5, color: "var(--ink-2)", marginBottom: 14, fontWeight: 500 }}>
                       {freeSlots > 0 ? `Noch ${freeSlots} von ${maxSlots} Plätzen frei` : "Ausgebucht — Anmeldung über Warteliste"}
                     </div>
                   )}
-                  <div style={{ fontSize: 13, color: "var(--ink-3)", marginBottom: 16 }}>
-                    Die Anmeldung läuft über Guestoo — dort bekommst du auch
-                    Bestätigung und Reminder-Mails.
-                  </div>
+
                   <button
                     onClick={onRegisterClick}
                     className="btn btn-accent"
