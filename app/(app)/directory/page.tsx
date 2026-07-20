@@ -344,8 +344,10 @@ function MemberCard({ m, cardStyle }: { m: Member; cardStyle: "default" | "photo
         )}
       </div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: "auto" }}>
-        <span className="chip branch">{m.branch}</span>
-        <span className="chip">{m.work}</span>
+        {/* Leere Werte nicht rendern — ein leerer Chip kollabiert sonst zu
+            einem dunklen Kreis. */}
+        {m.branch && <span className="chip branch">{m.branch}</span>}
+        {m.work && <span className="chip">{m.work}</span>}
       </div>
     </Link>
   );
@@ -384,9 +386,9 @@ function MemberList({ members }: { members: Member[] }) {
               )
             )}
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8, alignItems: "center" }}>
-              <span className="chip branch">{m.branch}</span>
+              {m.branch && <span className="chip branch">{m.branch}</span>}
               {m.sub && <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>· {m.sub}</span>}
-              <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>· {m.work}</span>
+              {m.work && <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>· {m.work}</span>}
               {m.sports.slice(0, 2).map((s) => (
                 <span
                   key={s}
@@ -448,7 +450,7 @@ function MemberTable({ members }: { members: Member[] }) {
                 <td style={{ padding: "10px 14px" }}>{m.company}</td>
                 <td style={{ padding: "10px 14px", color: "var(--ink-3)" }}>{m.role}</td>
                 <td style={{ padding: "10px 14px" }}>
-                  <span className="chip branch">{m.branch}</span>
+                  {m.branch && <span className="chip branch">{m.branch}</span>}
                 </td>
                 <td style={{ padding: "10px 14px", color: "var(--ink-3)" }}>{m.work}</td>
                 <td style={{ padding: "10px 14px", color: "var(--ink-4)", fontSize: 12 }}>

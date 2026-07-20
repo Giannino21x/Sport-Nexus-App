@@ -14,6 +14,16 @@ import {
   toggleTableWishAction,
 } from "@/app/actions/table-wishes";
 
+// `since` kommt aus rowToMember bereits als "TT.MM.JJJJ" — new Date() darauf
+// ergibt Invalid Date. Deshalb explizit parsen; unbekannte Formate (z.B. Demo-
+// Freitext) unverändert anzeigen.
+function formatSinceLong(s: string): string {
+  const m = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/.exec(s.trim());
+  if (!m) return s;
+  return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]))
+    .toLocaleDateString("de-CH", { day: "numeric", month: "long", year: "numeric" });
+}
+
 export default function MemberDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params.id;
@@ -186,14 +196,7 @@ export default function MemberDetailPage() {
                 </div>
               }
             />
-            <InfoRow
-              label="Member seit"
-              value={
-                m.since
-                  ? new Date(m.since).toLocaleDateString("de-CH", { day: "numeric", month: "long", year: "numeric" })
-                  : null
-              }
-            />
+            <InfoRow label="Member seit" value={m.since ? formatSinceLong(m.since) : null} />
           </div>
         </div>
 

@@ -120,7 +120,11 @@ export default function AdminTableWishesPage() {
             </table>
           </div>
 
-          <div className="tw-mobile" style={{ display: "grid", gap: 10 }}>
+          {/* Kein Inline-display hier: Inline-Styles schlagen die CSS-Klasse
+              `.tw-mobile { display:none }` — die Karten erschienen deshalb
+              auch am Desktop (doppelte Einträge). Grid/Gap kommen aus dem
+              Style-Block unten. */}
+          <div className="tw-mobile">
             {items.map((w) => (
               <div key={w.id} className="card" style={{ padding: 14, display: "grid", gap: 12 }}>
                 <Field label="Wer möchte">
@@ -158,7 +162,7 @@ export default function AdminTableWishesPage() {
             .tw-mobile { display: none; }
             @media (max-width: 640px) {
               .tw-desktop { display: none; }
-              .tw-mobile { display: grid !important; }
+              .tw-mobile { display: grid; gap: 10px; }
             }
           `}</style>
         </>
@@ -180,7 +184,7 @@ function Th({ children }: { children: React.ReactNode }) {
 }
 
 function Td({ children }: { children: React.ReactNode }) {
-  return <td style={{ padding: "10px 14px", verticalAlign: "middle" }}>{children}</td>;
+  return <td style={{ padding: "14px 14px", verticalAlign: "middle" }}>{children}</td>;
 }
 
 // Beschriftetes Feld für die Mobile-Karten-Ansicht.
@@ -256,9 +260,11 @@ function PersonCell({ person }: { person: AdminTableWish["requester"] }) {
       <div style={{ minWidth: 0 }}>
         <div style={{ fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
           {person.slug ? (
-            <Link href={`/directory/${person.slug}`} style={{ color: "var(--ink)", textDecoration: "none" }}>
+            // inline-flex hält den Pfeil auf derselben Zeile wie den Namen —
+            // vorher brach das Icon als Block auf eine eigene, gequetschte Zeile um.
+            <Link href={`/directory/${person.slug}`} style={{ color: "var(--ink)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4 }}>
               {fullName}
-              <Icon name="arrow" size={11} style={{ marginLeft: 4, opacity: 0.5 }} />
+              <Icon name="arrow" size={11} style={{ opacity: 0.5 }} />
             </Link>
           ) : (
             fullName
