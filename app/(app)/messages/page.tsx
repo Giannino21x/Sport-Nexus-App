@@ -782,15 +782,23 @@ function Msg({
   const hasText = Boolean(text && text.trim());
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "flex-end", justifyContent: align === "right" ? "flex-end" : "flex-start", marginBottom: 14 }}>
-      {align === "left" && avatar && <Avatar first={avatar.first} last={avatar.last} color={avatar.color} size={28} url={avatar.avatarUrl} />}
+      {align === "left" && avatar && (
+        // marginBottom ≈ Höhe der Zeitstempel-Zeile: hebt den Avatar auf die
+        // Unterkante der Bubble, damit deren Tail-Eck auf ihn zeigt.
+        <span style={{ display: "inline-flex", marginBottom: 20 }}>
+          <Avatar first={avatar.first} last={avatar.last} color={avatar.color} size={28} url={avatar.avatarUrl} />
+        </span>
+      )}
       <div style={{ maxWidth: 440, minWidth: 0, textAlign: align === "right" ? "right" : "left" }}>
         {attachmentUrl && (
           <div
             style={{
               display: "inline-block",
               borderRadius: 14,
-              borderTopLeftRadius: align === "left" ? 4 : 14,
-              borderTopRightRadius: align === "right" ? 4 : 14,
+              // Tail-Eck unten (zum Avatar hin), aber nur wenn der Anhang das
+              // unterste Element der Bubble ist (kein Text darunter).
+              borderBottomLeftRadius: align === "left" && !hasText ? 4 : 14,
+              borderBottomRightRadius: align === "right" && !hasText ? 4 : 14,
               overflow: "hidden",
               marginBottom: hasText ? 4 : 0,
               border: "1px solid var(--line)",
@@ -815,8 +823,10 @@ function Msg({
               color: align === "right" ? "var(--bg)" : "var(--ink)",
               maxWidth: "100%",
               borderRadius: 14,
-              borderTopLeftRadius: align === "left" && !attachmentUrl ? 4 : 14,
-              borderTopRightRadius: align === "right" && !attachmentUrl ? 4 : 14,
+              // Tail-Eck unten links/rechts — zeigt zum Avatar bzw. zur
+              // eigenen Seite (statt wie vorher oben ins Leere).
+              borderBottomLeftRadius: align === "left" ? 4 : 14,
+              borderBottomRightRadius: align === "right" ? 4 : 14,
               fontSize: 13.5,
               lineHeight: 1.45,
               border: align === "left" ? "1px solid var(--line)" : "none",
