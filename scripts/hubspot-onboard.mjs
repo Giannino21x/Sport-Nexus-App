@@ -118,7 +118,7 @@ function welcomeEmail({ first, actionUrl }) {
     <!-- Weisser Chip hinter dem Logo: im Light Mode unsichtbar, verhindert im
          Dark Mode (Client invertiert die Karte), dass der dunkle Teil des
          Logo-PNGs unlesbar wird. -->
-    <div style="display:inline-block; background:#FFFFFF; padding:8px 12px 6px; border-radius:6px; margin:0 0 8px;">
+    <div style="display:inline-block; background:#FFFFFF; padding:8px 12px 6px; border-radius:6px; margin:0 0 18px;">
       <img src="${APP_URL}/logo-sportnexus.png" alt="SportNexus" width="190" style="display:block; width:190px; max-width:60vw; height:auto; border:0;">
     </div>
     <h1 style="font-size:23px; font-weight:600; margin:12px 0 6px; color:#000;">${greeting}</h1>
@@ -189,7 +189,7 @@ function betaEmail({ first, actionUrl }) {
     <!-- Weisser Chip hinter dem Logo: im Light Mode unsichtbar, verhindert im
          Dark Mode (Client invertiert die Karte), dass der dunkle Teil des
          Logo-PNGs unlesbar wird. -->
-    <div style="display:inline-block; background:#FFFFFF; padding:8px 12px 6px; border-radius:6px; margin:0 0 8px;">
+    <div style="display:inline-block; background:#FFFFFF; padding:8px 12px 6px; border-radius:6px; margin:0 0 18px;">
       <img src="${APP_URL}/logo-sportnexus.png" alt="SportNexus" width="190" style="display:block; width:190px; max-width:60vw; height:auto; border:0;">
     </div>
     <h1 style="font-size:23px; font-weight:600; margin:12px 0 14px; color:#000;">${greeting}</h1>
