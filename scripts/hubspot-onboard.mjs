@@ -417,6 +417,9 @@ function parseDate(v) {
   const dot = s.match(/^(\d{2})\.(\d{2})\.(\d{4})$/);
   if (dot) return `${dot[3]}-${dot[2]}-${dot[1]}`;
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // HubSpot liefert createdate & Co. teils als ISO-Zeitstempel.
+  const iso = s.match(/^(\d{4}-\d{2}-\d{2})T/);
+  if (iso) return iso[1];
   // HubSpot date-Typ liefert teils Epoch-ms.
   if (/^\d{10,13}$/.test(s)) {
     const d = new Date(Number(s.length === 10 ? s * 1000 : s));
