@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient as createAdminClient, type EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { passwordResetEmail, sendEmail } from "@/lib/email";
+import { verifyInviteToken } from "@/lib/invite-token";
 
 async function appOrigin() {
   // Env-Wert bevorzugen — Request-Header (host/x-forwarded-host) sind ausserhalb
@@ -143,6 +144,35 @@ export async function confirmRecoveryAction(formData: FormData) {
 
   const supabase = await createClient();
   const { error } = await supabase.auth.verifyOtp({ type, token_hash });
+  if (error) redirect("/login?error=reset_invalid");
+
+  (await cookies()).set("sn-mode", "live", { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
+  redirect("/reset-password");
+}
+
+// Wird vom Button auf /invite aufgerufen (Langzeit-Einladungslink, siehe
+// lib/invite-token.ts). Der Mail-Link hält 4 Wochen; der eigentliche Supabase-
+// Recovery-OTP wird erst HIER beim echten Klick gemintet und sofort verbraucht.
+// Danach ist die Recovery-Session gesetzt und /reset-password zeigt das
+// Passwort-Formular.
+export async function confirmInviteAction(formData: FormData) {
+  const token = String(formData.get("token") || "");
+  const v = verifyInviteToken(token);
+  if (!v.email) redirect("/login?error=reset_invalid");
+
+  let tokenHash: string | null = null;
+  try {
+    const admin = adminClient();
+    const { data, error } = await admin.auth.admin.generateLink({ type: "recovery", email: v.email });
+    if (error) console.error("[confirmInviteAction] generateLink:", error.message);
+    else tokenHash = data?.properties?.hashed_token ?? null;
+  } catch (e) {
+    console.error("[confirmInviteAction]", e instanceof Error ? e.message : e);
+  }
+  if (!tokenHash) redirect("/login?error=reset_invalid");
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.verifyOtp({ type: "recovery", token_hash: tokenHash });
   if (error) redirect("/login?error=reset_invalid");
 
   (await cookies()).set("sn-mode", "live", { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });

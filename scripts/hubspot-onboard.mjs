@@ -17,9 +17,12 @@
 //   node scripts/hubspot-onboard.mjs --live     # echtes Onboarding
 //   node scripts/hubspot-onboard.mjs --status="Founder,Early Member"
 //   node scripts/hubspot-onboard.mjs --live --only=max@example.com
+//   node scripts/hubspot-onboard.mjs --live --beta --reinvite --only=a@x.ch,b@y.ch
+//     → Beta-Test-Einladung (Pascals Text) mit 4-Wochen-Link an Testpersonen
 //
 // Mapping-Quelle: docs/HUBSPOT-SYNC.md (verifiziert 2026-06-12/16).
 
+import { createHmac } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { argv } from "node:process";
 import { createClient } from "@supabase/supabase-js";
@@ -58,6 +61,10 @@ const REINVITE = args.includes("--reinvite");
 // --no-mail: onboardet/aktualisiert nur die Daten, verschickt KEINE Mail
 // (z.B. um „Member seit" nachzutragen, ohne erneut Invites auszulösen).
 const NOMAIL = args.includes("--no-mail");
+// --beta: Beta-Test-Einladung (Pascals Text, Feedback 8) statt der Standard-
+// Welcome-Mail, mit 4 Wochen gültigem Langzeit-Link auf /invite statt des
+// 24h-Supabase-Links. Für die auserwählten Testpersonen vor dem 20.08.
+const BETA = args.includes("--beta");
 
 const log = (...a) => console.log(...a);
 
@@ -151,10 +158,105 @@ function welcomeEmail({ first, actionUrl }) {
   return { subject, html, text };
 }
 
+// Beta-Test-Einladung (Pascals Zusatztext aus Feedback 8, wörtlich übernommen).
+// Verlinkt den 4 Wochen gültigen Langzeit-Link (/invite), nicht den 24h-OTP.
+function betaEmail({ first, actionUrl }) {
+  const greeting = first ? `Hoi ${first}` : "Hoi";
+  const subject = "Deine SportNexus-Memberapp: Testzugang";
+  const checkpoints = [
+    ["Login-Prozess", "Stolpersteine?"],
+    ["Profil bearbeiten", "Vollständigkeit der Daten, Anpassungen möglich?"],
+    ["Members", "Funktioniert die Suchfunktion (Filter, Sortieren)?"],
+    ["Detailseite Members", "Funktionieren Links, sind Angaben hilfreich, fehlt etwas?"],
+    ["Messages", "Funktioniert die Kontaktaufnahme?"],
+    ["Events", "Angaben hilfreich, Anmeldestatus korrekt?"],
+  ];
+  const checkRows = checkpoints.map(([t, d]) => `
+    <tr>
+      <td valign="top" style="padding:0 10px 10px 0; width:14px; font-size:14px; color:#000;">•</td>
+      <td valign="top" style="padding:0 0 10px 0; font-size:14px; line-height:1.5; color:#000;">
+        <strong>${t}:</strong> <span style="color:#575757;">${d}</span>
+      </td>
+    </tr>`).join("");
+
+  const html = `<!doctype html><html><body style="margin:0; padding:0; background:#F7F7F7; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; color:#000;">
+  <div style="max-width:560px; margin:24px auto; padding:32px; background:#FFFFFF; border-radius:8px;">
+    <img src="${APP_URL}/logo-sportnexus.png" alt="SportNexus" width="190" style="display:block; width:190px; max-width:60%; height:auto; border:0; margin:0 0 8px;">
+    <h1 style="font-size:23px; font-weight:600; margin:12px 0 14px; color:#000;">${greeting}</h1>
+    <p style="margin:0 0 20px; font-size:15px; line-height:1.55; color:#000;">
+      Wir haben eine Memberapp entwickelt, die dein SportNexus-Netzwerk noch einfacher zugänglich macht. Bevor wir sie am Event vom 20.8. offiziell vorstellen, möchten wir sie mit ein paar auserwählten Members wie dir auf Herz und Nieren testen.
+    </p>
+    <div style="margin:0 0 20px;">
+      <a href="${actionUrl}" style="display:inline-block; background:#000; color:#fff; padding:13px 22px; border-radius:6px; text-decoration:none; font-size:15px; font-weight:600;">Login →</a>
+      <div style="font-size:12.5px; color:#575757; margin-top:8px; line-height:1.5;">Beim ersten Klick legst du kurz dein persönliches Passwort fest, danach bist du drin.</div>
+    </div>
+    <p style="margin:0 0 14px; font-size:15px; line-height:1.55; color:#000;">
+      Nimm dir bitte 15 Minuten Zeit und gib uns dein Feedback bis am 9.8.26. So können wir vor der Vorstellung noch letzte Optimierungen vornehmen. Worauf du besonders achten kannst:
+    </p>
+    <table cellpadding="0" cellspacing="0" border="0" style="width:100%; margin:0 0 10px;">${checkRows}</table>
+    <p style="margin:0 0 24px; font-size:15px; line-height:1.55; color:#000;">
+      Danke, dass du dir die Zeit nimmst. Dein Feedback macht die App für alle besser.
+    </p>
+    <p style="margin:0; font-size:15px; line-height:1.55; color:#000;">
+      Sommerliche Grüsse<br><br>
+      Dein SportNexus Founderteam
+    </p>
+    <hr style="margin:28px 0; border:none; border-top:1px solid #ECECEC;">
+    <p style="font-size:12.5px; color:#575757; margin:0 0 6px; line-height:1.5;">
+      Falls der Button nicht funktioniert, kopiere diesen Link in den Browser:<br>
+      <span style="word-break:break-all; color:#006FB6;">${actionUrl}</span>
+    </p>
+    <p style="font-size:12px; color:#575757; margin:10px 0 0; line-height:1.5;">
+      Der Login-Link ist 4 Wochen gültig. Später meldest du dich jederzeit unter <a href="${APP_URL}/login" style="color:#006FB6;">${APP_URL.replace(/^https?:\/\//, "")}/login</a> mit deiner E-Mail und deinem Passwort an. Fragen oder Feedback? Antworte einfach auf diese Mail.
+    </p>
+  </div>
+</body></html>`;
+
+  const text = [
+    greeting,
+    ``,
+    `Wir haben eine Memberapp entwickelt, die dein SportNexus-Netzwerk noch einfacher zugänglich macht. Bevor wir sie am Event vom 20.8. offiziell vorstellen, möchten wir sie mit ein paar auserwählten Members wie dir auf Herz und Nieren testen.`,
+    ``,
+    `Login: ${actionUrl}`,
+    `(Beim ersten Klick legst du kurz dein persönliches Passwort fest.)`,
+    ``,
+    `Nimm dir bitte 15 Minuten Zeit und gib uns dein Feedback bis am 9.8.26. So können wir vor der Vorstellung noch letzte Optimierungen vornehmen. Worauf du besonders achten kannst:`,
+    `- Login-Prozess: Stolpersteine?`,
+    `- Profil bearbeiten: Vollständigkeit der Daten, Anpassungen möglich?`,
+    `- Members: Funktioniert die Suchfunktion (Filter, Sortieren)?`,
+    `- Detailseite Members: Funktionieren Links, sind Angaben hilfreich, fehlt etwas?`,
+    `- Messages: Funktioniert die Kontaktaufnahme?`,
+    `- Events: Angaben hilfreich, Anmeldestatus korrekt?`,
+    ``,
+    `Danke, dass du dir die Zeit nimmst. Dein Feedback macht die App für alle besser.`,
+    ``,
+    `Sommerliche Grüsse`,
+    ``,
+    `Dein SportNexus Founderteam`,
+    ``,
+    `Der Login-Link ist 4 Wochen gültig. Später: Login unter ${APP_URL}/login mit E-Mail + Passwort.`,
+  ].join("\n");
+
+  return { subject, html, text };
+}
+
+// Langzeit-Link auf /invite: E-Mail + Ablauf, HMAC-signiert mit einem aus dem
+// Service-Role-Key abgeleiteten Secret. Der Supabase-Recovery-OTP wird erst
+// beim Button-Klick auf der Seite gemintet. MUSS synchron bleiben mit
+// lib/invite-token.ts (signInviteToken/verifyInviteToken).
+function makeLongInviteLink(email, days = 28) {
+  const secret = createHmac("sha256", SERVICE_ROLE).update("sportnexus-invite-link-v1").digest();
+  const exp = Math.floor(Date.now() / 1000) + days * 86400;
+  const payload = `${email.trim().toLowerCase()}.${exp}`;
+  const sig = createHmac("sha256", secret).update(payload).digest("base64url");
+  const token = `${Buffer.from(payload).toString("base64url")}.${sig}`;
+  return `${APP_URL}/invite?t=${token}`;
+}
+
 async function sendWelcome(to, first, actionUrl) {
   const tx = transporter();
   if (!tx) return { ok: false, reason: "SMTP_PASS fehlt" };
-  const tpl = welcomeEmail({ first, actionUrl });
+  const tpl = (BETA ? betaEmail : welcomeEmail)({ first, actionUrl });
   await tx.sendMail({ from: SMTP_FROM, to, subject: tpl.subject, html: tpl.html, text: tpl.text });
   return { ok: true };
 }
@@ -376,7 +478,10 @@ async function onboardOne(admin, m) {
   //    KEINE Mail — wir versenden gleich selbst die gebrandete Welcome-Mail.
   const linkRes = await makeActionLink(admin, m.email, m.first, m.last);
   if (linkRes.error) return { status: "error", reason: `Auth: ${linkRes.error}` };
-  const actionLink = linkRes.link;
+  // Beta-Einladungen verlinken den 4 Wochen gültigen Langzeit-Link (/invite)
+  // statt des 24h-OTP-Links — makeActionLink oben stellt trotzdem sicher,
+  // dass der Auth-User existiert (invite legt ihn bei Bedarf an).
+  const actionLink = BETA ? makeLongInviteLink(m.email) : linkRes.link;
 
   // 3. Verknüpfte Zeile (nach evtl. Invite/Trigger) holen und mit HubSpot-Daten füllen.
   const { data: rows, error: selErr } = await admin
@@ -421,8 +526,10 @@ async function onboardOne(admin, m) {
 const testMailArg = args.find((a) => a.startsWith("--test-mail="));
 if (testMailArg) {
   const to = testMailArg.split("=")[1].trim();
-  const link = `${APP_URL}/auth/callback?next=/reset-password`;
-  log(`\nTest-Welcome-Mail an ${to} (Platzhalter-Link)...`);
+  // Mit --beta: echter Langzeit-Link auf die eigene Adresse (voll klickbar),
+  // sonst Platzhalter-Link wie bisher.
+  const link = BETA ? makeLongInviteLink(to) : `${APP_URL}/auth/callback?next=/reset-password`;
+  log(`\nTest-${BETA ? "Beta" : "Welcome"}-Mail an ${to}...`);
   try {
     const res = await sendWelcome(to, "Test", link);
     log(res.ok ? `✓ verschickt.` : `✗ übersprungen: ${res.reason}`);
