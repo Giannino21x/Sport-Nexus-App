@@ -106,7 +106,7 @@ function LoginInner() {
           }}
         />
 
-        <div style={{ position: "absolute", top: "calc(36px + var(--safe-top, 0px))", left: 40, zIndex: 3, filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.5))" }}>
+        <div className="login-logo" style={{ position: "absolute", top: "calc(36px + var(--safe-top, 0px))", left: 40, zIndex: 3, filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.5))" }}>
           <LogoWordmark height={38} variant="color-on-dark" />
         </div>
 
@@ -146,6 +146,7 @@ function LoginInner() {
 
       {/* RIGHT — form */}
       <div
+        className="login-form-col"
         style={{
           display: "flex",
           alignItems: "center",
@@ -609,6 +610,18 @@ function LoginInner() {
           .login-root { grid-template-columns: 1fr !important; }
           .login-visual { min-height: 44vh !important; }
           .login-hero-headline { font-size: 40px !important; }
+          /* Mobil ist die Formular-Spalte KEIN zweiter 100vh-Screen: das
+             vertikale Zentrieren riss sonst ein riesiges weisses Loch
+             zwischen Hero und Formular (User-Report 2026-07-21). */
+          .login-form-col {
+            min-height: 0 !important;
+            padding: 36px 20px 48px !important;
+          }
+          /* Das Foto zeigt die Leinwand mit dem SPORTNEXUS-Schriftzug gross im
+             Bild — das Overlay-Logo lag mobil genau darüber (Doppel-Logo,
+             User-Report). Der schmale Ausschnitt lässt sich nicht verschieben
+             (Bild ist breitenbeschränkt), darum mobil ohne Overlay-Logo. */
+          .login-logo { display: none !important; }
         }
       `}</style>
     </div>

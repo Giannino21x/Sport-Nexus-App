@@ -508,6 +508,16 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   overscroll-behavior-y: none;
   -webkit-overflow-scrolling: touch;
 }
+/* Auth-Seiten haben keinen .main — bei gesperrtem Body-Scroll braucht ihr
+   Wrapper (app/(auth)/layout.tsx) denselben Container-Scroll, sonst ist das
+   Login-Formular unterhalb des Folds unerreichbar. */
+:root[data-shell="edge"] .auth-scroll {
+  height: 100dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior-y: none;
+  -webkit-overflow-scrolling: touch;
+}
 .topbar .breadcrumbs { font-size: 13px; color: var(--ink-3); display: flex; align-items: center; gap: 8px; }
 .topbar .breadcrumbs .crumb-current { color: var(--ink); }
 .topbar .search-global {
@@ -608,6 +618,20 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 @media (prefers-reduced-motion: reduce) {
   .event-card { transition: none; }
   .event-card:hover { transform: none; }
+}
+
+/* Dashboard-Statistik-Kacheln sind Links — Hover dezenter als bei Event-Karten */
+.stat-card {
+  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+}
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-lg);
+  border-color: var(--line-strong);
+}
+@media (prefers-reduced-motion: reduce) {
+  .stat-card { transition: none; }
+  .stat-card:hover { transform: none; }
 }
 
 /* ---------- Avatar ---------- */
