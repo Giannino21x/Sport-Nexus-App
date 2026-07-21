@@ -248,10 +248,12 @@ export function AppShell({ children }: { children: ReactNode }) {
     { k: "feed", href: "/feed", label: "Community Feed", icon: "feed", beta: true },
   ];
 
-  // Tischwünsche + Profil-Änderungen sind aus der UI rausgeputzt (Pascal,
-  // Feedback 8) — die Daten laufen im Hintergrund weiter (DB-Trigger).
   const adminItems: NavItem[] = me?.isAdmin
-    ? [{ k: "admin-overview", href: "/admin", label: "Übersicht", icon: "dashboard" }]
+    ? [
+        { k: "admin-overview", href: "/admin", label: "Übersicht", icon: "dashboard" },
+        { k: "table-wishes", href: "/admin/table-wishes", label: "Tischwünsche", icon: "trophy" },
+        { k: "profile-changes", href: "/admin/profile-changes", label: "Profil-Änderungen", icon: "users" },
+      ]
     : [];
 
   // Detailseiten: auf Mobile ersetzt ein Zurück-Pfeil den Hamburger in der
@@ -263,7 +265,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const isActive = (href: string) => {
     // Exact-match-only paths: parents that would otherwise stay highlighted
-    // while sub-routes are open.
+    // while sub-routes are open (e.g. /admin would highlight on /admin/table-wishes).
     if (href === "/dashboard" || href === "/admin") return pathname === href;
     return pathname === href || pathname.startsWith(href + "/");
   };
@@ -518,9 +520,6 @@ export function AppShell({ children }: { children: ReactNode }) {
             )}
             <Link href="/profile" className="nav-item" onClick={() => setMobileMenuOpen(false)}>
               <Icon name="edit" className="icon" /><span>Profil bearbeiten</span>
-            </Link>
-            <Link href="/settings" className="nav-item" onClick={() => setMobileMenuOpen(false)}>
-              <Icon name="settings" className="icon" /><span>Einstellungen</span>
             </Link>
             <button className="nav-item" onClick={() => { setMobileMenuOpen(false); handleLogout(); }}>
               <Icon name="logout" className="icon" /><span>Abmelden</span>
