@@ -371,12 +371,14 @@ async function fetchCompanyName(contactId) {
 
 // „Member seit" = Datum, an dem `vertrag` auf JA gesetzt wurde (Konzept-Logik).
 // Steckt nur in der Property-History (timeline/vertragsdatum sind im Bestand leer).
-// Liefert Map: contactId → "YYYY-MM-DD" (frühestes true). Batch-Read max 100/Call.
+// Liefert Map: contactId → "YYYY-MM-DD" (frühestes true).
+// Batch-Read mit propertiesWithHistory erlaubt max. 50 Inputs pro Call
+// (HTTP 400 bei mehr) — nicht 100 wie beim normalen Batch-Read.
 async function fetchVertragSince(ids) {
   const map = new Map();
   const h = { Authorization: `Bearer ${HUBSPOT_TOKEN}`, "Content-Type": "application/json" };
-  for (let i = 0; i < ids.length; i += 100) {
-    const chunk = ids.slice(i, i + 100);
+  for (let i = 0; i < ids.length; i += 50) {
+    const chunk = ids.slice(i, i + 50);
     try {
       const r = await fetch("https://api.hubapi.com/crm/v3/objects/contacts/batch/read", {
         method: "POST",

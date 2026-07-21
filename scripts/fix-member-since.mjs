@@ -53,13 +53,14 @@ do {
 } while (after);
 
 // 2. vertrag→JA-Datum aus der Property-History (Batch)
+// Achtung: propertiesWithHistory erlaubt max. 50 Inputs pro Batch (HTTP 400 bei mehr).
 const sinceMap = new Map();
 const ids = contacts.map((c) => c.id);
-for (let i = 0; i < ids.length; i += 100) {
+for (let i = 0; i < ids.length; i += 50) {
   const r = await fetch("https://api.hubapi.com/crm/v3/objects/contacts/batch/read", {
     method: "POST",
     headers: H,
-    body: JSON.stringify({ propertiesWithHistory: ["vertrag"], inputs: ids.slice(i, i + 100).map((id) => ({ id })) }),
+    body: JSON.stringify({ propertiesWithHistory: ["vertrag"], inputs: ids.slice(i, i + 50).map((id) => ({ id })) }),
   });
   if (!r.ok) continue;
   const j = await r.json();
