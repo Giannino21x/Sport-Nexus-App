@@ -769,8 +769,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 
 /* ---------- Notifications popover ---------- */
 /* Desktop: klassisches Popover, an Bell-Button gedockt.
-   Mobile: Bottom-Sheet, das vom unteren Bildschirmrand hochkommt — damit auf
-   iPhone nichts vom oberen Topbar oder dem unteren Tab-Bar abgeschnitten wird. */
+   Mobile: Dropdown, das oben rechts unter der Glocke aufklappt (Sprechblasen-
+   Muster) — das frühere Bottom-Sheet unten wirkte vom Auslöser entkoppelt
+   (User-Feedback 2026-07-21). */
 .notif-backdrop { display: none; }
 .notif-popover {
   position: absolute;
@@ -803,20 +804,31 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   }
   .notif-popover {
     position: fixed;
-    inset: auto 12px calc(86px + env(safe-area-inset-bottom)) 12px;
-    width: auto;
+    /* Direkt unter der Topbar (58px + Safe-Area) an der rechten Kante — dort
+       sitzt die Glocke. Im alten 'always'-Binary ankern fixed-Elemente unter
+       der Status-Bar, --safe-top ist dort 0 → landet ebenfalls unter der
+       Leiste; Browser: beides 0. */
+    top: calc(58px + var(--safe-top, 0px) + 8px);
+    right: 12px;
+    left: auto;
+    bottom: auto;
+    width: min(400px, calc(100vw - 24px));
     max-width: none;
-    top: auto;
-    right: auto;
-    /* env(top) mit abziehen: das Sheet darf auch bei langer Liste nicht in
-       die Topbar-/Status-Bar-Zone hineinwachsen (alle Hüllen, Browser env=0). */
-    max-height: calc(100dvh - 156px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    /* Nach unten begrenzen: bei langer Liste nicht hinter die Tab-Bar-Zone
+       wachsen (~120px inkl. Luft + Home-Indicator). */
+    max-height: calc(100dvh - 58px - var(--safe-top, 0px) - 120px - env(safe-area-inset-bottom));
+    transform-origin: top right;
+    animation: notif-drop 160ms ease-out;
   }
   .notif-popover .notif-list {
     max-height: none;
     flex: 1;
     overflow-y: auto;
   }
+}
+@keyframes notif-drop {
+  from { opacity: 0; transform: translateY(-6px) scale(0.97); }
+  to { opacity: 1; transform: none; }
 }
 
 /* ---------- Messages layout ---------- */
