@@ -380,19 +380,12 @@ export default function FeedPage() {
                     />
                   ) : (
                     <>
-                      <div className="serif" style={{ fontSize: 18, lineHeight: 1.4, marginTop: 14, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
+                      {/* Bewusst normale Textstärke — die Serif-Displayschrift wirkte
+                          Pascal zu fett (gleiches Feedback wie beim Event-About). */}
+                      <div style={{ fontSize: 15, lineHeight: 1.65, color: "var(--ink-2)", marginTop: 14, whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>
                         {p.body}
                       </div>
-                      {p.imageUrl && (
-                        <div style={{ marginTop: 14, borderRadius: 10, overflow: "hidden", border: "1px solid var(--line)" }}>
-                          <ImagePreview
-                            src={p.imageUrl}
-                            alt="Post"
-                            rounded={false}
-                            thumbnailStyle={{ maxHeight: 520, borderRadius: 0 }}
-                          />
-                        </div>
-                      )}
+                      {p.imageUrl && <FeedPostImage src={p.imageUrl} />}
                       {p.meta && <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 10 }} className="mono">↳ {p.meta}</div>}
                     </>
                   )}
@@ -763,6 +756,46 @@ function RepliesSection({
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Gleicher Bildrahmen wie die Event-Karten (Pascal): 16:9, breite Motive
+// füllen den Rahmen (cover), quadratische bleiben vollständig sichtbar
+// (contain) mit unscharfer Füllung dahinter. Klick öffnet weiterhin die
+// Vollbild-Vorschau.
+function FeedPostImage({ src }: { src: string }) {
+  const [coverFit, setCoverFit] = useState(false);
+  const onImgLoad = (e: React.SyntheticEvent<HTMLImageElement>) => {
+    const img = e.currentTarget;
+    if (img.naturalHeight > 0 && img.naturalWidth / img.naturalHeight >= 1.45) setCoverFit(true);
+  };
+  return (
+    <div style={{ marginTop: 14, borderRadius: 10, overflow: "hidden", border: "1px solid var(--line)" }}>
+      <ImagePreview
+        src={src}
+        alt="Post"
+        thumbnail={
+          <div style={{ aspectRatio: "16/9", position: "relative", overflow: "hidden", background: "var(--ink)" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              aria-hidden="true"
+              src={src}
+              alt=""
+              loading="lazy"
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "blur(20px) brightness(0.5)", transform: "scale(1.2)" }}
+            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={src}
+              alt="Post"
+              loading="lazy"
+              onLoad={onImgLoad}
+              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: coverFit ? "cover" : "contain", objectPosition: "center" }}
+            />
+          </div>
+        }
+      />
     </div>
   );
 }
