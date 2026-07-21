@@ -97,6 +97,33 @@ function MessagesInner() {
     if (!userPickedRef.current) setActiveDbId(initialDbId);
   }, [initialDbId]);
 
+  // Mobil ist der offene Thread nur React-State — ohne History-Eintrag schliesst
+  // die Android-Zurück-Geste (bzw. Browser-Back) die ganze Seite/App statt den
+  // Chat. Deshalb: Öffnen pusht einen State-Eintrag, popstate schliesst zuerst
+  // den Thread. Der Thread-Kopf-Zurück-Button geht über history.back(), damit
+  // der Eintrag konsumiert wird und Back danach wieder normal navigiert.
+  const openThread = (dbId: string) => {
+    userPickedRef.current = true;
+    setActiveDbId(dbId);
+    if (isMobile) window.history.pushState({ snThread: true }, "");
+  };
+  const closeThread = () => {
+    userPickedRef.current = true;
+    if (isMobile && window.history.state?.snThread) window.history.back();
+    else setActiveDbId(null);
+  };
+  useEffect(() => {
+    if (!isMobile) return;
+    const onPop = () => {
+      if (activeDbId) {
+        userPickedRef.current = true;
+        setActiveDbId(null);
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [isMobile, activeDbId]);
+
   const activeConvo = convos.find((c) => c.otherDbId === activeDbId) ?? null;
   const activeMember: Member | null = activeConvo?.other ?? (toParam ? members.find((m) => m.id === toParam) ?? null : convos[0]?.other ?? null);
 
@@ -416,7 +443,7 @@ function MessagesInner() {
                 convos.map((conv) => (
                   <div
                     key={conv.otherDbId}
-                    onClick={() => { userPickedRef.current = true; setActiveDbId(conv.otherDbId); }}
+                    onClick={() => openThread(conv.otherDbId)}
                     style={{
                       display: "flex",
                       gap: 12,
@@ -469,7 +496,7 @@ function MessagesInner() {
                     {isMobile && (
                       <button
                         className="icon-btn"
-                        onClick={() => { userPickedRef.current = true; setActiveDbId(null); }}
+                        onClick={closeThread}
                         style={{
                           width: 34,
                           height: 34,
