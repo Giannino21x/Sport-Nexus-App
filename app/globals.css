@@ -978,6 +978,13 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
     flex-direction: column;
     flex: 1;
     min-height: 0;
+    /* Das Desktop-`margin: 0 auto` MUSS hier weg: der Wrap ist mobil eine
+       Flex-Spalte, und Auto-Quermargins schalten das Stretchen ab — das
+       Element schrumpft auf Inhaltsbreite und zentriert sich. Mit wenigen/
+       kurzen Konversationen wird die Seite dann eine schmale Mittelspalte
+       (Play-Store-Test 2026-07-21); Demo-Daten mit langen Vorschautexten
+       kaschieren das, weil max-content dann die volle Breite erreicht. */
+    margin: 0;
   }
   .messages-grid {
     grid-template-columns: 1fr;
