@@ -114,12 +114,20 @@ export default function DashboardPage() {
   // Erste Ladung (noch nichts im Cache): Skeleton statt 0 zeigen — eine falsche
   // 0, die dann zur echten Zahl umspringt, wirkt wie ein Flicker.
   const statSkel = <Skel w={48} h={30} style={{ marginTop: 5, marginBottom: 5 }} />;
-  const stats: { k: string; v: React.ReactNode; sub: string }[] = [
-    { k: "Mitglieder", v: membersReady ? members.length : statSkel, sub: "im Netzwerk" },
-    { k: "Kommende Events", v: eventsReady ? upcoming.length : statSkel, sub: "angekündigt" },
-    { k: "Angemeldete Events", v: eventsReady ? registeredUpcomingCount : statSkel, sub: eventsReady ? `von ${upcoming.length} möglichen` : "wird geladen" },
-    { k: "Matchmaking", v: membersReady ? matchSuggestions.length : statSkel, sub: "Vorschläge für dich" },
+  const stats: { k: string; v: React.ReactNode; sub: string; href: string }[] = [
+    { k: "Mitglieder", v: membersReady ? members.length : statSkel, sub: "im Netzwerk", href: "/directory" },
+    { k: "Kommende Events", v: eventsReady ? upcoming.length : statSkel, sub: "angekündigt", href: "/events" },
+    { k: "Angemeldete Events", v: eventsReady ? registeredUpcomingCount : statSkel, sub: eventsReady ? `von ${upcoming.length} möglichen` : "wird geladen", href: "/events" },
+    { k: "Matchmaking", v: membersReady ? matchSuggestions.length : statSkel, sub: "Vorschläge für dich", href: "#matchmaking" },
   ];
+
+  // Matchmaking-Vorschläge leben auf dem Dashboard selbst — die Kachel scrollt
+  // zur Karte statt zu navigieren.
+  const scrollToMatchmaking = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    document.getElementById("matchmaking")?.scrollIntoView({ behavior: reduced ? "auto" : "smooth" });
+  };
 
   return (
     <div>
@@ -143,11 +151,17 @@ export default function DashboardPage() {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 28 }}>
         {stats.map((s) => (
-          <div key={s.k} className="card" style={{ padding: "16px 18px" }}>
+          <Link
+            key={s.k}
+            href={s.href}
+            className="card stat-card"
+            style={{ padding: "16px 18px", display: "block" }}
+            onClick={s.href === "#matchmaking" ? scrollToMatchmaking : undefined}
+          >
             <div className="upper-label">{s.k}</div>
             <div className="serif" style={{ fontSize: 36, lineHeight: 1.05, marginTop: 6 }}>{s.v}</div>
             <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 2 }}>{s.sub}</div>
-          </div>
+          </Link>
         ))}
       </div>
 
@@ -244,7 +258,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        <div className="col" style={{ gap: 18 }}>
+        <div id="matchmaking" className="col" style={{ gap: 18, scrollMarginTop: 80 }}>
           {!membersReady ? (
             // Matchmaking-Skeleton, solange Members noch laden — sonst blitzt
             // kurz der "Noch keine Vorschläge"-Empty-State auf.
