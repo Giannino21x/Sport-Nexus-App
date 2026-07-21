@@ -208,6 +208,7 @@ function rowToEvent(r: Row): SnEvent {
     venue: rm(r.venue),
     address: rm(r.address),
     guests: Number(r.guests ?? 0),
+    attendeeCount: Array.isArray(r.attendees) ? (r.attendees as unknown[]).length : undefined,
     status,
     featured: Boolean(r.featured),
     desc: rm(r.description),

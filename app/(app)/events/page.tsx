@@ -316,8 +316,13 @@ function EventCard({ ev, past, isAdmin, registered, count }: { ev: SnEvent; past
         <div className="serif" style={{ fontSize: 20, lineHeight: 1.2, marginTop: 3 }}>{ev.subtitle}</div>
         <div style={{ fontSize: 13, color: "var(--ink-3)", marginTop: 8, lineHeight: 1.5 }}>{ev.desc}</div>
         <div style={{ display: "flex", gap: 14, marginTop: 12, fontSize: 11.5, color: "var(--ink-4)" }}>
-          {/* ev.guests = Kapazität, nicht Teilnehmer — als "Plätze" ausweisen. */}
-          <span>{ev.time}</span><span>{ev.venue}</span><span>{count != null ? `${count} angemeldet` : `${ev.guests} Plätze`}</span>
+          {/* ev.guests = Kapazität, nicht Teilnehmer — als "Plätze" ausweisen.
+              Vergangene Events: Teilnehmerzahl aus dem Snapshot statt Kapazität
+              (Pascal); ohne Snapshot lieber gar keine Zahl als eine falsche. */}
+          <span>{ev.time}</span><span>{ev.venue}</span>
+          {past
+            ? (ev.attendeeCount ? <span>{ev.attendeeCount} Personen</span> : null)
+            : <span>{count != null ? `${count} angemeldet` : `${ev.guests} Plätze`}</span>}
         </div>
         {!past && (
           <div style={{ marginTop: 12 }}>

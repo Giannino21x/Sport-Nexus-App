@@ -45,6 +45,9 @@ export type SnEvent = {
   venue: string;
   address: string;
   guests: number;
+  // Zahl der Namen im DB-Snapshot (events.attendees, 6h-Sync) — für
+  // vergangene Events die Teilnehmerzahl statt der Kapazität (Pascal).
+  attendeeCount?: number;
   status: "upcoming" | "past";
   featured?: boolean;
   desc: string;
