@@ -14,14 +14,49 @@ import { Skel, SkelCircle, SkelLines } from "@/components/skeleton";
 const isAdminExtra = (s: string | undefined | null) =>
   (s ?? "").trim().toLowerCase() === "admin";
 
+type DirFilters = { branch: string; sub: string; work: string; home: string; role: string };
+type DirSort = "last" | "first" | "company";
+const EMPTY_FILTERS: DirFilters = { branch: "", sub: "", work: "", home: "", role: "" };
+
+// Ansicht/Sortierung/Filter/Suche über die Navigation hinweg merken, damit die
+// Einstellungen beim Zurück vom Memberdetail erhalten bleiben (Pascal-Feedback).
+// sessionStorage: gilt für die aktuelle Tab-Sitzung, nicht dauerhaft über Tage.
+const DIR_STATE_KEY = "sn_directory_state_v1";
+
 export default function DirectoryPage() {
   const { layout, cardStyle } = useSettings();
   const { data: members, resolved } = useMembers();
   const [q, setQ] = useState("");
-  const [filters, setFilters] = useState({ branch: "", sub: "", work: "", home: "", role: "" });
-  const [sort, setSort] = useState<"last" | "first" | "company">("last");
+  const [filters, setFilters] = useState<DirFilters>(EMPTY_FILTERS);
+  const [sort, setSort] = useState<DirSort>("last");
   const [page, setPage] = useState(1);
+  const [restored, setRestored] = useState(false);
   const pageSize = 12;
+
+  // Beim ersten Mount die zuletzt gemerkten Einstellungen wiederherstellen.
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(DIR_STATE_KEY);
+      if (raw) {
+        const s = JSON.parse(raw) as Partial<{ q: string; filters: DirFilters; sort: DirSort }>;
+        /* eslint-disable react-hooks/set-state-in-effect -- bewusste Wiederherstellung aus sessionStorage beim Mount */
+        if (typeof s.q === "string") setQ(s.q);
+        if (s.filters) setFilters({ ...EMPTY_FILTERS, ...s.filters });
+        if (s.sort === "last" || s.sort === "first" || s.sort === "company") setSort(s.sort);
+        /* eslint-enable react-hooks/set-state-in-effect */
+      }
+    } catch {}
+    setRestored(true);
+  }, []);
+
+  // Änderungen an Suche/Filter/Sortierung merken (erst nach der Wiederherstellung,
+  // damit die Defaults nicht den gespeicherten Stand überschreiben).
+  useEffect(() => {
+    if (!restored) return;
+    try {
+      sessionStorage.setItem(DIR_STATE_KEY, JSON.stringify({ q, filters, sort }));
+    } catch {}
+  }, [restored, q, filters, sort]);
 
   const deCollator = useMemo(() => new Intl.Collator("de-CH", { sensitivity: "base" }), []);
   const uniqClean = useCallback(

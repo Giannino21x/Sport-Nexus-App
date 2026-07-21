@@ -89,7 +89,7 @@ export default function MemberDetailPage() {
     return (
       <div>
         <Link href="/directory" className="btn btn-text" style={{ marginBottom: 12, padding: "6px 10px", fontSize: 12.5, color: "var(--ink-3)", display: "inline-flex" }}>
-          ← Zurück zum Directory
+          ← Zurück zur Memberübersicht
         </Link>
         <div style={{ padding: 40, textAlign: "center", color: "var(--ink-3)" }}>
           <div className="serif" style={{ fontSize: 24 }}>Mitglied nicht gefunden</div>
