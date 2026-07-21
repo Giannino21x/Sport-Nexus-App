@@ -193,7 +193,7 @@ export function passwordResetEmail(opts: {
     <div style="font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:#868686;">SportNexus · Passwort-Reset</div>
     <h1 style="font-size:22px; font-weight:600; margin:14px 0 6px; color:#000;">${greeting}</h1>
     <p style="margin:0 0 18px; font-size:15px; line-height:1.5; color:#000;">
-      Klicke auf den Button unten, um ein neues Passwort fuer deinen SportNexus-Account zu setzen. Der Link ist eine Stunde gueltig.
+      Klicke auf den Button unten, um ein neues Passwort fuer deinen SportNexus-Account zu setzen. Der Link ist 24 Stunden gueltig.
     </p>
     <div style="margin:24px 0;">
       <a href="${opts.recoveryUrl}" style="display:inline-block; background:#000; color:#fff; padding:11px 18px; border-radius:6px; text-decoration:none; font-size:14px; font-weight:500;">Neues Passwort setzen</a>
@@ -212,7 +212,7 @@ export function passwordResetEmail(opts: {
   const text = [
     greeting,
     ``,
-    `Klicke auf den Link unten, um ein neues Passwort zu setzen (eine Stunde gueltig):`,
+    `Klicke auf den Link unten, um ein neues Passwort zu setzen (24 Stunden gueltig):`,
     ``,
     opts.recoveryUrl,
     ``,
