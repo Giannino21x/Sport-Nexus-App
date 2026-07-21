@@ -18,7 +18,7 @@ type NavItem = { k: string; href: string; label: string; icon: IconName; badge?:
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { theme, setTheme, dataSource } = useSettings();
+  const { theme, dataSource } = useSettings();
   const { data: me, dbId: meDbId, resolved: meResolved } = useMe();
   const { data: events } = useEvents();
   const { data: notifs } = useNotifications(meDbId);
@@ -433,25 +433,24 @@ export function AppShell({ children }: { children: ReactNode }) {
             <span style={{ flex: 1 }}>Mitglieder, Events, Seiten suchen...</span>
             <kbd>⌘K</kbd>
           </div>
-          <div style={{ position: "relative" }}>
-            <button className="icon-btn" onClick={() => setNotifsOpen(!notifsOpen)}>
-              <Icon name="bell" />
-              {unreadCount > 0 && <span className="has-dot" />}
-            </button>
-            {notifsOpen && (
-              <NotificationsPopover notifs={notifs} onClose={() => setNotifsOpen(false)} />
-            )}
+          {/* Hell/Dunkel wohnt in den Einstellungen (Settings → Theme), nicht
+              mehr in der Topbar — User-Wunsch 2026-07-21. */}
+          <div className="topbar-actions">
+            <div style={{ position: "relative" }}>
+              <button className="icon-btn" onClick={() => setNotifsOpen(!notifsOpen)} aria-label="Benachrichtigungen">
+                <Icon name="bell" />
+                {unreadCount > 0 && (
+                  <span className="notif-count">{unreadCount > 9 ? "9+" : unreadCount}</span>
+                )}
+              </button>
+              {notifsOpen && (
+                <NotificationsPopover notifs={notifs} onClose={() => setNotifsOpen(false)} />
+              )}
+            </div>
+            <Link href="/profile" className="topbar-avatar-mobile" aria-label="Profil">
+              <Avatar first={me.first} last={me.last} color={me.color} size={30} url={me.avatarUrl} />
+            </Link>
           </div>
-          <button
-            className="icon-btn"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            title="Dark mode toggle"
-          >
-            <Icon name={theme === "dark" ? "sun" : "moon"} />
-          </button>
-          <span className="topbar-avatar-mobile">
-            <Avatar first={me.first} last={me.last} color={me.color} size={30} url={me.avatarUrl} />
-          </span>
         </div>
 
         {/* key={pathname}: remountet den Wrapper pro Routenwechsel, damit die

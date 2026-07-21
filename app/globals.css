@@ -548,10 +548,24 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 }
 .topbar .icon-btn:hover { color: var(--ink); border-color: var(--line-strong); }
 .topbar .icon-btn .icon { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.7; }
-.topbar .icon-btn .has-dot {
-  position: absolute; top: 7px; right: 7px;
-  width: 8px; height: 8px; border-radius: 50%;
-  background: var(--accent); border: 2px solid var(--bg-elevated);
+/* Glocke + Avatar als rechte Aktionsgruppe. Am Desktop schiebt schon die
+   Suche (margin-left: auto) alles nach rechts; mobil ist sie versteckt,
+   darum braucht die Gruppe dort ihr eigenes auto-Margin — sonst klebte
+   der Avatar mittig hinter dem Logo statt an der rechten Kante. */
+.topbar-actions { display: flex; align-items: center; gap: 12px; }
+@media (max-width: 780px) {
+  .topbar-actions { margin-left: auto; }
+}
+/* Ungelesenen-Zähler auf der Glocke (statt des früheren 8px-Punkts). */
+.topbar .icon-btn .notif-count {
+  position: absolute; top: 2px; right: 2px;
+  min-width: 15px; height: 15px; padding: 0 3px;
+  border-radius: 8px;
+  background: var(--accent); color: var(--accent-ink);
+  font-size: 9px; font-weight: 700; line-height: 15px; text-align: center;
+  /* Ring via box-shadow statt border: bläht die Pille nicht auf */
+  box-shadow: 0 0 0 2px var(--bg);
+  box-sizing: border-box;
 }
 
 .content {
