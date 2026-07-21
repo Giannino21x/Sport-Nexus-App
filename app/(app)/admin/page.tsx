@@ -6,6 +6,9 @@ import { Icon, type IconName } from "@/components/icon";
 import { useSettings } from "@/components/settings-context";
 import { getAdminOverviewAction, type AdminOverview } from "@/app/actions/admin";
 
+// Tischwünsche + Profil-Änderungen sind aus dem Admin-Bereich rausgeputzt
+// (Pascal, Feedback 8). Die DB-Tabellen und der Änderungs-Trigger bleiben —
+// nur die Verwaltungs-UI ist weg.
 export default function AdminDashboardPage() {
   const { dataSource } = useSettings();
   const [data, setData] = useState<AdminOverview | null>(null);
@@ -55,25 +58,11 @@ export default function AdminDashboardPage() {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 22 }}>
         <StatCard label="Members" value={data?.memberCount ?? "—"} sub={data?.adminCount != null ? `${data.adminCount} Admins` : ""} />
         <StatCard label="Upcoming Events" value={data?.upcomingEventCount ?? "—"} />
-        <StatCard label="Tischwünsche" value={data?.tableWishCount ?? "—"} />
-        <StatCard label="Offene Profil-Änderungen" value={data?.openProfileChangeCount ?? "—"} />
       </div>
 
-      <div className="card" style={{ padding: 22, marginBottom: 18 }}>
+      <div className="card" style={{ padding: 22 }}>
         <div className="upper-label" style={{ marginBottom: 14 }}>Schnellzugriff</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          <QuickLink
-            href="/admin/table-wishes"
-            icon="trophy"
-            label="Tischwünsche verwalten"
-            sub="Wer möchte wen kennenlernen — Grundlage für Tischzuweisung"
-          />
-          <QuickLink
-            href="/admin/profile-changes"
-            icon="users"
-            label="Profil-Änderungen prüfen"
-            sub="Von Members geänderte Felder — relevante Mutationen manuell ins CRM übernehmen"
-          />
           <QuickLink
             href="/directory"
             icon="users"
@@ -87,67 +76,6 @@ export default function AdminDashboardPage() {
             sub="Termine erstellen und verwalten"
           />
         </div>
-      </div>
-
-      <div className="card" style={{ padding: 22 }}>
-        <div className="upper-label" style={{ marginBottom: 14 }}>Letzte Tischwünsche</div>
-        {!data?.recentWishes?.length ? (
-          <div style={{ color: "var(--ink-3)", fontSize: 13, padding: "12px 0" }}>
-            {dataSource === "live"
-              ? "Noch keine Tischwünsche gemeldet."
-              : "Im Demo-Modus werden keine Tischwünsche persistiert."}
-          </div>
-        ) : (
-          <div>
-            {data.recentWishes.map((w) => (
-              <div
-                key={w.id}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "baseline",
-                  gap: 12,
-                  padding: "10px 0",
-                  borderTop: "1px solid var(--line)",
-                  fontSize: 13.5,
-                  flexWrap: "wrap",
-                }}
-              >
-                <div style={{ minWidth: 0 }}>
-                  <strong>
-                    {w.requesterSlug ? (
-                      <Link href={`/directory/${w.requesterSlug}`} style={{ color: "var(--ink)", textDecoration: "none" }}>
-                        {w.requesterName}
-                      </Link>
-                    ) : (
-                      w.requesterName
-                    )}
-                  </strong>
-                  <span style={{ color: "var(--ink-3)", margin: "0 6px" }}>möchte kennenlernen</span>
-                  <strong>
-                    {w.targetSlug ? (
-                      <Link href={`/directory/${w.targetSlug}`} style={{ color: "var(--ink)", textDecoration: "none" }}>
-                        {w.targetName}
-                      </Link>
-                    ) : (
-                      w.targetName
-                    )}
-                  </strong>
-                </div>
-                <span className="mono" style={{ fontSize: 11.5, color: "var(--ink-3)" }}>
-                  {new Date(w.createdAt).toLocaleDateString("de-CH", { day: "2-digit", month: "2-digit", year: "numeric" })}
-                </span>
-              </div>
-            ))}
-            <Link
-              href="/admin/table-wishes"
-              className="btn-text"
-              style={{ marginTop: 14, fontSize: 12.5, color: "var(--ink-3)", display: "inline-block" }}
-            >
-              Alle anzeigen →
-            </Link>
-          </div>
-        )}
       </div>
     </div>
   );

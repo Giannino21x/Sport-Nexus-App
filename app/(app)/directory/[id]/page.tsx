@@ -2,19 +2,14 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
-import { useSettings } from "@/components/settings-context";
 import { reload, useEvents, useMe, useMember } from "@/lib/hooks";
 import { setMemberExtraAction, uploadMemberAvatarAction } from "@/app/actions/members";
 import { normalizeAvatarFile } from "@/lib/image";
 import { getMemberEventRegistrationsAction } from "@/app/actions/events";
 import { Skel, SkelCircle, SkelLines } from "@/components/skeleton";
-import {
-  getMyTableWishesAction,
-  toggleTableWishAction,
-} from "@/app/actions/table-wishes";
 
 // `since` kommt aus rowToMember bereits als "TT.MM.JJJJ" — new Date() darauf
 // ergibt Invalid Date. Deshalb explizit parsen; unbekannte Formate (z.B. Demo-
@@ -182,9 +177,6 @@ export default function MemberDetailPage() {
             <Link href={`/messages?to=${m.id}`} className="btn btn-accent">
               <Icon name="message" size={14} /> Nachricht
             </Link>
-            {me && me.id !== m.id && (isDemo || m.dbId) && (
-              <TableWishButton targetMemberDbId={m.dbId ?? m.id} />
-            )}
           </div>
         </div>
       </div>
@@ -322,61 +314,6 @@ export default function MemberDetailPage() {
         </div>
       </div>
     </div>
-  );
-}
-
-function TableWishButton({ targetMemberDbId }: { targetMemberDbId: string }) {
-  const { dataSource } = useSettings();
-  const [wished, setWished] = useState<boolean | null>(null);
-  const [pending, startTransition] = useTransition();
-
-  useEffect(() => {
-    if (dataSource !== "live") {
-      // Demo: state nur lokal halten, kein Server-Roundtrip.
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- bewusster Reset auf Demo
-      setWished(false);
-      return;
-    }
-    let cancelled = false;
-    getMyTableWishesAction().then((r) => {
-      if (cancelled) return;
-      setWished(r.items.some((w) => w.targetId === targetMemberDbId));
-    });
-    return () => { cancelled = true; };
-  }, [dataSource, targetMemberDbId]);
-
-  const onToggle = () => {
-    if (dataSource !== "live") {
-      setWished((v) => !v);
-      return;
-    }
-    startTransition(async () => {
-      const r = await toggleTableWishAction(targetMemberDbId);
-      if (r.error) {
-        alert(r.error);
-        return;
-      }
-      setWished(Boolean(r.wished));
-    });
-  };
-
-  if (wished === null) return null;
-
-  return (
-    <button
-      type="button"
-      onClick={onToggle}
-      disabled={pending}
-      className={wished ? "btn btn-primary" : "btn btn-ghost"}
-      title={
-        wished
-          ? "Du hast diese Person als Tischwunsch für das nächste Event markiert."
-          : "An einem kommenden Event am gleichen Tisch – SportNexus versucht dies bei der Tischzuweisung zu berücksichtigen."
-      }
-    >
-      <Icon name={wished ? "check" : "users"} size={14} />
-      {wished ? "Tischwunsch gemeldet" : "Tischwunsch melden"}
-    </button>
   );
 }
 
