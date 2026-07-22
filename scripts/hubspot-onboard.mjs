@@ -65,6 +65,9 @@ const NOMAIL = args.includes("--no-mail");
 // Welcome-Mail, mit 4 Wochen gültigem Langzeit-Link auf /invite statt des
 // 24h-Supabase-Links. Für die auserwählten Testpersonen vor dem 20.08.
 const BETA = args.includes("--beta");
+// --skip-active: Members auslassen, die sich schon eingeloggt haben (Launch-
+// Runde 23.07.: Founder/Pascal/Giannino brauchen keine Welcome-Mail mehr).
+const SKIP_ACTIVE = args.includes("--skip-active");
 
 const log = (...a) => console.log(...a);
 
@@ -566,11 +569,26 @@ log(`HubSpot: ${contacts.length} Kontakt(e) mit vertrag=true.`);
 const seenStatus = new Set(contacts.map((c) => (c.properties.memberstatus ?? "(leer)")));
 log(`Vorkommende memberstatus-Werte: ${[...seenStatus].join(" | ")}\n`);
 
-const candidates = contacts
+let candidates = contacts
   .map((c) => ({ hsId: c.id, ...mapContact(c.properties) }))
   .filter((m) => m.email)
   .filter((m) => ALLOWED_STATUS.includes((m.memberstatus ?? "").toLowerCase()))
   .filter((m) => !ONLY || ONLY.includes(m.email));
+
+// --skip-active: wer sich schon eingeloggt hat, kennt die App — keine Mail.
+if (SKIP_ACTIVE) {
+  const adminForCheck = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+  const { data, error: luErr } = await adminForCheck.auth.admin.listUsers({ perPage: 1000 });
+  if (luErr) throw new Error(`--skip-active: listUsers fehlgeschlagen — ${luErr.message}`);
+  const active = new Set(
+    data.users.filter((u) => u.last_sign_in_at).map((u) => (u.email ?? "").toLowerCase()),
+  );
+  const skipped = candidates.filter((m) => active.has(m.email));
+  candidates = candidates.filter((m) => !active.has(m.email));
+  log(`--skip-active: ${skipped.length} bereits eingeloggte Member ausgelassen:`);
+  for (const m of skipped) log(`  – ${m.first} ${m.last} <${m.email}>`);
+  log("");
+}
 
 // Firma aus dem verknüpften Company-Objekt nachladen (Kontakt-Feld ist leer).
 for (const m of candidates) {
