@@ -1133,6 +1133,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   position: absolute; top: 14px; left: 14px; z-index: 2;
   display: flex; gap: 8px; flex-wrap: wrap;
 }
+.event-hero-city {
+  position: absolute; bottom: 14px; right: 14px; z-index: 2;
+}
 .event-hero-body {
   padding: 24px 28px 22px;
   display: flex; flex-direction: column; gap: 16px;

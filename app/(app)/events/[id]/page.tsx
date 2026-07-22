@@ -229,8 +229,12 @@ export default function EventDetailPage() {
           )}
           <div className="event-hero-chips">
             {ev.featured && <span className="chip" style={{ background: "var(--accent)", color: "var(--accent-ink)", borderColor: "transparent" }}>Featured</span>}
-            <span className="chip" style={{ background: "rgba(0,0,0,0.45)", color: "#fff", borderColor: "transparent", backdropFilter: "blur(6px)" }}>{ev.city}</span>
             {past && <span className="chip" style={{ background: "rgba(0,0,0,0.45)", color: "#fff", borderColor: "transparent", backdropFilter: "blur(6px)" }}>Vergangenes Event</span>}
+          </div>
+          {/* Ort unten rechts statt oben links — oben kollidierte der Chip mit
+              dem SportNexus-Logo in den Event-Bildern (Pascal-Feedback 2026-07-22). */}
+          <div className="event-hero-city">
+            <span className="chip" style={{ background: "rgba(0,0,0,0.45)", color: "#fff", borderColor: "transparent", backdropFilter: "blur(6px)" }}>{ev.city}</span>
           </div>
         </div>
 
@@ -624,7 +628,7 @@ function GalleryCard({ ev, isAdmin }: { ev: SnEvent; isAdmin: boolean }) {
   return (
     <div className="card" style={{ padding: 24 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, gap: 10 }}>
-        <div className="upper-label">Bildergallerie</div>
+        <div className="upper-label">Bildergalerie</div>
         {isAdmin && !editing && (
           <button
             type="button"
@@ -640,7 +644,7 @@ function GalleryCard({ ev, isAdmin }: { ev: SnEvent; isAdmin: boolean }) {
       {editing ? (
         <div style={{ display: "grid", gap: 10 }}>
           <div className="field">
-            <label className="field-label">Link zur Gallerie</label>
+            <label className="field-label">Link zur Galerie</label>
             <input className="input" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://..." autoFocus />
           </div>
           <div className="field">
@@ -660,7 +664,7 @@ function GalleryCard({ ev, isAdmin }: { ev: SnEvent; isAdmin: boolean }) {
       ) : href ? (
         <>
           <div style={{ fontSize: 13, color: "var(--ink-3)", marginBottom: 14, lineHeight: 1.55 }}>
-            Die Fotos zu diesem Event findest du in der Bildergallerie.
+            Die Fotos zu diesem Event findest du in der Bildergalerie.
           </div>
           <a
             href={href}
@@ -669,7 +673,7 @@ function GalleryCard({ ev, isAdmin }: { ev: SnEvent; isAdmin: boolean }) {
             className="btn btn-accent"
             style={{ padding: "11px 18px", justifyContent: "center", display: "inline-flex" }}
           >
-            Zur Bildergallerie <Icon name="arrow" size={14} />
+            Zur Bildergalerie <Icon name="arrow" size={14} />
           </a>
           {ev.galleryPassword && (
             <div style={{ fontSize: 13, color: "var(--ink-2)", marginTop: 12 }}>
@@ -679,7 +683,7 @@ function GalleryCard({ ev, isAdmin }: { ev: SnEvent; isAdmin: boolean }) {
         </>
       ) : (
         <div style={{ fontSize: 13, color: "var(--ink-3)", lineHeight: 1.55 }}>
-          Noch kein Gallerie-Link hinterlegt.
+          Noch kein Galerie-Link hinterlegt.
         </div>
       )}
     </div>

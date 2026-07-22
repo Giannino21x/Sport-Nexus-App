@@ -266,20 +266,24 @@ function EventCard({ ev, past, isAdmin, registered, count }: { ev: SnEvent; past
             {ev.featured && (
               <span className="chip" style={{ background: "var(--accent)", color: "var(--accent-ink)", borderColor: "transparent" }}>Featured</span>
             )}
-            <span className="chip" style={{ background: "rgba(255,255,255,0.18)", color: "#fff", borderColor: "transparent", backdropFilter: "blur(6px)" }}>
-              {ev.city}
-            </span>
             {past && (
               <span className="chip" style={{ background: "rgba(255,255,255,0.15)", color: "#fff", borderColor: "transparent", marginLeft: "auto" }}>
                 Past
               </span>
             )}
           </div>
-          <div>
-            <div className="serif" style={{ fontSize: 44, lineHeight: 1, color: "#fff" }}>{d.getDate()}</div>
-            <div className="mono" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.14em", marginTop: 4, color: "rgba(255,255,255,0.8)" }}>
-              {d.toLocaleDateString("de-CH", { month: "long", year: "numeric" })}
+          {/* Ort unten rechts statt oben — oben kollidierte der Chip mit dem
+              SportNexus-Logo in den Event-Bildern (Pascal-Feedback 2026-07-22). */}
+          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 8 }}>
+            <div>
+              <div className="serif" style={{ fontSize: 44, lineHeight: 1, color: "#fff" }}>{d.getDate()}</div>
+              <div className="mono" style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: "0.14em", marginTop: 4, color: "rgba(255,255,255,0.8)" }}>
+                {d.toLocaleDateString("de-CH", { month: "long", year: "numeric" })}
+              </div>
             </div>
+            <span className="chip" style={{ background: "rgba(255,255,255,0.18)", color: "#fff", borderColor: "transparent", backdropFilter: "blur(6px)" }}>
+              {ev.city}
+            </span>
           </div>
         </div>
         {isAdmin && (
