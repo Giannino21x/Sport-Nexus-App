@@ -57,8 +57,10 @@ export type GuestooVisitor = {
 };
 
 function readAuth() {
-  const cookieHeader = process.env.GUESTOO_COOKIE_HEADER;
-  const xsrfToken = process.env.GUESTOO_XSRF_TOKEN;
+  // trim: Vercel-Dashboard-Werte können mit Zeilenumbruch enden — ein \n im
+  // Header-Wert lässt fetch mit "invalid header value" abbrechen.
+  const cookieHeader = process.env.GUESTOO_COOKIE_HEADER?.trim();
+  const xsrfToken = process.env.GUESTOO_XSRF_TOKEN?.trim();
   if (!cookieHeader || !xsrfToken) {
     // Bewusst Environment-agnostische Botschaft — die App läuft lokal (.env.local)
     // und auf Vercel (Project Settings → Environment Variables). Beide Stellen

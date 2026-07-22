@@ -11,15 +11,20 @@
 
 import nodemailer, { type Transporter } from "nodemailer";
 
-const SMTP_HOST = process.env.SMTP_HOST ?? "asmtp.mail.hostpoint.ch";
-const SMTP_PORT = Number(process.env.SMTP_PORT ?? "587");
-const SMTP_USER = process.env.SMTP_USER ?? "no-reply@sport-nexus.ch";
-const SMTP_FROM = process.env.SMTP_FROM ?? "SportNexus <no-reply@sportnexus.ch>";
-const APP_URL = process.env.APP_URL ?? "https://sport-nexus-app.vercel.app";
+// Die in Vercel hinterlegten Werte enden teils mit einem Zeilenumbruch
+// (Copy-Paste ins Dashboard) — ungetrimmt schlägt dann schon der DNS-Lookup
+// des Hosts fehl und alle Mails scheitern still.
+const clean = (v: string | undefined) => v?.trim() || undefined;
+
+const SMTP_HOST = clean(process.env.SMTP_HOST) ?? "asmtp.mail.hostpoint.ch";
+const SMTP_PORT = Number(clean(process.env.SMTP_PORT) ?? "587");
+const SMTP_USER = clean(process.env.SMTP_USER) ?? "no-reply@sport-nexus.ch";
+const SMTP_FROM = clean(process.env.SMTP_FROM) ?? "SportNexus <no-reply@sportnexus.ch>";
+const APP_URL = clean(process.env.APP_URL) ?? "https://sport-nexus-app.vercel.app";
 
 let transporter: Transporter | null = null;
 function getTransporter(): Transporter | null {
-  const pass = process.env.SMTP_PASS;
+  const pass = clean(process.env.SMTP_PASS);
   if (!pass) return null;
   if (!transporter) {
     transporter = nodemailer.createTransport({

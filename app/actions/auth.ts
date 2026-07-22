@@ -10,7 +10,10 @@ import { verifyInviteToken } from "@/lib/invite-token";
 async function appOrigin() {
   // Env-Wert bevorzugen — Request-Header (host/x-forwarded-host) sind ausserhalb
   // von Vercel spoofbar, und der Origin landet im Passwort-Reset-Link.
-  if (process.env.APP_URL) return process.env.APP_URL.replace(/\/$/, "");
+  // trim: Vercel-Dashboard-Werte können mit Zeilenumbruch enden — der landete
+  // sonst mitten im Passwort-Reset-Link.
+  const envUrl = process.env.APP_URL?.trim();
+  if (envUrl) return envUrl.replace(/\/$/, "");
   const h = await headers();
   const host = h.get("x-forwarded-host") ?? h.get("host");
   const proto =
