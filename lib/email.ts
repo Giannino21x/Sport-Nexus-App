@@ -75,7 +75,7 @@ type Sender = {
   last: string;
   role?: string | null;
   company?: string | null;
-  slug: string;
+  slug: string | null;
   // Optionale Kontaktdaten — werden nur reingerendert, wenn der Sender sie
   // freigegeben hat. Pascal: damit die Konversation auch ausserhalb der App
   // weiterlaufen kann (Reply per Mail, Anruf, LinkedIn).
@@ -100,8 +100,10 @@ export function newMessageEmail(opts: {
   const role = esc([opts.sender.role, opts.sender.company].filter(Boolean).join(" · "));
   const greeting = opts.recipientFirst ? `Hallo ${esc(opts.recipientFirst)},` : "Hallo,";
   const subject = `Neue Nachricht von ${fullName}`;
-  const replyUrl = `${APP_URL}/messages?to=${encodeURIComponent(opts.sender.slug)}`;
-  const profileUrl = `${APP_URL}/directory/${encodeURIComponent(opts.sender.slug)}`;
+  const replyUrl = opts.sender.slug
+    ? `${APP_URL}/messages?to=${encodeURIComponent(opts.sender.slug)}`
+    : `${APP_URL}/messages`;
+  const profileUrl = opts.sender.slug ? `${APP_URL}/directory/${encodeURIComponent(opts.sender.slug)}` : null;
 
   const previewClean = opts.bodyPreview
     .replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c] ?? c))
@@ -154,7 +156,7 @@ export function newMessageEmail(opts: {
     ${contactRows}
     <div style="margin-top:24px; display:flex; gap:10px;">
       <a href="${replyUrl}" style="display:inline-block; background:#000; color:#fff; padding:11px 18px; border-radius:6px; text-decoration:none; font-size:14px; font-weight:500;">Antworten in der App</a>
-      <a href="${profileUrl}" style="display:inline-block; background:#fff; color:#000; padding:11px 18px; border-radius:6px; text-decoration:none; font-size:14px; border:1px solid #D9D9D9;">Profil ansehen</a>
+      ${profileUrl ? `<a href="${profileUrl}" style="display:inline-block; background:#fff; color:#000; padding:11px 18px; border-radius:6px; text-decoration:none; font-size:14px; border:1px solid #D9D9D9;">Profil ansehen</a>` : ""}
     </div>
     <hr style="margin:32px 0; border:none; border-top:1px solid #ECECEC;">
     <p style="font-size:11px; color:#868686; margin:0; line-height:1.5;">
@@ -177,7 +179,7 @@ export function newMessageEmail(opts: {
     contextLine ? `  ${contextLine}` : "",
     ``,
     `Antworten in der App: ${replyUrl}`,
-    `Profil: ${profileUrl}`,
+    profileUrl ? `Profil: ${profileUrl}` : "",
   ].filter(Boolean).join("\n");
 
   return { subject, html, text };

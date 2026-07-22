@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "./icon";
 import { reload, type Notif } from "@/lib/hooks";
 import { markNotificationsReadAction } from "@/app/actions/notifications";
@@ -15,6 +16,7 @@ function iconFor(kind: string): IconName {
 }
 
 export function NotificationsPopover({ notifs, onClose }: Props) {
+  const router = useRouter();
   // Beim Öffnen serverseitig als gelesen markieren; beim Schliessen die Liste
   // neu laden, damit der Unread-Punkt an der Glocke verschwindet. (Im Popover
   // selbst bleibt die Hervorhebung sichtbar, solange es offen ist.)
@@ -53,6 +55,10 @@ export function NotificationsPopover({ notifs, onClose }: Props) {
             notifs.map((n) => (
               <div
                 key={n.id}
+                onClick={n.link ? () => { onClose(); router.push(n.link); } : undefined}
+                role={n.link ? "button" : undefined}
+                tabIndex={n.link ? 0 : undefined}
+                onKeyDown={n.link ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClose(); router.push(n.link); } } : undefined}
                 style={{
                   display: "flex",
                   gap: 12,
@@ -60,14 +66,15 @@ export function NotificationsPopover({ notifs, onClose }: Props) {
                   borderBottom: "1px solid var(--line)",
                   background: n.unread ? "var(--accent-soft)" : "transparent",
                   opacity: n.unread ? 1 : 0.7,
+                  cursor: n.link ? "pointer" : "default",
                 }}
               >
                 <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--bg-sunken)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--ink-2)", flexShrink: 0 }}>
                   <Icon name={iconFor(n.kind)} size={15} />
                 </div>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: n.unread ? 500 : 400 }}>{n.title}</div>
-                  {n.preview && <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 2 }}>{n.preview}</div>}
+                  <div style={{ fontSize: 13, fontWeight: n.unread ? 500 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</div>
+                  {n.preview && <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 2, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{n.preview}</div>}
                   <div style={{ fontSize: 11, color: "var(--ink-4)", marginTop: 3 }}>{n.time}</div>
                 </div>
                 {n.unread && <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent)", flexShrink: 0, marginTop: 6 }} />}

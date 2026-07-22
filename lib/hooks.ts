@@ -552,14 +552,15 @@ export type Notif = {
   preview: string;
   unread: boolean;
   time: string;
+  link: string;
 };
 
 const DEMO_NOTIFS: Notif[] = [
-  { id: "n1", kind: "users", title: "Marco Fischer hat dein Profil angesehen", preview: "", unread: true, time: "vor 12 Min." },
-  { id: "n2", kind: "message", title: "Neue Nachricht von Sophie Meier", preview: "Hast du Zeit nächste Woche?", unread: true, time: "vor 2 Std." },
-  { id: "n3", kind: "calendar", title: "Erinnerung: SportNexus Lunch Zürich", preview: "In 3 Tagen · Widder Hotel", unread: true, time: "heute" },
-  { id: "n4", kind: "sparkle", title: "3 neue Matchmaking-Vorschläge", preview: "", unread: false, time: "gestern" },
-  { id: "n5", kind: "trophy", title: "Joël Aebi ist der Community beigetreten", preview: "", unread: false, time: "vor 2 Tagen" },
+  { id: "n1", kind: "users", title: "Marco Fischer hat dein Profil angesehen", preview: "", unread: true, time: "vor 12 Min.", link: "" },
+  { id: "n2", kind: "message", title: "Neue Nachricht von Sophie Meier", preview: "Hast du Zeit nächste Woche?", unread: true, time: "vor 2 Std.", link: "/messages" },
+  { id: "n3", kind: "calendar", title: "Erinnerung: SportNexus Lunch Zürich", preview: "In 3 Tagen · Widder Hotel", unread: true, time: "heute", link: "/events" },
+  { id: "n4", kind: "sparkle", title: "3 neue Matchmaking-Vorschläge", preview: "", unread: false, time: "gestern", link: "" },
+  { id: "n5", kind: "trophy", title: "Joël Aebi ist der Community beigetreten", preview: "", unread: false, time: "vor 2 Tagen", link: "" },
 ];
 
 export function useNotifications(meDbId: string | null) {
@@ -590,6 +591,7 @@ export function useNotifications(meDbId: string | null) {
           preview: String(r.preview ?? ""),
           unread: Boolean(r.unread),
           time: formatRelativeTime(String(r.created_at)),
+          link: r.link ? String(r.link) : "",
         }));
         liveCache.notifications = { key: meDbId, data: mapped };
         persistLiveCache();

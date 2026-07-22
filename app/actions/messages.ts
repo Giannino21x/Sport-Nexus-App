@@ -57,7 +57,8 @@ async function notifyRecipient(args: {
   try {
     const { sender, recipient } = await loadMessageParties(args.supabase, args.meId, args.recipientId);
     if (!sender || !recipient?.email) return;
-    if (!sender.slug) return; // ohne Slug kein Profil-Link → trotzdem senden, aber nicht ohne Identität
+    // Kein Slug-Gate mehr: fehlt der Slug, senden wir trotzdem — das Template
+    // fällt dann auf einen generischen /messages-Link ohne Profil-Button zurück.
     const tpl = newMessageEmail({
       senderName: `${sender.first} ${sender.last}`,
       sender: {
@@ -79,7 +80,8 @@ async function notifyRecipient(args: {
       hasAttachment: args.hasAttachment,
       recipientFirst: recipient.first,
     });
-    await sendEmail({ to: recipient.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+    const res = await sendEmail({ to: recipient.email, subject: tpl.subject, html: tpl.html, text: tpl.text });
+    if (!res.ok) console.error("[messages] Mail an", recipient.email, "NICHT gesendet:", res.reason);
   } catch (e) {
     console.error("[messages] notifyRecipient error:", e instanceof Error ? e.message : e);
   }
