@@ -53,7 +53,7 @@ export default function MemberDetailPage() {
     return (
       <div>
         <Link href="/directory" className="btn btn-text" style={{ marginBottom: 12, padding: "6px 10px", fontSize: 12.5, color: "var(--ink-3)", display: "inline-flex" }}>
-          ← Zurück zum Directory
+          ← Zurück zur Memberübersicht
         </Link>
         <div className="card" style={{ padding: 0, overflow: "hidden", marginBottom: 18 }}>
           <Skel h={140} r={0} />
@@ -113,7 +113,7 @@ export default function MemberDetailPage() {
   return (
     <div>
       <Link href="/directory" className="btn btn-text" style={{ marginBottom: 12, padding: "6px 10px", fontSize: 12.5, color: "var(--ink-3)", display: "inline-flex" }}>
-        ← Zurück zum Directory
+        ← Zurück zur Memberübersicht
       </Link>
 
       <div className="card" style={{ padding: 0, overflow: "hidden", marginBottom: 18 }}>
@@ -360,13 +360,14 @@ function TableWishButton({ targetMemberDbId }: { targetMemberDbId: string }) {
     });
   };
 
-  if (wished === null) return null;
-
+  // Sofort rendern statt auf getMyTableWishesAction zu warten — der Button
+  // ploppte sonst verzögert in die Seite (Pascal-Feedback 2026-07-22). Bis der
+  // Status da ist, neutral anzeigen und Klicks sperren.
   return (
     <button
       type="button"
       onClick={onToggle}
-      disabled={pending}
+      disabled={pending || wished === null}
       className={wished ? "btn btn-primary" : "btn btn-ghost"}
       title={
         wished
