@@ -35,7 +35,12 @@ jobs:
         env:
           ENV_LOCAL: ${{ secrets.ENV_LOCAL }}
       - name: Beta-Einladungen an die 8 Testpersonen senden
-        run: >
-          node scripts/hubspot-onboard.mjs --live --beta --reinvite
-          --status="Founder,Seed Member,Early Member,Regular Member,Stellvertreter,Premium Sponsor,Moderation"
-          --only=stefan.freivogel@bdo.ch,vanessa.andrighetto@hispeed.ch,dominik.hert@finaccess.ch,florian.stuerchler@rh-finanz.ch,franck.kempfer@wavestone.com,marc.thommen@weckerleag.ch,spitteler@swissindoorsbasel.ch,corinne.heusser@ebl.ch
+        run: |
+          set -o pipefail
+          node scripts/hubspot-onboard.mjs --live --beta --reinvite \
+            --status="Founder,Seed Member,Early Member,Regular Member,Stellvertreter,Premium Sponsor,Moderation" \
+            --only=stefan.freivogel@bdo.ch,vanessa.andrighetto@hispeed.ch,dominik.hert@finaccess.ch,florian.stuerchler@rh-finanz.ch,franck.kempfer@wavestone.com,marc.thommen@weckerleag.ch,spitteler@swissindoorsbasel.ch,corinne.heusser@ebl.ch \
+            2>&1 | tee invite.log
+      - name: Protokoll an Giannino mailen (Erfolg wie Fehler)
+        if: always()
+        run: node scripts/mail-run-log.mjs "${{ job.status }}" invite.log
