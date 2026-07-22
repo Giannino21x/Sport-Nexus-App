@@ -46,11 +46,6 @@ function LoginInner() {
     undefined,
   );
 
-  const enterDemo = () => {
-    document.cookie = "sn-mode=demo; path=/; max-age=31536000; samesite=lax";
-    window.location.assign("/dashboard");
-  };
-
   const inputStyle = {
     background: C.bgInput,
     borderColor: C.border,
@@ -516,29 +511,6 @@ function LoginInner() {
               </form>
             </>
           )}
-
-          <div style={{ margin: "24px 0", display: "flex", alignItems: "center", gap: 12, color: C.textSub, fontSize: 11.5 }}>
-            <span style={{ flex: 1, height: 1, background: C.divider }} /> oder <span style={{ flex: 1, height: 1, background: C.divider }} />
-          </div>
-          <button
-            type="button"
-            className="btn"
-            style={{
-              width: "100%",
-              background: C.ghostBg,
-              color: C.text,
-              border: "1px solid " + C.border,
-              padding: "11px",
-              fontFamily: SANS,
-              fontWeight: 500,
-            }}
-            onClick={enterDemo}
-          >
-            Als Demo-User ansehen
-          </button>
-          <div style={{ marginTop: 10, fontSize: 11.5, color: C.textSub, textAlign: "center", lineHeight: 1.5 }}>
-            Demo-Modus zeigt fiktive Daten. Echte Accounts, Nachrichten und Posts gibt es nur im Live-Modus.
-          </div>
 
           <div style={{ marginTop: 32, fontSize: 12.5, color: C.textDim, textAlign: "center" }}>
             {mode === "signin" && (
