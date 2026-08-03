@@ -525,6 +525,11 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Link href="/profile" className="nav-item" onClick={() => setMobileMenuOpen(false)}>
               <Icon name="edit" className="icon" /><span>Profil bearbeiten</span>
             </Link>
+            {/* Einstellungen fiel beim Revert 7203dbf versehentlich mit raus —
+                der Drawer ist mobil der einzige Weg dorthin. */}
+            <Link href="/settings" className="nav-item" onClick={() => setMobileMenuOpen(false)}>
+              <Icon name="settings" className="icon" /><span>Einstellungen</span>
+            </Link>
             <button className="nav-item" onClick={() => { setMobileMenuOpen(false); handleLogout(); }}>
               <Icon name="logout" className="icon" /><span>Abmelden</span>
             </button>
