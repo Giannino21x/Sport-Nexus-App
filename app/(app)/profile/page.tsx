@@ -628,12 +628,16 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="card" style={{ padding: 16 }}>
-            <div className="upper-label" style={{ marginBottom: 8 }}>Datenquelle</div>
-            <div style={{ fontSize: 12.5, color: "var(--ink-3)", lineHeight: 1.5 }}>
-              {dataSource === "live" ? "Live-Modus: Änderungen werden in Supabase gespeichert." : "Demo-Modus: Änderungen bleiben nur lokal."}
+          {/* Für Live-User ist die Datenquelle kein Thema — nur im Demo-Modus ist
+              der Hinweis relevant, dass Änderungen nirgends ankommen. */}
+          {dataSource === "demo" && (
+            <div className="card" style={{ padding: 16 }}>
+              <div className="upper-label" style={{ marginBottom: 8 }}>Datenquelle</div>
+              <div style={{ fontSize: 12.5, color: "var(--ink-3)", lineHeight: 1.5 }}>
+                Demo-Modus: Änderungen bleiben nur lokal.
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

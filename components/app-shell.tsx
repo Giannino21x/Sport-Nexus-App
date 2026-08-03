@@ -490,6 +490,9 @@ export function AppShell({ children }: { children: ReactNode }) {
             style={{ position: "fixed", top: 0, left: 0, width: 260, height: "100dvh" }}
           >
             <div className="brand"><LogoWordmark height={22} invert={theme === "dark"} /></div>
+            {/* Section-Labels wie in der Desktop-Sidebar — sie tragen im Drawer
+                zusätzlich den Abstand zwischen Logo und erster Nav-Zeile. */}
+            <div className="nav-section-label">Community</div>
             {navItems.map((item) => (
               <Link
                 key={item.k}
@@ -518,6 +521,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 ))}
               </>
             )}
+            <div className="nav-section-label">Konto</div>
             <Link href="/profile" className="nav-item" onClick={() => setMobileMenuOpen(false)}>
               <Icon name="edit" className="icon" /><span>Profil bearbeiten</span>
             </Link>
