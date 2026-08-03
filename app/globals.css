@@ -1214,3 +1214,31 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   .page-enter { animation: none; }
   .img-fade { transition: none; opacity: 1; }
 }
+
+/* ---------- Einstellungen: Label-Spalte + Wert-Spalte ----------
+   Lag früher als Inline-Style in der Row-Komponente und war deshalb per
+   Media Query nicht erreichbar: die 180px-Mindestbreite des Labels liess
+   auf dem Handy nur ~140px für den Wert übrig — E-Mails und Segment-
+   Schalter liefen aus der Karte. Mobil stapeln wir die beiden Spalten. */
+.settings-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 220px) minmax(0, 1fr);
+  gap: 18px;
+  padding: 14px 0;
+  border-top: 1px solid var(--line);
+  align-items: center;
+}
+.settings-row > * { min-width: 0; }
+.settings-row .settings-value {
+  display: flex;
+  justify-content: flex-start;
+  /* Lange Adressen ohne Leerzeichen dürfen umbrechen statt zu überlaufen. */
+  overflow-wrap: anywhere;
+}
+@media (max-width: 779px) {
+  .settings-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 10px;
+    align-items: start;
+  }
+}

@@ -174,7 +174,7 @@ function AccountEmailCard({ profileEmail }: { profileEmail: string | null }) {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder="neue@adresse.ch"
-              style={{ minWidth: 240 }}
+              style={{ width: "min(240px, 100%)" }}
               autoFocus
             />
             <button className="btn btn-primary" onClick={onSave} disabled={pending} style={{ padding: "6px 12px", fontSize: 12.5 }}>
@@ -265,22 +265,15 @@ function Row({
   children: React.ReactNode;
 }) {
   return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(180px, 220px) 1fr",
-        gap: 18,
-        padding: "14px 0",
-        borderTop: "1px solid var(--line)",
-        alignItems: "center",
-      }}
-      className="settings-row"
-    >
+    // Layout liegt in globals.css (.settings-row) — als Inline-Style war die
+    // 180px-Label-Spalte per Media Query nicht aufzubrechen und sprengte auf
+    // dem Handy die Karte.
+    <div className="settings-row">
       <div>
         <div style={{ fontSize: 14, fontWeight: 500 }}>{label}</div>
         {hint && <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 4, lineHeight: 1.5 }}>{hint}</div>}
       </div>
-      <div style={{ display: "flex", justifyContent: "flex-start" }}>{children}</div>
+      <div className="settings-value">{children}</div>
     </div>
   );
 }
