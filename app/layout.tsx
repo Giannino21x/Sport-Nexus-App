@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Manrope, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { HapticsBridge } from "@/components/haptics-bridge";
 
 const bricolage = Bricolage_Grotesque({
   variable: "--font-bricolage",
@@ -95,6 +96,9 @@ export default function RootLayout({
     >
       <body>
         <script dangerouslySetInnerHTML={{ __html: edgeDetect }} />
+        {/* Liegt bewusst über den Route-Groups: auch Login und Reset sollen
+            sich in der Hülle anfassbar anfühlen. */}
+        <HapticsBridge />
         {children}
       </body>
     </html>

@@ -9,6 +9,7 @@ import { ImagePreview } from "@/components/image-preview";
 import { useSettings } from "@/components/settings-context";
 import { reload, useConversations, useMe, useMembers, useThreadMessages, type ChatMessage, type Conversation } from "@/lib/hooks";
 import { markThreadReadAction, sendMessageAction, sendMessageWithAttachmentAction } from "@/app/actions/messages";
+import { error as hapticError, success as hapticSuccess } from "@/lib/haptics";
 import { createClient } from "@/lib/supabase/client";
 import { MEMBERS, type Member } from "@/lib/data";
 import { Skel, SkelCircle } from "@/components/skeleton";
@@ -328,11 +329,13 @@ function MessagesInner() {
     }
     startTransition(async () => {
       const r = await sendMessageAction(recipient, body);
-      if (r.error) setSendError(r.error);
+      if (r.error) { setSendError(r.error); hapticError(); }
       else {
         setDraft("");
         if (!activeDbId) { userPickedRef.current = true; setActiveDbId(recipient); }
         reload("messages");
+        // Nachricht ist wirklich draussen — das darf man spüren.
+        hapticSuccess();
       }
     });
   };

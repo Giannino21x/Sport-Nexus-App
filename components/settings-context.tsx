@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { setHapticsEnabled } from "@/lib/haptics";
 
 export type Settings = {
   theme: "light" | "dark";
@@ -8,6 +9,7 @@ export type Settings = {
   layout: "grid" | "list" | "table";
   cardStyle: "default" | "photo" | "compact";
   dataSource: "demo" | "live";
+  haptics: "on" | "off";
 };
 
 const DEFAULTS: Settings = {
@@ -16,6 +18,7 @@ const DEFAULTS: Settings = {
   layout: "grid",
   cardStyle: "default",
   dataSource: "live",
+  haptics: "on",
 };
 
 const LS_KEY = "sn_state_v2";
@@ -40,6 +43,7 @@ type Ctx = Settings & {
   setLayout: (v: Settings["layout"]) => void;
   setCardStyle: (v: Settings["cardStyle"]) => void;
   setDataSource: (v: Settings["dataSource"]) => void;
+  setHaptics: (v: Settings["haptics"]) => void;
   hydrated: boolean;
 };
 
@@ -80,6 +84,9 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     document.documentElement.setAttribute("data-accent", s.accent);
     localStorage.setItem(LS_KEY, JSON.stringify(s));
     writeModeCookie(s.dataSource);
+    // Der globale Tap-Listener sitzt ausserhalb dieses Providers (Root-Layout,
+    // auch für die Auth-Seiten) und liest den Wert deshalb nicht per Hook.
+    setHapticsEnabled(s.haptics === "on");
   }, [s, hydrated]);
 
   const update = <K extends keyof Settings>(k: K) => (v: Settings[K]) =>
@@ -104,6 +111,7 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
         setLayout: update("layout"),
         setCardStyle: update("cardStyle"),
         setDataSource,
+        setHaptics: update("haptics"),
         hydrated,
       }}
     >

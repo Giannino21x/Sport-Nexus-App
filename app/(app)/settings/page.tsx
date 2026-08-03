@@ -5,6 +5,7 @@ import { useEffect, useState, useTransition } from "react";
 import { Icon } from "@/components/icon";
 import { useSettings, type Settings } from "@/components/settings-context";
 import { getAuthEmailAction, updateAuthEmailAction } from "@/app/actions/auth";
+import { error as hapticError, hapticsAvailable, setHapticsEnabled, success as hapticSuccess, tap } from "@/lib/haptics";
 import { useMe } from "@/lib/hooks";
 
 const ACCENTS: { k: Settings["accent"]; c: string; l: string }[] = [
@@ -15,10 +16,17 @@ const ACCENTS: { k: Settings["accent"]; c: string; l: string }[] = [
 
 export default function SettingsPage() {
   const {
-    theme, accent, cardStyle, dataSource,
-    setTheme, setAccent, setCardStyle, setDataSource,
+    theme, accent, cardStyle, dataSource, haptics,
+    setTheme, setAccent, setCardStyle, setDataSource, setHaptics,
   } = useSettings();
   const { data: me } = useMe();
+  // Erst nach dem Mount prüfen — hapticsAvailable() fasst navigator/window an
+  // und würde beim Server-Render sonst immer false liefern (Hydration-Diff).
+  const [hapticsShown, setHapticsShown] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Client-Feature-Probe
+    setHapticsShown(hapticsAvailable());
+  }, []);
 
   return (
     <div>
@@ -87,6 +95,31 @@ export default function SettingsPage() {
           </Row>
         </div>
 
+        {/* Nur in der App zeigen — im Desktop-Browser gibt es nichts zu
+            spüren, und ein wirkungsloser Schalter verunsichert nur. */}
+        {hapticsShown && (
+          <div className="card" style={{ padding: 24 }}>
+            <div className="upper-label" style={{ marginBottom: 14 }}>Bedienung</div>
+            <Row
+              label="Haptisches Feedback"
+              hint="Kurze Vibration beim Antippen von Buttons, Tabs und Schaltern. Braucht die App — im Browser passiert nichts."
+            >
+              <SegmentGroup
+                options={[
+                  { k: "on", l: "An" },
+                  { k: "off", l: "Aus" },
+                ]}
+                value={haptics}
+                onChange={(v) => {
+                  setHaptics(v as Settings["haptics"]);
+                  // Direkt fühlbar machen, was man gerade eingeschaltet hat.
+                  if (v === "on") { setHapticsEnabled(true); tap("medium"); }
+                }}
+              />
+            </Row>
+          </div>
+        )}
+
         {/* Die Datenquelle-Umschaltung gibt es für Live-User nicht mehr —
             niemand soll versehentlich im Demo-Modus (fiktive Daten) landen.
             Im Demo-Modus bleibt die Karte als Ausstieg zurück zum Login. */}
@@ -142,12 +175,13 @@ function AccountEmailCard({ profileEmail }: { profileEmail: string | null }) {
 
   const onSave = () => {
     const v = draft.trim();
-    if (!v) { setErr("E-Mail erforderlich."); return; }
+    if (!v) { setErr("E-Mail erforderlich."); hapticError(); return; }
     startTransition(async () => {
       const r = await updateAuthEmailAction(v);
-      if (r.error) { setErr(r.error); return; }
+      if (r.error) { setErr(r.error); hapticError(); return; }
       setInfo(r.info ?? "Bestätigungs-Mail gesendet.");
       setEditing(false);
+      hapticSuccess();
     });
   };
 
