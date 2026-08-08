@@ -16,10 +16,13 @@ import { select, tap } from "@/lib/haptics";
  */
 
 // Bewusst eng gehalten — alles, was hier drin steht, vibriert bei JEDER
-// Berührung. Container, Karten und Listenzeilen gehören nicht dazu.
+// Berührung. Container, Karten und Listenzeilen gehören nicht dazu; wo eine
+// Zeile trotzdem wie ein Button wirkt (Chat-Konversation, Event-Zeile),
+// markiert sie sich per data-haptic selbst.
 const INTERACTIVE = [
   "button",
   "a[href]",
+  "[data-haptic]",
   '[role="button"]',
   '[role="tab"]',
   '[role="switch"]',

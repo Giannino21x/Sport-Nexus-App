@@ -206,6 +206,7 @@ export default function DashboardPage() {
               return (
                 <div
                   key={ev.id}
+                  data-haptic
                   onClick={() => router.push(`/events/${ev.id}`)}
                   style={{
                     display: "grid",

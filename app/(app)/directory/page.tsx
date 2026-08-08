@@ -518,6 +518,7 @@ function MemberTable({ members }: { members: Member[] }) {
             {members.map((m) => (
               <tr
                 key={m.id}
+                data-haptic
                 onClick={() => { window.location.href = `/directory/${m.id}`; }}
                 style={{ cursor: "pointer", borderBottom: "1px solid var(--line)" }}
               >

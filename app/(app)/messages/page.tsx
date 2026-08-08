@@ -446,6 +446,7 @@ function MessagesInner() {
                 convos.map((conv) => (
                   <div
                     key={conv.otherDbId}
+                    data-haptic
                     onClick={() => openThread(conv.otherDbId)}
                     style={{
                       display: "flex",

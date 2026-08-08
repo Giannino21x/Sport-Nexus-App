@@ -151,7 +151,13 @@ export function select() {
   if (!allowed()) return;
   const p = plugin();
   if (p?.selectionChanged) {
+    // iOS: selectionChanged ist ohne vorheriges selectionStart ein No-Op —
+    // der native UISelectionFeedbackGenerator existiert erst danach. Für den
+    // Einzel-Tick deshalb immer die volle Sequenz; die Bridge führt die drei
+    // Calls der Reihe nach aus.
+    void p.selectionStart?.().catch(() => {});
     void p.selectionChanged().catch(() => {});
+    void p.selectionEnd?.().catch(() => {});
     return;
   }
   fallback(6);
