@@ -12,7 +12,10 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 // MUSS synchron bleiben mit makeLongInviteLink in scripts/hubspot-onboard.mjs.
 
 function secret(): Buffer {
-  return createHmac("sha256", process.env.SUPABASE_SERVICE_ROLE_KEY!)
+  // trim(): Der Vercel-Env-Wert endet mit einem Zeilenumbruch (vgl. Commit
+  // 12e296c) — ohne trim weicht das Secret von lokal/CI geminteten Links ab
+  // und jeder Link rendert als "ungültig".
+  return createHmac("sha256", process.env.SUPABASE_SERVICE_ROLE_KEY!.trim())
     .update("sportnexus-invite-link-v1")
     .digest();
 }

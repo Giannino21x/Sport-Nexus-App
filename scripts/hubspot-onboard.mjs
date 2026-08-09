@@ -258,7 +258,7 @@ function betaEmail({ first, actionUrl }) {
 // beim Button-Klick auf der Seite gemintet. MUSS synchron bleiben mit
 // lib/invite-token.ts (signInviteToken/verifyInviteToken).
 function makeLongInviteLink(email, days = 28) {
-  const secret = createHmac("sha256", SERVICE_ROLE).update("sportnexus-invite-link-v1").digest();
+  const secret = createHmac("sha256", SERVICE_ROLE.trim()).update("sportnexus-invite-link-v1").digest();
   const exp = Math.floor(Date.now() / 1000) + days * 86400;
   const payload = `${email.trim().toLowerCase()}.${exp}`;
   const sig = createHmac("sha256", secret).update(payload).digest("base64url");
