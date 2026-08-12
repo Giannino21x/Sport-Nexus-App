@@ -141,7 +141,7 @@ function welcomeEmail({ first, actionUrl }) {
       Später meldest du dich jederzeit unter <a href="${APP_URL}/login" style="color:#006FB6;">${APP_URL.replace(/^https?:\/\//, "")}/login</a> mit deiner E-Mail und deinem Passwort an. Die App gibt's auch fürs Handy — Link folgt nach der Store-Freigabe.
     </p>
     <p style="font-size:11px; color:#868686; margin:10px 0 0; line-height:1.5;">
-      Du erhältst diese E-Mail, weil für dich ein SportNexus-Member-Zugang eingerichtet wurde. Fragen? Antworte einfach auf diese Mail.
+      Du erhältst diese E-Mail, weil für dich ein SportNexus-Member-Zugang eingerichtet wurde. Bei Fragen oder Problemen mit der App melde dich unter <a href="mailto:info@sportnexus.ch" style="color:#006FB6;">info@sportnexus.ch</a>.
     </p>
   </div>
 </body></html>`;
@@ -160,7 +160,7 @@ function welcomeEmail({ first, actionUrl }) {
     actionUrl,
     ``,
     `Später: Login unter ${APP_URL}/login mit E-Mail + Passwort.`,
-    `Fragen? Antworte einfach auf diese Mail.`,
+    `Fragen oder Probleme mit der App? Melde dich unter info@sportnexus.ch.`,
   ].join("\n");
 
   return { subject, html, text };
@@ -270,7 +270,8 @@ async function sendWelcome(to, first, actionUrl) {
   const tx = transporter();
   if (!tx) return { ok: false, reason: "SMTP_PASS fehlt" };
   const tpl = (BETA ? betaEmail : welcomeEmail)({ first, actionUrl });
-  await tx.sendMail({ from: SMTP_FROM, to, subject: tpl.subject, html: tpl.html, text: tpl.text });
+  // Antworten sollen bei info@ landen, nicht im no-reply-Postfach (Pascal-Feedback 2026-08-12).
+  await tx.sendMail({ from: SMTP_FROM, replyTo: "info@sportnexus.ch", to, subject: tpl.subject, html: tpl.html, text: tpl.text });
   return { ok: true };
 }
 
