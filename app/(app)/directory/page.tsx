@@ -180,7 +180,16 @@ export default function DirectoryPage() {
             placeholder="Suche nach Name, Firma, Angebot oder Suche..."
             value={q}
             onChange={(e) => setQ(e.target.value)}
+            list="member-names"
           />
+          {/* Autovervollständigung (Pascal-Feedback 2026-08-12): alle Member sind
+              clientseitig bekannt — der Browser schlägt passende Namen vor, auch
+              bei Tippfehlern hilft die Substring-Suche von Chrome/Safari. */}
+          <datalist id="member-names">
+            {(members ?? []).map((m) => (
+              <option key={m.id} value={`${m.first} ${m.last}`} />
+            ))}
+          </datalist>
           {q && (
             <button className="btn-text" style={{ padding: 4 }} onClick={() => setQ("")}>
               <Icon name="x" size={14} />

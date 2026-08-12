@@ -364,20 +364,31 @@ function TableWishButton({ targetMemberDbId }: { targetMemberDbId: string }) {
   // ploppte sonst verzögert in die Seite (Pascal-Feedback 2026-07-22). Bis der
   // Status da ist, neutral anzeigen und Klicks sperren.
   return (
-    <button
-      type="button"
-      onClick={onToggle}
-      disabled={pending || wished === null}
-      className={wished ? "btn btn-primary" : "btn btn-ghost"}
-      title={
-        wished
-          ? "Du hast diese Person als Tischwunsch für das nächste Event markiert."
-          : "An einem kommenden Event am gleichen Tisch – SportNexus versucht dies bei der Tischzuweisung zu berücksichtigen."
-      }
-    >
-      <Icon name={wished ? "check" : "users"} size={14} />
-      {wished ? "Tischwunsch gemeldet" : "Tischwunsch melden"}
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={onToggle}
+        disabled={pending || wished === null}
+        className={wished ? "btn btn-primary" : "btn btn-ghost"}
+        title={
+          wished
+            ? "Du hast diese Person als Tischwunsch für das nächste Event markiert."
+            : "An einem kommenden Event am gleichen Tisch – SportNexus versucht dies bei der Tischzuweisung zu berücksichtigen."
+        }
+      >
+        <Icon name={wished ? "check" : "users"} size={14} />
+        {wished ? "Tischwunsch gemeldet" : "Tischwunsch melden"}
+      </button>
+      {/* Bestätigung unterhalb der Button-Zeile (Pascal-Feedback 2026-08-12):
+          flexBasis 100% bricht in der wrap-Row auf eine eigene Zeile um. */}
+      {wished && (
+        <div style={{ flexBasis: "100%", fontSize: 12.5, lineHeight: 1.5, color: "var(--ink-2)" }}>
+          Tischwunsch gespeichert: SportNexus versucht, euch beim nächsten Event am gleichen
+          Tisch zu platzieren. Das sehen nur du und die Organisatoren — die Person selbst wird
+          nicht benachrichtigt.
+        </div>
+      )}
+    </>
   );
 }
 
