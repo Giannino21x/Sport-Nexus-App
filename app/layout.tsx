@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, Manrope, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { ConfirmDialogHost } from "@/components/confirm-dialog";
 import { HapticsBridge } from "@/components/haptics-bridge";
 
 const bricolage = Bricolage_Grotesque({
@@ -25,6 +26,9 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "SportNexus — Memberbereich",
   description: "Der exklusive Memberbereich von SportNexus — Directory, Events, Verbindungen. Nur für Mitglieder.",
+  icons: {
+    apple: "/apple-touch-icon.png",
+  },
 };
 
 // Viewport-Meta — ohne diesen rendert Mobile-Browser die Seite in
@@ -40,6 +44,11 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: "cover",
+  // Färbt Androids System-/URL-Leiste passend zum Theme statt Browser-Grau.
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#FFFFFF" },
+    { media: "(prefers-color-scheme: dark)", color: "#0A0A0A" },
+  ],
 };
 
 // Edge-to-Edge-Erkennung: Das Safe-Area-Top-Padding (--safe-top) darf nur
@@ -99,6 +108,10 @@ export default function RootLayout({
         {/* Liegt bewusst über den Route-Groups: auch Login und Reset sollen
             sich in der Hülle anfassbar anfühlen. */}
         <HapticsBridge />
+        {/* Eigener In-App-Confirm-Dialog (statt window.confirm, das in den
+            App-Hüllen den vercel.app-Hostnamen zeigt) — global gemountet,
+            damit jede Seite confirmDialog() aufrufen kann. */}
+        <ConfirmDialogHost />
         {children}
       </body>
     </html>

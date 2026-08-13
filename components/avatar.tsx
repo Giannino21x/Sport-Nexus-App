@@ -26,6 +26,8 @@ export function Avatar({ first = "", last = "", color = "#C7916A", size = 40, sq
         <img
           src={url as string}
           alt={`${first} ${last}`.trim()}
+          loading="lazy"
+          decoding="async"
           className="img-fade"
           // ref-Check fängt bereits gecachte Bilder ab, deren onLoad vor der
           // Hydration gefeuert hat — sonst blieben sie unsichtbar.

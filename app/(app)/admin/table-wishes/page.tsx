@@ -33,7 +33,8 @@ export default function AdminTableWishesPage() {
     setItems((prev) => prev?.map((x) => (x.id === w.id ? { ...x, consideredAt: optimistic } : x)) ?? prev);
     setTableWishConsideredAction(w.id, considered).then((r) => {
       if (r.error) {
-        alert(r.error);
+        // Fehler im bestehenden Banner oben zeigen statt als natives alert().
+        setError(r.error);
         setItems((prev) => prev?.map((x) => (x.id === w.id ? { ...x, consideredAt: w.consideredAt } : x)) ?? prev);
       }
     });

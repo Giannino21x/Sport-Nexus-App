@@ -10,8 +10,10 @@ import { LogoWordmark } from "./logo-wordmark";
 import { NotificationsPopover } from "./notifications-popover";
 import { PhotoGate } from "./photo-gate";
 import { useSettings } from "./settings-context";
-import { clearLiveCache, useEvents, useMe, useMembers, useNotifications } from "@/lib/hooks";
+import { clearLiveCache, reload, useEvents, useLiveRefresh, useMe, useMembers, useNotifications } from "@/lib/hooks";
 import { signOutAction } from "@/app/actions/auth";
+import { tap } from "@/lib/haptics";
+import { hideNativeSplash } from "@/lib/native";
 
 type NavItem = { k: string; href: string; label: string; icon: IconName; badge?: number; dot?: boolean; beta?: boolean };
 
@@ -22,6 +24,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { data: me, dbId: meDbId, resolved: meResolved } = useMe();
   const { data: events } = useEvents();
   const { data: notifs } = useNotifications(meDbId);
+  // Badge + Chats aktuell halten: Revalidate bei App-Resume und alle 60 s.
+  useLiveRefresh(dataSource === "live");
 
   const [notifsOpen, setNotifsOpen] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -37,9 +41,35 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   // Edge-Hülle: .main ist der Scroller (Body ist overflow:hidden, damit der
   // native Rubber-Band nie greift). Window-Scroll-Reset von Next läuft dann
-  // ins Leere — bei Seitenwechsel selbst nach oben setzen.
+  // ins Leere — Scroll-Verhalten bei Seitenwechsel machen wir deshalb selbst:
+  // vorwärts = oben starten, Zurück/Vorwärts im Verlauf = Position
+  // wiederherstellen, wie ein nativer Navigation-Stack.
+  const scrollMemory = useRef(new Map<string, number>());
+  const isPopNav = useRef(false);
   useEffect(() => {
-    mainRef.current?.scrollTo(0, 0);
+    const onPop = () => { isPopNav.current = true; };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    if (isPopNav.current) {
+      isPopNav.current = false;
+      const y = scrollMemory.current.get(pathname) ?? 0;
+      // Zwei Frames warten: die Zielseite rendert erst aus dem Cache und
+      // braucht ihre Höhe, bevor die alte Position wieder erreichbar ist.
+      requestAnimationFrame(() => requestAnimationFrame(() => el.scrollTo(0, y)));
+    } else {
+      el.scrollTo(0, 0);
+    }
+  }, [pathname]);
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    const onScroll = () => { scrollMemory.current.set(pathname, el.scrollTop); };
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => el.removeEventListener("scroll", onScroll);
   }, [pathname]);
 
   useEffect(() => {
@@ -81,6 +111,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (meResolved && !me) router.replace("/login");
   }, [meResolved, me, router]);
+
+  // Nativer Splash: ausblenden, sobald die Session geklärt ist — vorher malt
+  // die WebView evtl. noch nichts Sinnvolles (launchAutoHide bleibt Fallback).
+  useEffect(() => {
+    if (meResolved) hideNativeSplash();
+  }, [meResolved]);
 
   // Nicht-Edge-Hüllen (alte App-Store-Hülle, contentInset 'always'): der
   // Sticky-Anker der Topbar wandert beim Scrollen unter die Status-Bar.
@@ -236,6 +272,106 @@ export function AppShell({ children }: { children: ReactNode }) {
     document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
   }, [mobileMenuOpen]);
+
+  // Tastatur-Erkennung via visualViewport: dvh schrumpft in der WKWebView
+  // nicht mit der Software-Tastatur — die Überlappung wird deshalb selbst
+  // gemessen und als data-kb (Tab-Bar ausblenden) + --kb-inset (Composer-
+  // Höhe im Chat) an das CSS gegeben.
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const root = document.documentElement;
+    const onResize = () => {
+      const overlap = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      const kbOpen = overlap > 120;
+      root.toggleAttribute("data-kb", kbOpen);
+      root.style.setProperty("--kb-inset", kbOpen ? `${Math.round(overlap)}px` : "0px");
+    };
+    onResize();
+    vv.addEventListener("resize", onResize);
+    vv.addEventListener("scroll", onResize);
+    return () => {
+      vv.removeEventListener("resize", onResize);
+      vv.removeEventListener("scroll", onResize);
+    };
+  }, []);
+
+  // Pull-to-Refresh auf dem .main-Scroller. Der native Overscroll ist in der
+  // Edge-Hülle bewusst tot (kein Rubber-Band) — die freigewordene Geste lädt
+  // stattdessen die Daten der aktuellen Seite neu, wie in einer nativen App.
+  const [pullPx, setPullPx] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const refreshingRef = useRef(false);
+  const pathnameRef = useRef(pathname);
+  useEffect(() => {
+    pathnameRef.current = pathname;
+  }, [pathname]);
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    let startY = 0;
+    let armed = false;
+    let dist = 0;
+    const DAMP = 0.45;
+    const TRIGGER = 38; // in gedämpften px (~85px Fingerweg)
+    const onStart = (e: TouchEvent) => {
+      armed = false;
+      if (el.scrollTop > 0 || refreshingRef.current) return;
+      // Gesten in intern scrollbaren Bereichen (Chat-Liste, Sheets) gehören
+      // nicht dem Refresh — vom Ziel bis .main nach eigenen Scrollern suchen.
+      let t = e.target instanceof HTMLElement ? e.target : null;
+      while (t && t !== el) {
+        if (t.scrollHeight > t.clientHeight && /(auto|scroll)/.test(getComputedStyle(t).overflowY)) return;
+        t = t.parentElement;
+      }
+      startY = e.touches[0]?.clientY ?? 0;
+      armed = true;
+      dist = 0;
+    };
+    const onMove = (e: TouchEvent) => {
+      if (!armed) return;
+      if (el.scrollTop > 0) { armed = false; setPullPx(0); return; }
+      const dy = ((e.touches[0]?.clientY ?? 0) - startY) * DAMP;
+      if (dy <= 0) { if (dist > 0) { dist = 0; setPullPx(0); } return; }
+      dist = Math.min(64, dy);
+      setPullPx(dist);
+    };
+    const onEnd = () => {
+      if (!armed) return;
+      armed = false;
+      if (dist >= TRIGGER) {
+        refreshingRef.current = true;
+        setRefreshing(true);
+        setPullPx(44);
+        tap("medium");
+        const p = pathnameRef.current;
+        if (p.startsWith("/directory")) reload("members");
+        else if (p.startsWith("/events")) reload("events");
+        else if (p.startsWith("/messages")) { reload("messages"); reload("notifications"); }
+        else if (p.startsWith("/feed")) reload("posts");
+        else { reload("members"); reload("events"); reload("notifications"); }
+        // Die Refetches laufen still im Hintergrund — der Spinner ist die
+        // Quittung für die Geste, nicht deren Fortschrittsanzeige.
+        setTimeout(() => {
+          refreshingRef.current = false;
+          setRefreshing(false);
+          setPullPx(0);
+        }, 900);
+      } else {
+        setPullPx(0);
+      }
+    };
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchmove", onMove, { passive: true });
+    el.addEventListener("touchend", onEnd, { passive: true });
+    el.addEventListener("touchcancel", onEnd, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove);
+      el.removeEventListener("touchend", onEnd);
+      el.removeEventListener("touchcancel", onEnd);
+    };
+  }, []);
 
   const upcoming = useMemo(() => events.filter((e) => e.status === "upcoming"), [events]);
   const unreadCount = notifs.filter((n) => n.unread).length;
@@ -403,6 +539,27 @@ export function AppShell({ children }: { children: ReactNode }) {
         </aside>
 
       <div className="main" ref={mainRef}>
+        {(pullPx > 0 || refreshing) && (
+          <div
+            aria-hidden="true"
+            className={refreshing ? "ptr-refreshing" : undefined}
+            style={{
+              position: "fixed",
+              left: "50%",
+              top: "calc(var(--safe-top, 0px) + 64px)",
+              zIndex: 60,
+              pointerEvents: "none",
+              transform: `translate(-50%, ${pullPx - 44}px)`,
+              opacity: refreshing ? 1 : Math.min(1, pullPx / 30),
+              transition: pullPx === 0 || refreshing ? "transform 160ms ease, opacity 160ms ease" : "none",
+            }}
+          >
+            <div className="ptr-badge">
+              {/* Zieh-Fortschritt als Rotation, beim Laden als Spinner */}
+              <div className="ptr-ring" style={refreshing ? undefined : { transform: `rotate(${pullPx * 6}deg)` }} />
+            </div>
+          </div>
+        )}
         <div className="topbar">
           {backTarget ? (
             <button

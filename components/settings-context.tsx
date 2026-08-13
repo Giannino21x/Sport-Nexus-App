@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { setHapticsEnabled } from "@/lib/haptics";
+import { setNativeStatusBarStyle } from "@/lib/native";
 
 export type Settings = {
   theme: "light" | "dark";
@@ -87,6 +88,8 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     // Der globale Tap-Listener sitzt ausserhalb dieses Providers (Root-Layout,
     // auch für die Auth-Seiten) und liest den Wert deshalb nicht per Hook.
     setHapticsEnabled(s.haptics === "on");
+    // Native Status-Bar folgt dem Theme (No-op im Browser/ohne Plugin).
+    setNativeStatusBarStyle(s.theme);
   }, [s, hydrated]);
 
   const update = <K extends keyof Settings>(k: K) => (v: Settings[K]) =>

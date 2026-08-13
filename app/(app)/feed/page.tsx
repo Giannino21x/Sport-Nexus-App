@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/avatar";
+import { confirmDialog } from "@/components/confirm-dialog";
 import { Icon } from "@/components/icon";
 import { ImagePreview } from "@/components/image-preview";
 import { useSettings } from "@/components/settings-context";
@@ -32,6 +33,8 @@ export default function FeedPage() {
 
   const [localPosts, setLocalPosts] = useState<Post[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Fehler beim Löschen eines Posts — inline über der Liste statt alert().
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   // Like overrides: keyed by post id. Source of truth for display until server catches up.
@@ -190,13 +193,20 @@ export default function FeedPage() {
   };
 
   const onDeletePost = async (p: Post) => {
-    if (!confirm("Post wirklich löschen?")) return;
+    const ok = await confirmDialog({
+      title: "Post löschen",
+      message: "Post wirklich löschen?",
+      confirmLabel: "Löschen",
+      destructive: true,
+    });
+    if (!ok) return;
     if (dataSource !== "live" || isDemoPost(p.id)) {
       setLocalPosts((prev) => prev.filter((x) => x.id !== p.id));
       return;
     }
+    setDeleteError(null);
     const r = await deletePostAction(p.id);
-    if (r.error) { alert(r.error); return; }
+    if (r.error) { setDeleteError(r.error); return; }
     reload("posts");
   };
 
@@ -309,6 +319,11 @@ export default function FeedPage() {
         className="dash-grid"
       >
         <div className="col" style={{ gap: 14 }}>
+          {deleteError && (
+            <div style={{ fontSize: 12.5, color: "var(--danger)", padding: "8px 12px", background: "rgba(225,90,43,0.08)", borderRadius: 8 }}>
+              {deleteError}
+            </div>
+          )}
           {allPosts.length === 0 && dataSource === "live" && postsLoading ? (
             // Erste Ladung: Post-Skeletons statt leerem Zustand, der aufpoppt.
             <>
@@ -783,6 +798,7 @@ function FeedPostImage({ src }: { src: string }) {
               src={src}
               alt=""
               loading="lazy"
+              decoding="async"
               style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "blur(20px) brightness(0.5)", transform: "scale(1.2)" }}
             />
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -790,6 +806,7 @@ function FeedPostImage({ src }: { src: string }) {
               src={src}
               alt="Post"
               loading="lazy"
+              decoding="async"
               onLoad={onImgLoad}
               style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: coverFit ? "cover" : "contain", objectPosition: "center" }}
             />

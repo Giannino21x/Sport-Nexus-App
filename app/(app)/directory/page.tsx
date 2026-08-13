@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Avatar } from "@/components/avatar";
 import { Dropdown } from "@/components/dropdown";
@@ -8,7 +9,7 @@ import { EmptyState } from "@/components/empty-state";
 import { Icon } from "@/components/icon";
 import { useSettings } from "@/components/settings-context";
 import { BRANCHES, type Member } from "@/lib/data";
-import { useMembers } from "@/lib/hooks";
+import { reload, useMembers } from "@/lib/hooks";
 import { Skel, SkelCircle, SkelLines } from "@/components/skeleton";
 
 const isAdminExtra = (s: string | undefined | null) =>
@@ -25,7 +26,7 @@ const DIR_STATE_KEY = "sn_directory_state_v1";
 
 export default function DirectoryPage() {
   const { layout, cardStyle } = useSettings();
-  const { data: members, resolved } = useMembers();
+  const { data: members, resolved, error } = useMembers();
   const [q, setQ] = useState("");
   const [filters, setFilters] = useState<DirFilters>(EMPTY_FILTERS);
   const [sort, setSort] = useState<DirSort>("last");
@@ -38,11 +39,14 @@ export default function DirectoryPage() {
     try {
       const raw = sessionStorage.getItem(DIR_STATE_KEY);
       if (raw) {
-        const s = JSON.parse(raw) as Partial<{ q: string; filters: DirFilters; sort: DirSort }>;
+        const s = JSON.parse(raw) as Partial<{ q: string; filters: DirFilters; sort: DirSort; page: number }>;
         /* eslint-disable react-hooks/set-state-in-effect -- bewusste Wiederherstellung aus sessionStorage beim Mount */
         if (typeof s.q === "string") setQ(s.q);
         if (s.filters) setFilters({ ...EMPTY_FILTERS, ...s.filters });
         if (s.sort === "last" || s.sort === "first" || s.sort === "company") setSort(s.sort);
+        // Auch die Seite gehört zum "Zurück"-Gedächtnis — sonst landet man
+        // vom Memberdetail wieder auf Seite 1.
+        if (typeof s.page === "number" && s.page >= 1) setPage(s.page);
         /* eslint-enable react-hooks/set-state-in-effect */
       }
     } catch {}
@@ -54,9 +58,9 @@ export default function DirectoryPage() {
   useEffect(() => {
     if (!restored) return;
     try {
-      sessionStorage.setItem(DIR_STATE_KEY, JSON.stringify({ q, filters, sort }));
+      sessionStorage.setItem(DIR_STATE_KEY, JSON.stringify({ q, filters, sort, page }));
     } catch {}
-  }, [restored, q, filters, sort]);
+  }, [restored, q, filters, sort, page]);
 
   const deCollator = useMemo(() => new Intl.Collator("de-CH", { sensitivity: "base" }), []);
   const uniqClean = useCallback(
@@ -114,6 +118,26 @@ export default function DirectoryPage() {
     setQ("");
     setFilters({ branch: "", sub: "", work: "", home: "", role: "" });
   };
+
+  // Laden fehlgeschlagen und kein Cache: ehrlich sagen statt "0 Mitglieder"
+  // (oder ewiger Skeletons) — mit Retry.
+  if (error) {
+    return (
+      <div>
+        <div className="page-header">
+          <div>
+            <div className="upper-label">Member</div>
+            <h1>Verzeichnis</h1>
+          </div>
+        </div>
+        <div className="card" style={{ padding: 28, textAlign: "center", display: "grid", gap: 12, justifyItems: "center" }}>
+          <div style={{ fontSize: 14.5, fontWeight: 500 }}>Daten konnten nicht geladen werden</div>
+          <div style={{ fontSize: 13, color: "var(--ink-3)" }}>Prüfe deine Internetverbindung und versuche es nochmal.</div>
+          <button className="btn btn-primary" onClick={() => reload("members")}>Nochmal versuchen</button>
+        </div>
+      </div>
+    );
+  }
 
   // Erste Ladung (kein Cache): Skeleton-Karten in den echten Layout-Massen.
   if (!resolved) {
@@ -499,6 +523,9 @@ function MemberList({ members }: { members: Member[] }) {
 }
 
 function MemberTable({ members }: { members: Member[] }) {
+  // Client-Navigation statt window.location — der Full-Reload riss sonst die
+  // ganze Shell ab (weisser Blitz + Boot-Splash bei jedem Zeilen-Tap).
+  const router = useRouter();
   return (
     <div className="card" style={{ padding: 0, overflow: "hidden" }}>
       <div style={{ overflowX: "auto" }}>
@@ -528,7 +555,7 @@ function MemberTable({ members }: { members: Member[] }) {
               <tr
                 key={m.id}
                 data-haptic
-                onClick={() => { window.location.href = `/directory/${m.id}`; }}
+                onClick={() => { router.push(`/directory/${m.id}`); }}
                 style={{ cursor: "pointer", borderBottom: "1px solid var(--line)" }}
               >
                 <td style={{ padding: "10px 14px" }}>

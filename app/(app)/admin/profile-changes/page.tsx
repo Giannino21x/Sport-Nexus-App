@@ -66,7 +66,8 @@ export default function AdminProfileChangesPage() {
     setItems((prev) => prev?.map((x) => (x.id === c.id ? { ...x, reviewedAt: optimistic } : x)) ?? prev);
     setProfileChangeReviewedAction(c.id, reviewed).then((r) => {
       if (r.error) {
-        alert(r.error);
+        // Fehler im bestehenden Banner oben zeigen statt als natives alert().
+        setError(r.error);
         setItems((prev) => prev?.map((x) => (x.id === c.id ? { ...x, reviewedAt: c.reviewedAt } : x)) ?? prev);
       }
     });

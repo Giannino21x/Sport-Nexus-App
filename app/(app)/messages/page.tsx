@@ -657,6 +657,11 @@ function MessagesInner() {
                         value={draft}
                         onChange={(e) => setDraft(e.target.value)}
                         disabled={attachmentPending}
+                        // Return-Taste sagt "Senden" statt "Return" (Form-Submit
+                        // übernimmt das Enter sowieso schon).
+                        enterKeyHint="send"
+                        autoCapitalize="sentences"
+                        autoCorrect="on"
                         style={{ flex: 1, borderRadius: 999, padding: "10px 16px" }}
                       />
                       <button

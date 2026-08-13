@@ -335,8 +335,10 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   transition: background 120ms, color 120ms;
   position: relative;
 }
-.nav-item:hover { background: rgba(0, 0, 0, 0.04); color: var(--ink); }
-[data-theme="dark"] .nav-item:hover { background: rgba(255, 255, 255, 0.04); }
+@media (hover: hover) {
+  .nav-item:hover { background: rgba(0, 0, 0, 0.04); color: var(--ink); }
+  [data-theme="dark"] .nav-item:hover { background: rgba(255, 255, 255, 0.04); }
+}
 .nav-item.active {
   background: var(--bg-elevated);
   color: var(--ink);
@@ -546,7 +548,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   position: relative;
   transition: border-color 120ms, color 120ms;
 }
-.topbar .icon-btn:hover { color: var(--ink); border-color: var(--line-strong); }
+@media (hover: hover) {
+  .topbar .icon-btn:hover { color: var(--ink); border-color: var(--line-strong); }
+}
 .topbar .icon-btn .icon { width: 17px; height: 17px; stroke: currentColor; fill: none; stroke-width: 1.7; }
 /* Glocke + Avatar als rechte Aktionsgruppe. Am Desktop schiebt schon die
    Suche (margin-left: auto) alles nach rechts; mobil ist sie versteckt,
@@ -589,14 +593,16 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .btn:active { transform: translateY(1px); }
 .btn .icon { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; }
 .btn-primary { background: var(--ink); color: var(--bg); }
-.btn-primary:hover { background: var(--ink-2); }
 .btn-accent { background: var(--accent); color: var(--accent-ink); }
-.btn-accent:hover { filter: brightness(0.95); }
 .btn-ghost { background: var(--bg-elevated); color: var(--ink); border-color: var(--line); }
-.btn-ghost:hover { border-color: var(--line-strong); }
 .btn-text { background: transparent; color: var(--ink); padding: 8px 10px; }
-.btn-text:hover { background: rgba(0, 0, 0, 0.04); }
-[data-theme="dark"] .btn-text:hover { background: rgba(255, 255, 255, 0.05); }
+@media (hover: hover) {
+  .btn-primary:hover { background: var(--ink-2); }
+  .btn-accent:hover { filter: brightness(0.95); }
+  .btn-ghost:hover { border-color: var(--line-strong); }
+  .btn-text:hover { background: rgba(0, 0, 0, 0.04); }
+  [data-theme="dark"] .btn-text:hover { background: rgba(255, 255, 255, 0.05); }
+}
 
 .chip {
   display: inline-flex; align-items: center; gap: 6px;
@@ -611,7 +617,9 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .chip.accent { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
 .chip.branch { background: transparent; border-color: var(--line-strong); color: var(--ink-2); }
 .chip .x { cursor: pointer; opacity: 0.6; margin-left: 2px; }
-.chip .x:hover { opacity: 1; }
+@media (hover: hover) {
+  .chip .x:hover { opacity: 1; }
+}
 
 .card {
   background: var(--bg-elevated);
@@ -624,10 +632,12 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .event-card {
   transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
 }
-.event-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
-  border-color: var(--line-strong);
+@media (hover: hover) {
+  .event-card:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--line-strong);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .event-card { transition: none; }
@@ -638,10 +648,12 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .stat-card {
   transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
 }
-.stat-card:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg);
-  border-color: var(--line-strong);
+@media (hover: hover) {
+  .stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+    border-color: var(--line-strong);
+  }
 }
 @media (prefers-reduced-motion: reduce) {
   .stat-card { transition: none; }
@@ -831,6 +843,35 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   to { opacity: 1; transform: none; }
 }
 
+/* ---------- Confirm-Dialog ----------
+   Ersetzt window.confirm(): der native Dialog zeigt in den App-Hüllen den
+   vercel.app-Hostnamen — sofortiger "das ist eine Website"-Verräter.
+   z-index über Topbar (60) und Boot-Splash (500), Karte im App-Look. */
+.confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  background: rgba(0, 0, 0, 0.4);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  animation: confirm-fade 140ms ease-out;
+}
+.confirm-card {
+  width: min(400px, 100%);
+  padding: 22px;
+  animation: confirm-pop 180ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes confirm-fade {
+  from { opacity: 0; }
+}
+@keyframes confirm-pop {
+  from { opacity: 0; transform: translateY(10px) scale(0.96); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .confirm-backdrop, .confirm-card { animation: none; }
+}
+
 /* ---------- Messages layout ---------- */
 .messages-wrap {
   margin: -36px -40px -120px;
@@ -1017,7 +1058,10 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
      padding-bottom des .content (96px + Safe-Area). */
   .messages-wrap {
     margin: -20px -16px calc(-96px - env(safe-area-inset-bottom));
-    height: calc(100dvh - 58px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    /* --kb-inset: echte Tastatur-Überlappung aus visualViewport (AppShell).
+       dvh schrumpft in der WKWebView NICHT mit der Tastatur — ohne den Abzug
+       sässe der Composer unter der Tastatur. */
+    height: calc(100dvh - 58px - env(safe-area-inset-top) - env(safe-area-inset-bottom) - var(--kb-inset, 0px));
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -1073,6 +1117,13 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   }
   .messages-wrap.thread-open .messages-composer { padding: 10px 12px 12px; }
   body:has(.messages-wrap.thread-open) .tabbar {
+    opacity: 0;
+    pointer-events: none;
+  }
+  /* Offene Tastatur (data-kb via visualViewport in der AppShell): Tab-Bar
+     weg — sie sässe sonst auf (Android, resize) oder über (iOS, overlay)
+     der Tastatur. */
+  html[data-kb] .tabbar {
     opacity: 0;
     pointer-events: none;
   }
@@ -1242,3 +1293,52 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
     align-items: start;
   }
 }
+
+/* ---------- Native-Feel (Touch/Shell) ----------
+   Die drei lautesten "das ist eine Website"-Verräter in der App-Hülle:
+   Tap-Blitz, Text-Selektion auf Bedienelementen, Long-Press-Callout auf
+   Bildern. Inhalts-Text (Nachrichten, Profile) bleibt selektierbar. */
+* { -webkit-tap-highlight-color: transparent; }
+html { -webkit-text-size-adjust: 100%; }
+
+.tabbar, .topbar, .sidebar, .page-header, .upper-label,
+button, .btn, .chip, .nav-item {
+  -webkit-user-select: none;
+  user-select: none;
+}
+input, textarea { -webkit-user-select: text; user-select: text; }
+
+img {
+  -webkit-touch-callout: none;
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+button, a, .btn, .nav-item { touch-action: manipulation; }
+
+/* Fokus: kein Web-Ring bei Tap/Klick, klarer Ring nur bei Tastatur-Navigation.
+   Ersetzt das bisherige Flickwerk (Ring mal da, mal per outline:none weg). */
+:focus { outline: none; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Touch-Geräte scrollen mit Overlay-Indikatoren des Systems — die 10px-
+   Web-Scrollbar wäre dort nur sichtbares Web. Desktop behält sie. */
+@media (hover: none) and (pointer: coarse) {
+  ::-webkit-scrollbar { width: 0; height: 0; }
+}
+
+/* ---------- Pull-to-Refresh (AppShell) ---------- */
+.ptr-badge {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: var(--bg-elevated);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-lg);
+  display: flex; align-items: center; justify-content: center;
+}
+.ptr-ring {
+  width: 16px; height: 16px; border-radius: 50%;
+  border: 2px solid var(--line-strong);
+  border-top-color: var(--accent);
+}
+.ptr-refreshing .ptr-ring { animation: ptr-spin 0.7s linear infinite; }
+@keyframes ptr-spin { to { transform: rotate(360deg); } }

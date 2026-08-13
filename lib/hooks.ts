@@ -20,6 +20,51 @@ export function reload(key: ReloadKey) {
   listeners[key].forEach((l) => l());
 }
 
+// ---------- In-flight-Dedupe ----------
+// useMe()/useMembers() sind auf vielen Seiten gleichzeitig gemountet — beim
+// Seitenwechsel feuerte jede Instanz ihre eigene identische Supabase-Query
+// (3-5 redundante Roundtrips pro Tab-Wechsel). Läuft dieselbe Query schon,
+// hängen sich weitere Aufrufer an das laufende Promise.
+const inflight = new Map<string, Promise<unknown>>();
+// PromiseLike statt Promise: Supabase-Query-Builder sind Thenables ohne
+// .finally/.catch — Promise.resolve() hebt sie auf ein echtes Promise.
+function dedupe<T>(key: string, fn: () => PromiseLike<T>): Promise<T> {
+  const existing = inflight.get(key);
+  if (existing) return existing as Promise<T>;
+  const p = Promise.resolve(fn()).finally(() => { inflight.delete(key); });
+  inflight.set(key, p);
+  return p;
+}
+
+// ---------- Live-Refresh ----------
+// Es gibt (noch) keine Push-/Realtime-Verbindung: Badge und Chats waren nach
+// dem App-Start eingefroren, bis man navigierte. Einmal in der AppShell
+// gemountet, revalidiert dieser Hook Benachrichtigungen + Nachrichten beim
+// Zurückkehren in die App (visibilitychange/focus — deckt auch das Resume der
+// nativen Hülle ab) und alle 60 s, solange die App sichtbar ist.
+export function useLiveRefresh(enabled: boolean) {
+  useEffect(() => {
+    if (!enabled) return;
+    const tickAll = () => {
+      reload("notifications");
+      reload("messages");
+    };
+    const iv = setInterval(() => {
+      if (document.visibilityState === "visible") tickAll();
+    }, 60_000);
+    const onVisible = () => {
+      if (document.visibilityState === "visible") tickAll();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    window.addEventListener("focus", onVisible);
+    return () => {
+      clearInterval(iv);
+      document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("focus", onVisible);
+    };
+  }, [enabled]);
+}
+
 // ---------- Live-Daten-Cache (SWR-Muster, persistent) ----------
 // Die Hooks halten ihren State nur pro Mount — ohne Cache lädt jeder
 // Tab-Wechsel alles neu von Supabase und die Seite flackert leer auf.
@@ -227,20 +272,27 @@ export function useMembers() {
   const tick = useReloadTick("members");
   const [live, setLive] = useState<Member[] | null>(() => liveCache.members ?? null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     if (!hydrated || dataSource !== "live") return;
     let cancelled = false;
     setLoading(true);
     const supabase = createClient();
-    supabase.from("members").select("*").order("last", { ascending: true }).then(({ data, error }) => {
+    dedupe("members", () =>
+      supabase.from("members").select("*").order("last", { ascending: true }),
+    ).then(({ data, error }) => {
       if (cancelled) return;
-      if (error || !data) setLive([]);
-      else {
+      if (error || !data) {
+        // Netzwerkfehler ist KEIN leeres Verzeichnis: letzten bekannten Stand
+        // behalten und den Fehler ausweisen, statt "0 Mitglieder" zu lügen.
+        setError(true);
+      } else {
         const arr = data.map(rowToMember);
         liveCache.members = arr;
         persistLiveCache();
         setLive(arr);
+        setError(false);
       }
       setLoading(false);
     });
@@ -252,12 +304,12 @@ export function useMembers() {
     const merged = demoAvatar
       ? MEMBERS.map((m) => (m.id === ME_ID ? { ...m, avatarUrl: demoAvatar } : m))
       : MEMBERS;
-    return { data: merged, loading: false, isDemo: true, resolved: true };
+    return { data: merged, loading: false, isDemo: true, resolved: true, error: false };
   }
   // resolved = mindestens einmal Daten da (frisch oder aus dem Cache) —
   // UI kann damit "–" statt einer falschen 0 zeigen, ohne bei stiller
   // Hintergrund-Revalidierung (loading) erneut zu flackern.
-  return { data: live ?? [], loading, isDemo: false, resolved: live !== null };
+  return { data: live ?? [], loading, isDemo: false, resolved: live !== null, error: error && live === null };
 }
 
 export function useEvents() {
@@ -266,31 +318,34 @@ export function useEvents() {
   const [live, setLive] = useState<SnEvent[] | null>(() => liveCache.events ?? null);
   const [loading, setLoading] = useState(false);
 
+  const [error, setError] = useState(false);
+
   useEffect(() => {
     if (!hydrated || dataSource !== "live") return;
     let cancelled = false;
     setLoading(true);
     const supabase = createClient();
-    supabase
-      .from("events")
-      .select("*")
-      .order("date", { ascending: true })
-      .then(({ data, error }) => {
-        if (cancelled) return;
-        if (error || !data) setLive([]);
-        else {
-          const arr = data.map(rowToEvent);
-          liveCache.events = arr;
-          persistLiveCache();
-          setLive(arr);
-        }
-        setLoading(false);
-      });
+    dedupe("events", () =>
+      supabase.from("events").select("*").order("date", { ascending: true }),
+    ).then(({ data, error }) => {
+      if (cancelled) return;
+      if (error || !data) {
+        // Fehler ≠ "keine Events" — letzten Stand behalten, Fehler ausweisen.
+        setError(true);
+      } else {
+        const arr = data.map(rowToEvent);
+        liveCache.events = arr;
+        persistLiveCache();
+        setLive(arr);
+        setError(false);
+      }
+      setLoading(false);
+    });
     return () => { cancelled = true; };
   }, [dataSource, hydrated, tick]);
 
-  if (!hydrated || dataSource === "demo") return { data: demoEventsWithDerivedStatus(), loading: false, isDemo: true, resolved: true };
-  return { data: live ?? [], loading, isDemo: false, resolved: live !== null };
+  if (!hydrated || dataSource === "demo") return { data: demoEventsWithDerivedStatus(), loading: false, isDemo: true, resolved: true, error: false };
+  return { data: live ?? [], loading, isDemo: false, resolved: live !== null, error: error && live === null };
 }
 
 export function useMember(id: string) {
@@ -323,9 +378,14 @@ export function useMe(): { data: Member | null; loading: boolean; isDemo: boolea
     let cancelled = false;
     setLoading(true);
     const supabase = createClient();
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
+    dedupe("me", async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return { loggedIn: false, row: null as Row | null };
+      const { data } = await supabase.from("members").select("*").eq("auth_id", user.id).maybeSingle();
+      return { loggedIn: true, row: (data as Row | null) ?? null };
+    }).then(({ loggedIn, row }) => {
       if (cancelled) return;
-      if (!user) {
+      if (!loggedIn) {
         // Ausgeloggt: kompletten Cache leeren, damit beim nächsten Login
         // (evtl. anderer User) keine fremden Daten aufblitzen.
         clearLiveCache();
@@ -335,14 +395,12 @@ export function useMe(): { data: Member | null; loading: boolean; isDemo: boolea
         setLoading(false);
         return;
       }
-      const { data } = await supabase.from("members").select("*").eq("auth_id", user.id).maybeSingle();
-      if (cancelled) return;
-      if (data) {
-        const member = rowToMember(data);
-        liveCache.me = { member, dbId: String(data.id) };
+      if (row) {
+        const member = rowToMember(row);
+        liveCache.me = { member, dbId: String(row.id) };
         persistLiveCache();
         setLiveMember(member);
-        setLiveDbId(String(data.id));
+        setLiveDbId(String(row.id));
       } else {
         liveCache.me = { member: null, dbId: null };
         persistLiveCache();
@@ -412,7 +470,9 @@ export function useConversations(meDbId: string | null) {
         .order("created_at", { ascending: false });
       if (cancelled || error || !messages) {
         if (!cancelled) {
-          setConvos([]);
+          // Fehler: letzten bekannten Stand (Cache) behalten statt die
+          // Konversationsliste fälschlich zu leeren.
+          if (!error) setConvos([]);
           setLoading(false);
           setResolved(true);
         }
@@ -576,14 +636,20 @@ export function useNotifications(meDbId: string | null) {
     let cancelled = false;
     setLoading(true);
     const supabase = createClient();
-    supabase
-      .from("notifications")
-      .select("*")
-      .eq("member_id", meDbId)
-      .order("created_at", { ascending: false })
-      .limit(10)
-      .then(({ data }) => {
+    dedupe(`notifications:${meDbId}`, () =>
+      supabase
+        .from("notifications")
+        .select("*")
+        .eq("member_id", meDbId)
+        .order("created_at", { ascending: false })
+        .limit(10),
+    ).then(({ data, error }) => {
         if (cancelled) return;
+        if (error || !data) {
+          // Fehler: Badge/Liste auf letztem Stand lassen statt zu leeren.
+          setLoading(false);
+          return;
+        }
         const mapped = (data ?? []).map((r) => ({
           id: String(r.id),
           kind: String(r.kind),

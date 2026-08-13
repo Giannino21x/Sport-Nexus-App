@@ -328,6 +328,8 @@ export default function MemberDetailPage() {
 function TableWishButton({ targetMemberDbId }: { targetMemberDbId: string }) {
   const { dataSource } = useSettings();
   const [wished, setWished] = useState<boolean | null>(null);
+  // Fehler inline unter dem Button zeigen statt als natives alert().
+  const [err, setErr] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   useEffect(() => {
@@ -350,10 +352,11 @@ function TableWishButton({ targetMemberDbId }: { targetMemberDbId: string }) {
       setWished((v) => !v);
       return;
     }
+    setErr(null);
     startTransition(async () => {
       const r = await toggleTableWishAction(targetMemberDbId);
       if (r.error) {
-        alert(r.error);
+        setErr(r.error);
         return;
       }
       setWished(Boolean(r.wished));
@@ -386,6 +389,11 @@ function TableWishButton({ targetMemberDbId }: { targetMemberDbId: string }) {
           Tischwunsch gespeichert: SportNexus versucht, euch beim nächsten Event am gleichen
           Tisch zu platzieren. Das sehen nur du und die Organisatoren — die Person selbst wird
           nicht benachrichtigt.
+        </div>
+      )}
+      {err && (
+        <div style={{ flexBasis: "100%", fontSize: 12.5, lineHeight: 1.5, color: "var(--danger)" }}>
+          {err}
         </div>
       )}
     </>

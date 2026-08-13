@@ -4,6 +4,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { confirmDialog } from "@/components/confirm-dialog";
 import { Icon } from "@/components/icon";
 import { type SnEvent } from "@/lib/data";
 import { reload, useEvents, useMe } from "@/lib/hooks";
@@ -13,7 +14,7 @@ import { getEventAttendeeCountsAction } from "@/app/actions/guestoo";
 import { Skel, SkelLines } from "@/components/skeleton";
 
 export default function EventsPage() {
-  const { data: events, resolved } = useEvents();
+  const { data: events, resolved, error } = useEvents();
   const { data: me } = useMe();
   const { isRegistered } = useMyRegistrations();
   const isAdmin = Boolean(me?.isAdmin);
@@ -45,6 +46,25 @@ export default function EventsPage() {
   }, [countsKey]);
 
   const [composerOpen, setComposerOpen] = useState(false);
+
+  // Laden fehlgeschlagen und kein Cache: ehrlich sagen statt "keine Events".
+  if (error) {
+    return (
+      <div>
+        <div className="page-header">
+          <div>
+            <div className="upper-label">Events</div>
+            <h1>Events</h1>
+          </div>
+        </div>
+        <div className="card" style={{ padding: 28, textAlign: "center", display: "grid", gap: 12, justifyItems: "center" }}>
+          <div style={{ fontSize: 14.5, fontWeight: 500 }}>Daten konnten nicht geladen werden</div>
+          <div style={{ fontSize: 13, color: "var(--ink-3)" }}>Prüfe deine Internetverbindung und versuche es nochmal.</div>
+          <button className="btn btn-primary" onClick={() => reload("events")}>Nochmal versuchen</button>
+        </div>
+      </div>
+    );
+  }
 
   // Erste Ladung (kein Cache): Skeleton-Karten in den echten Layout-Massen
   // statt leerer Seite, die dann aufpoppt.
@@ -225,12 +245,21 @@ function EventCard({ ev, past, isAdmin, registered, count }: { ev: SnEvent; past
     if (img.naturalHeight > 0 && img.naturalWidth / img.naturalHeight >= 1.45) setCoverFit(true);
   };
 
+  // Löschfehler inline in der Karte zeigen statt als natives alert().
+  const [delErr, setDelErr] = useState<string | null>(null);
+
   const onDelete = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm(`Event "${ev.subtitle || ev.title}" wirklich löschen?`)) return;
+    const ok = await confirmDialog({
+      title: "Event löschen",
+      message: `Event "${ev.subtitle || ev.title}" wirklich löschen?`,
+      confirmLabel: "Löschen",
+      destructive: true,
+    });
+    if (!ok) return;
     const r = await deleteEventAction(ev.id);
-    if (r.error) { alert(r.error); return; }
+    if (r.error) { setDelErr(r.error); return; }
     reload("events");
   };
 
@@ -246,6 +275,7 @@ function EventCard({ ev, past, isAdmin, registered, count }: { ev: SnEvent; past
               src={ev.img}
               alt=""
               loading="lazy"
+              decoding="async"
               style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "blur(20px) brightness(0.5)", transform: "scale(1.2)" }}
             />
             {/* Vollständiges Bild, mittig; breite Motive als cover (füllt Rahmen). */}
@@ -253,6 +283,7 @@ function EventCard({ ev, past, isAdmin, registered, count }: { ev: SnEvent; past
               src={ev.img}
               alt=""
               loading="lazy"
+              decoding="async"
               className="img-fade"
               ref={(el) => { if (el?.complete) el.classList.add("loaded"); }}
               onLoad={(e) => { onImgLoad(e); e.currentTarget.classList.add("loaded"); }}
@@ -328,6 +359,7 @@ function EventCard({ ev, past, isAdmin, registered, count }: { ev: SnEvent; past
             ? (ev.attendeeCount ? <span>{ev.attendeeCount} Personen</span> : null)
             : <span>{count != null ? `${count} angemeldet` : `${ev.guests} Plätze`}</span>}
         </div>
+        {delErr && <div style={{ fontSize: 12, color: "var(--danger)", marginTop: 10 }}>{delErr}</div>}
         {!past && (
           <div style={{ marginTop: 12 }}>
             <span
