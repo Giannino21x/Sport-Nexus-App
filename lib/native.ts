@@ -28,3 +28,60 @@ export function hideNativeSplash() {
     plugin("SplashScreen")?.hide?.({ fadeOutDuration: 200 })?.catch(() => {});
   } catch {}
 }
+
+export function nativePlatform(): "ios" | "android" | null {
+  if (typeof window === "undefined") return null;
+  const cap = (window as unknown as { Capacitor?: { getPlatform?: () => string } }).Capacitor;
+  const p = cap?.getPlatform?.();
+  return p === "ios" || p === "android" ? p : null;
+}
+
+// Universal Links / App Links: öffnet jemand einen sport-nexus-app.vercel.app-
+// Link und landet in der App, liefert die Hülle den Ziel-Link als appUrlOpen-
+// Event — hier wird er in Client-Navigation übersetzt.
+let appUrlOpenBound = false;
+export function initNativeDeepLinks(navigate: (path: string) => void) {
+  if (appUrlOpenBound) return;
+  const app = plugin("App");
+  if (!app) return;
+  appUrlOpenBound = true;
+  try {
+    app.addListener?.("appUrlOpen", ((data: { url?: string }) => {
+      try {
+        const u = new URL(String(data?.url ?? ""));
+        navigate(u.pathname + u.search + u.hash);
+      } catch {}
+    }) as never);
+  } catch {}
+}
+
+// Push-Registrierung (nur native Hülle): fragt die Berechtigung an, holt den
+// Geräte-Token (APNs raw auf iOS, FCM auf Android) und meldet ihn via
+// Callback. Tap auf eine Push-Notification navigiert zum hinterlegten Link.
+let pushBound = false;
+export async function registerPushNotifications(
+  onToken: (token: string, platform: "ios" | "android") => void,
+  navigate: (path: string) => void,
+): Promise<void> {
+  const platform = nativePlatform();
+  const push = plugin("PushNotifications");
+  if (!push || !platform || pushBound) return;
+  pushBound = true;
+  try {
+    let perm = (await push.checkPermissions?.()) as { receive?: string } | undefined;
+    if (perm?.receive === "prompt" || perm?.receive === "prompt-with-rationale") {
+      perm = (await push.requestPermissions?.()) as { receive?: string } | undefined;
+    }
+    if (perm?.receive !== "granted") return;
+    push.addListener?.("registration", ((t: { value?: string }) => {
+      if (t?.value) onToken(t.value, platform);
+    }) as never);
+    push.addListener?.("pushNotificationActionPerformed", ((a: { notification?: { data?: { link?: string } } }) => {
+      const link = a?.notification?.data?.link;
+      if (typeof link === "string" && link.startsWith("/")) navigate(link);
+    }) as never);
+    await push.register?.();
+  } catch {
+    // Push ist Komfort — Fehler hier dürfen die App nie beeinträchtigen.
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": ["699K5VAG3G.ch.sportnexus.app"],
+        "components": [{ "/": "/*" }]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["699K5VAG3G.ch.sportnexus.app"]
+  }
+}

@@ -12,8 +12,9 @@ import { PhotoGate } from "./photo-gate";
 import { useSettings } from "./settings-context";
 import { clearLiveCache, reload, useEvents, useLiveRefresh, useMe, useMembers, useNotifications } from "@/lib/hooks";
 import { signOutAction } from "@/app/actions/auth";
+import { removePushTokenAction, savePushTokenAction } from "@/app/actions/push";
 import { tap } from "@/lib/haptics";
-import { hideNativeSplash } from "@/lib/native";
+import { hideNativeSplash, initNativeDeepLinks, registerPushNotifications } from "@/lib/native";
 
 type NavItem = { k: string; href: string; label: string; icon: IconName; badge?: number; dot?: boolean; beta?: boolean };
 
@@ -117,6 +118,21 @@ export function AppShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (meResolved) hideNativeSplash();
   }, [meResolved]);
+
+  // Native Hülle, eingeloggt: Universal Links in Client-Navigation übersetzen
+  // und das Gerät für Push registrieren (Token → push_tokens, für den
+  // DB-Trigger-Versand). Beides No-ops im Browser / ohne die Plugins.
+  const loggedIn = Boolean(meResolved && me && dataSource === "live");
+  useEffect(() => {
+    if (!loggedIn) return;
+    const navigate = (p: string) => router.push(p);
+    initNativeDeepLinks(navigate);
+    registerPushNotifications((token, platform) => {
+      // Token fürs Abmelden merken — dort wird er wieder ausgetragen.
+      try { localStorage.setItem("sn_push_token", token); } catch {}
+      savePushTokenAction(token, platform);
+    }, navigate);
+  }, [loggedIn, router]);
 
   // Nicht-Edge-Hüllen (alte App-Store-Hülle, contentInset 'always'): der
   // Sticky-Anker der Topbar wandert beim Scrollen unter die Status-Bar.
@@ -416,6 +432,15 @@ export function AppShell({ children }: { children: ReactNode }) {
   const handleLogout = async () => {
     // Persistenter Live-Cache gehört zum User — beim Abmelden leeren.
     clearLiveCache();
+    // Push-Token austragen, solange die Session noch steht — das Gerät soll
+    // keine Benachrichtigungen des abgemeldeten Users mehr bekommen.
+    try {
+      const pushToken = localStorage.getItem("sn_push_token");
+      if (pushToken) {
+        await removePushTokenAction(pushToken);
+        localStorage.removeItem("sn_push_token");
+      }
+    } catch {}
     if (dataSource === "live") {
       await signOutAction();
     } else {
