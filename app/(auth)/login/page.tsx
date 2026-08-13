@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useActionState, useState } from "react";
+import { Suspense, useActionState, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { signInAction, signUpAction, requestPasswordResetAction } from "@/app/actions/auth";
 import { Icon } from "@/components/icon";
@@ -38,6 +38,27 @@ function LoginInner() {
     callbackError || searchParams.get("mode") === "forgot" ? "forgot" : "signin";
   const [mode, setMode] = useState<"signin" | "signup" | "forgot">(initialMode);
   const [showPassword, setShowPassword] = useState(false);
+
+  // „Erinnert sich an einen“: die zuletzt benutzte Login-E-Mail bleibt lokal
+  // auf dem Gerät (localStorage) und wird nach Abmelden/App-Neustart
+  // vorausgefüllt — der Fokus springt dann direkt ins Passwortfeld. Das
+  // Passwort selbst speichern wir NIE; das ist Sache des Passwort-Managers.
+  // Erst nach dem Mount lesen (SSR kennt localStorage nicht → Hydration-Diff).
+  const [email, setEmail] = useState("");
+  const passwordRef = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    let stored = "";
+    try { stored = localStorage.getItem("sn_login_email") || ""; } catch { /* Safari private mode */ }
+    if (!stored) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Client-only-Quelle (localStorage)
+    setEmail(stored);
+    passwordRef.current?.focus();
+  }, []);
+  const rememberEmail = () => {
+    const v = email.trim();
+    if (!v) return;
+    try { localStorage.setItem("sn_login_email", v); } catch { /* Safari private mode */ }
+  };
 
   const [signInState, signInFormAction, signInPending] = useActionState(signInAction, undefined);
   const [signUpState, signUpFormAction, signUpPending] = useActionState(signUpAction, undefined);
@@ -183,7 +204,7 @@ function LoginInner() {
                 Melde dich im Member-Bereich an.
               </div>
 
-              <form action={signInFormAction}>
+              <form action={signInFormAction} onSubmit={rememberEmail}>
                 <input type="hidden" name="next" value={next} />
                 <div className="field">
                   <label className="field-label" style={labelStyle}>E-Mail</label>
@@ -195,6 +216,8 @@ function LoginInner() {
                     required
                     autoFocus
                     autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     suppressHydrationWarning
                   />
                 </div>
@@ -226,6 +249,7 @@ function LoginInner() {
                       name="password"
                       required
                       autoComplete="current-password"
+                      ref={passwordRef}
                       suppressHydrationWarning
                     />
                     <button
@@ -447,7 +471,7 @@ function LoginInner() {
                 </div>
               )}
 
-              <form action={forgotFormAction}>
+              <form action={forgotFormAction} onSubmit={rememberEmail}>
                 <div className="field">
                   <label className="field-label" style={labelStyle}>E-Mail</label>
                   <input
@@ -458,6 +482,8 @@ function LoginInner() {
                     required
                     autoFocus
                     autoComplete="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     suppressHydrationWarning
                   />
                 </div>
