@@ -211,6 +211,38 @@ export async function updateAuthEmailAction(newEmail: string): Promise<{ info?: 
   };
 }
 
+// Passwortwechsel aus den Einstellungen (eingeloggter User). Verlangt das
+// aktuelle Passwort — eine offene Session allein (geteiltes/entsperrtes Gerät)
+// soll nicht reichen, um das Login zu übernehmen. Wer das aktuelle Passwort
+// nicht mehr weiss, geht über „Passwort vergessen“ beim Login.
+export async function changePasswordAction(
+  currentPassword: string,
+  newPassword: string,
+): Promise<{ info?: string; error?: string }> {
+  if (!currentPassword) return { error: "Aktuelles Passwort erforderlich." };
+  if (newPassword.length < 8) return { error: "Neues Passwort muss mindestens 8 Zeichen haben." };
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user?.email) return { error: "Nicht eingeloggt." };
+
+  const { error: signInErr } = await supabase.auth.signInWithPassword({
+    email: user.email,
+    password: currentPassword,
+  });
+  if (signInErr) return { error: "Das aktuelle Passwort ist falsch." };
+
+  const { error } = await supabase.auth.updateUser({ password: newPassword });
+  if (error) {
+    return {
+      error: error.message.toLowerCase().includes("different from the old")
+        ? "Das neue Passwort muss sich vom aktuellen unterscheiden."
+        : error.message,
+    };
+  }
+  return { info: "Passwort geändert." };
+}
+
 export async function updatePasswordAction(
   prevState: { error?: string } | undefined,
   formData: FormData,

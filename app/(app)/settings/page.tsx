@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { Icon } from "@/components/icon";
 import { useSettings, type Settings } from "@/components/settings-context";
-import { getAuthEmailAction, updateAuthEmailAction } from "@/app/actions/auth";
+import { changePasswordAction, getAuthEmailAction, updateAuthEmailAction } from "@/app/actions/auth";
 import { error as hapticError, hapticsAvailable, setHapticsEnabled, success as hapticSuccess, tap } from "@/lib/haptics";
 import { useMe } from "@/lib/hooks";
 
@@ -244,6 +244,8 @@ function AccountEmailCard({ profileEmail }: { profileEmail: string | null }) {
         </div>
       )}
 
+      <PasswordRow />
+
       <Row
         label="Profil-E-Mail"
         hint={
@@ -260,6 +262,100 @@ function AccountEmailCard({ profileEmail }: { profileEmail: string | null }) {
         </div>
       </Row>
     </div>
+  );
+}
+
+function PasswordRow() {
+  const [editing, setEditing] = useState(false);
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [info, setInfo] = useState<string | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const startEdit = () => {
+    setCurrent("");
+    setNext("");
+    setEditing(true);
+    setInfo(null);
+    setErr(null);
+  };
+
+  const onSave = () => {
+    if (!current) { setErr("Aktuelles Passwort erforderlich."); hapticError(); return; }
+    if (next.length < 8) { setErr("Neues Passwort muss mindestens 8 Zeichen haben."); hapticError(); return; }
+    startTransition(async () => {
+      const r = await changePasswordAction(current, next);
+      if (r.error) { setErr(r.error); hapticError(); return; }
+      setInfo(r.info ?? "Passwort geändert.");
+      setErr(null);
+      setEditing(false);
+      hapticSuccess();
+    });
+  };
+
+  return (
+    <>
+      <Row
+        label="Passwort"
+        hint="Mindestens 8 Zeichen. Wenn du dein aktuelles Passwort nicht mehr weisst, nutze „Passwort vergessen“ auf der Login-Seite."
+      >
+        {editing ? (
+          <div style={{ display: "grid", gap: 8, justifyItems: "start" }}>
+            <input
+              className="input"
+              type="password"
+              value={current}
+              onChange={(e) => setCurrent(e.target.value)}
+              placeholder="Aktuelles Passwort"
+              autoComplete="current-password"
+              style={{ width: "min(240px, 100%)" }}
+              autoFocus
+            />
+            <input
+              className="input"
+              type="password"
+              value={next}
+              onChange={(e) => setNext(e.target.value)}
+              placeholder="Neues Passwort (min. 8 Zeichen)"
+              autoComplete="new-password"
+              style={{ width: "min(240px, 100%)" }}
+            />
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button className="btn btn-primary" onClick={onSave} disabled={pending} style={{ padding: "6px 12px", fontSize: 12.5 }}>
+                {pending ? "..." : "Speichern"}
+              </button>
+              <button
+                className="btn btn-ghost"
+                onClick={() => { setEditing(false); setErr(null); }}
+                disabled={pending}
+                style={{ padding: "6px 12px", fontSize: 12.5 }}
+              >
+                Abbrechen
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <span style={{ fontSize: 13.5 }}>••••••••</span>
+            <button className="btn btn-ghost" onClick={startEdit} style={{ padding: "5px 10px", fontSize: 12 }}>
+              <Icon name="edit" size={12} /> Ändern
+            </button>
+          </div>
+        )}
+      </Row>
+
+      {info && (
+        <div style={{ marginTop: 8, fontSize: 12.5, color: "var(--ink-2)", padding: "8px 12px", background: "var(--bg-sunken)", borderRadius: 8, lineHeight: 1.5 }}>
+          {info}
+        </div>
+      )}
+      {err && (
+        <div style={{ marginTop: 8, fontSize: 12.5, color: "var(--danger)", padding: "8px 12px", background: "rgba(225,90,43,0.08)", borderRadius: 8 }}>
+          {err}
+        </div>
+      )}
+    </>
   );
 }
 
