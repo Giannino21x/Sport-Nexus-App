@@ -973,6 +973,12 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   background: var(--glass-bg-strong);
   box-shadow: var(--shadow-sm);
 }
+/* Native Hülle (iOS 26, Binary 1.3+): die Tab-Bar kommt als echte
+   UIGlassEffect-View über dem WebView (NativeChromeBridge) — die
+   CSS-Kapsel verschwindet dann komplett. */
+html[data-native-chrome="1"] .tabbar {
+  display: none !important;
+}
 
 /* ---------- Boot-Splash ----------
    Neutraler erster Frame, bis die Session geklärt ist: verhindert das

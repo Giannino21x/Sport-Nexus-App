@@ -64,6 +64,7 @@ export function PhotoGate() {
       role="dialog"
       aria-modal="true"
       aria-label="Profilbild hinzufügen"
+      data-hide-chrome=""
       style={{
         position: "fixed",
         inset: 0,

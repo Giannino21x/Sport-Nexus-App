@@ -7,6 +7,7 @@ import { Avatar } from "./avatar";
 import { CommandPalette } from "./command-palette";
 import { Icon, type IconName } from "./icon";
 import { LogoWordmark } from "./logo-wordmark";
+import { NativeChromeBridge } from "./native-chrome-bridge";
 import { NotificationsPopover } from "./notifications-popover";
 import { PhotoGate } from "./photo-gate";
 import { useSettings } from "./settings-context";
@@ -727,6 +728,8 @@ export function AppShell({ children }: { children: ReactNode }) {
       />
 
       <PhotoGate />
+
+      <NativeChromeBridge />
     </div>
   );
 }
