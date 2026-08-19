@@ -65,6 +65,15 @@
      ein — env() obendrauf gäbe doppelten Abstand. safe-area-inset-bottom
      bleibt ungegated: fixed-Elemente (Tab-Bar) brauchen es in beiden Modi. */
   --safe-top: 0px;
+
+  /* Safe-Area seitlich: im Querformat liegen Notch/Kameraloch und die
+     gerundeten Ecken links bzw. rechts (welche Seite, haengt von der
+     Drehrichtung ab — iOS/Android melden das korrekt). Ungegated wie
+     -bottom: die alte 'always'-Huelle ist iPhone-hochformat-fixiert (dort
+     also 0), und der Browser mit viewport-fit=cover braucht es im
+     Querformat wirklich. */
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
 }
 :root[data-shell="edge"] { --safe-top: env(safe-area-inset-top); }
 
@@ -206,7 +215,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .sidebar {
   background: var(--bg-sunken);
   border-right: 1px solid var(--line);
-  padding: calc(18px + var(--safe-top)) 16px 0;
+  padding: calc(18px + var(--safe-top)) 16px 0 calc(16px + var(--safe-left));
   position: sticky;
   top: 0;
   height: 100vh;
@@ -227,7 +236,10 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
    Als FIXES Element sitzt der Drawer an der echten Bildschirmkante — Abstand
    zur Status-Bar deshalb via env() direkt (gilt in alter UND neuer Hülle),
    nicht über das gegatete --safe-top. */
-.sidebar-drawer { padding-top: calc(18px + env(safe-area-inset-top)); }
+.sidebar-drawer {
+  padding-top: calc(18px + env(safe-area-inset-top));
+  padding-left: calc(16px + var(--safe-left));
+}
 @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
   .sidebar-drawer {
     background: color-mix(in srgb, var(--bg-sunken) 55%, transparent);
@@ -388,7 +400,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 .topbar {
   height: calc(58px + var(--safe-top));
   border-bottom: 1px solid var(--line);
-  padding: var(--safe-top) 28px 0;
+  padding: var(--safe-top) calc(28px + var(--safe-right)) 0 calc(28px + var(--safe-left));
   display: flex; align-items: center; gap: 14px;
   background: var(--bg);
   /* Über der Tab-Bar (50): das Notification-Bottom-Sheet + Backdrop leben im
@@ -455,7 +467,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
    (natives iOS-Gefühl). .main kompensiert die aus dem Fluss genommene Höhe;
    Netto-Position des Inhalts bleibt identisch. Nur Mobile gegated: am
    Desktop (PWA ≥780px) würde left:0/right:0 die Sidebar überdecken. */
-@media (max-width: 780px) {
+@media (max-width: 779.98px), (max-height: 499.98px) {
   :root[data-shell="edge"] .topbar {
     position: fixed;
     top: 0;
@@ -557,7 +569,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
    darum braucht die Gruppe dort ihr eigenes auto-Margin — sonst klebte
    der Avatar mittig hinter dem Logo statt an der rechten Kante. */
 .topbar-actions { display: flex; align-items: center; gap: 12px; }
-@media (max-width: 780px) {
+@media (max-width: 779.98px), (max-height: 499.98px) {
   .topbar-actions { margin-left: auto; }
 }
 /* Ungelesenen-Zähler auf der Glocke (statt des früheren 8px-Punkts). */
@@ -573,7 +585,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 }
 
 .content {
-  padding: 36px 40px 120px;
+  padding: 36px calc(40px + var(--safe-right)) 120px calc(40px + var(--safe-left));
   max-width: 1400px;
   width: 100%;
   margin: 0 auto;
@@ -738,7 +750,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 
 /* ---------- Tweaks panel ---------- */
 .tweaks {
-  position: fixed; right: 20px; bottom: 20px;
+  position: fixed; right: calc(20px + var(--safe-right)); bottom: 20px;
   width: 304px;
   background: var(--bg-elevated);
   border: 1px solid var(--line-strong);
@@ -806,7 +818,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   -webkit-overflow-scrolling: touch;
 }
 
-@media (max-width: 780px) {
+@media (max-width: 779.98px), (max-height: 499.98px) {
   .notif-backdrop {
     display: block;
     position: fixed;
@@ -821,7 +833,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
        der Status-Bar, --safe-top ist dort 0 → landet ebenfalls unter der
        Leiste; Browser: beides 0. */
     top: calc(58px + var(--safe-top, 0px) + 8px);
-    right: 12px;
+    right: calc(12px + var(--safe-right));
     left: auto;
     bottom: auto;
     width: min(400px, calc(100vw - 24px));
@@ -918,8 +930,15 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
    transluzent, mit Blur — der Seiteninhalt scheint beim Scrollen durch. */
 .tabbar {
   position: fixed;
-  left: 14px;
-  right: 14px;
+  left: calc(14px + var(--safe-left));
+  right: calc(14px + var(--safe-right));
+  /* Im Querformat ist der Viewport ~850–930px breit. Ohne Deckel zoege sich
+     die Kapsel ueber die ganze Breite und die fuenf Tabs staenden verloren
+     weit auseinander — mit max-width + auto-Margins bleibt sie die gleiche
+     schwebende Pille wie im Hochformat, nur zentriert. (Im Hochformat sind
+     393−28=365px < 420px, dort aendert der Deckel nichts.) */
+  max-width: 420px;
+  margin-inline: auto;
   /* Näher an den Home-Indicator (iOS-26-Look): 6px + Safe-Area. Im Browser
      (env=0) hält max() weiterhin 12px Abstand zur Viewport-Kante. */
   bottom: max(calc(6px + env(safe-area-inset-bottom)), 12px);
@@ -1004,17 +1023,27 @@ html[data-native-chrome="1"] .tabbar {
 /* ---------- Responsive Chrome-Weiche (CSS statt JS) ----------
    Desktop-Sidebar vs. Mobile-Tabbar wird rein per Media-Query umgeschaltet.
    Die isMobile-Erkennung in JS greift erst NACH dem ersten Render — würde
-   das Chrome davon abhängen, blitzt beim Laden das falsche Layout auf. */
+   das Chrome davon abhängen, blitzt beim Laden das falsche Layout auf.
+
+   Bedingung: SCHMAL ODER FLACH. Ein Handy im Querformat ist mit 812–932px
+   breiter als die 780px-Schwelle, aber nur ~390–430px hoch — im
+   Desktop-Zweig fressen Topbar (58) + Content-Padding (36) + die
+   56px-Überschrift 228px, bevor überhaupt Inhalt kommt, und die Sidebar
+   scrollt ihren Footer weg. Tablets im Querformat (≥744px hoch) und
+   Desktop-Fenster bleiben unberührt.
+   ACHTUNG: dieselbe Bedingung steht in lib/breakpoint.ts — JS-Verhalten
+   (Notification-Sheet-Portal, Chat-Zweipaneel, Drawer) muss dazu passen,
+   sonst driften Layout und Verhalten auseinander. Beide zusammen ändern. */
 .topbar .breadcrumbs .crumbs-desktop { display: flex; align-items: center; gap: 8px; }
 .topbar .breadcrumbs .crumbs-mobile { display: flex; align-items: center; }
 .topbar .topbar-avatar-mobile { display: flex; align-items: center; }
-@media (max-width: 779px) {
+@media (max-width: 779.98px), (max-height: 499.98px) {
   .app { grid-template-columns: 1fr !important; }
   .sidebar-desktop { display: none !important; }
   .sidebar-collapse-btn { display: none !important; }
   .crumbs-desktop { display: none !important; }
 }
-@media (min-width: 780px) {
+@media (min-width: 780px) and (min-height: 500px) {
   .tabbar { display: none !important; }
   .topbar-hamburger { display: none !important; }
   .crumbs-mobile { display: none !important; }
@@ -1022,24 +1051,24 @@ html[data-native-chrome="1"] .tabbar {
 }
 
 /* ---------- Mobile overrides ---------- */
-@media (max-width: 780px) {
+@media (max-width: 779.98px), (max-height: 499.98px) {
   /* Horizontal-Guard für Body-Scroller (Browser, alte App-Hülle): ein
      überbreites Element darf die Seite nie seitwärts wischbar machen.
      clip statt hidden: erzeugt keinen Scroll-Container, vertikal bleibt
      alles beim Root-Scroll. */
   html { overflow-x: clip; }
-  .topbar { padding: var(--safe-top) 16px 0; }
+  .topbar { padding: var(--safe-top) calc(16px + var(--safe-right)) 0 calc(16px + var(--safe-left)); }
   .topbar .search-global { display: none; }
   /* Schwebende Tab-Bar: 12px Abstand + ~58px Kapsel + Luft, plus
      safe-area-inset-bottom (Home-Indicator). Wir reservieren entsprechend
      Platz, damit nichts hinter der Kapsel verschwindet. */
-  .content { padding: 20px 16px calc(96px + env(safe-area-inset-bottom)); }
+  .content { padding: 20px calc(16px + var(--safe-right)) calc(96px + env(safe-area-inset-bottom)) calc(16px + var(--safe-left)); }
   .page-header h1 { font-size: 38px; }
   .page-header { flex-direction: column; align-items: flex-start; gap: 12px; margin-bottom: 20px; padding-bottom: 14px; }
 
   .tweaks {
-    left: 12px;
-    right: 12px;
+    left: calc(12px + var(--safe-left));
+    right: calc(12px + var(--safe-right));
     width: auto;
     max-height: 78vh;
     border-radius: var(--radius-lg);
@@ -1063,7 +1092,7 @@ html[data-native-chrome="1"] .tabbar {
      Body-Scroll exakt 0. Das negative margin-bottom neutralisiert das
      padding-bottom des .content (96px + Safe-Area). */
   .messages-wrap {
-    margin: -20px -16px calc(-96px - env(safe-area-inset-bottom));
+    margin: -20px calc(-16px - var(--safe-right)) calc(-96px - env(safe-area-inset-bottom)) calc(-16px - var(--safe-left));
     /* --kb-inset: echte Tastatur-Überlappung aus visualViewport (AppShell).
        dvh schrumpft in der WKWebView NICHT mit der Tastatur — ohne den Abzug
        sässe der Composer unter der Tastatur. */
@@ -1073,7 +1102,7 @@ html[data-native-chrome="1"] .tabbar {
     overflow: hidden;
   }
   .messages-inner {
-    padding: 16px 16px 16px;
+    padding: 16px calc(16px + var(--safe-right)) 16px calc(16px + var(--safe-left));
     display: flex;
     flex-direction: column;
     flex: 1;
@@ -1101,7 +1130,7 @@ html[data-native-chrome="1"] .tabbar {
   /* Composer über der schwebenden Glas-Kapsel: 12px Abstand + ~58px Kapsel
      + Luft, plus Home-Indicator. */
   .messages-composer {
-    padding: 10px 12px calc(84px + env(safe-area-inset-bottom));
+    padding: 10px calc(12px + var(--safe-right)) calc(84px + env(safe-area-inset-bottom)) calc(12px + var(--safe-left));
   }
   /* Chat-Text auf dem Handy grösser — 13.5px Bubbles waren zu klein. */
   .msg-bubble { font-size: 15px; }
@@ -1116,6 +1145,12 @@ html[data-native-chrome="1"] .tabbar {
      fast die halbe Höhe. Browser ohne :has() zeigen die Tab-Bar weiter —
      der Chat ist trotzdem randlos. */
   .messages-wrap.thread-open .messages-inner { padding: 0; }
+  /* Randloser Thread: die Blasen duerfen im Querformat nicht unter die
+     Notch laufen — im Hochformat sind beide Werte 0, also ein No-Op. */
+  .messages-wrap.thread-open .messages-thread {
+    padding-left: var(--safe-left);
+    padding-right: var(--safe-right);
+  }
   .messages-wrap.thread-open .messages-grid {
     border: none;
     border-radius: 0;
@@ -1146,6 +1181,19 @@ html[data-native-chrome="1"] .tabbar {
     background: rgba(0, 0, 0, 0.35);
     z-index: 999;
   }
+}
+
+/* Handy im Querformat (breit, aber flach): die Seitenkopfzeile ist fuer
+   hochformatige Screens bemessen — 38px-Titel + Subtitle + Trennlinie
+   fressen von 393px Hoehe rund ein Drittel, bevor Inhalt kommt. Hier
+   enger. Greift NUR bei >=780px Breite, Hochformat bleibt unberuehrt.
+   MUSS nach dem Mobile-Overrides-Block stehen — der setzt dieselben
+   Eigenschaften und gewaenne sonst als spaetere Regel. */
+@media (min-width: 780px) and (max-height: 499.98px) {
+  .content { padding-top: 14px; }
+  .page-header { margin-bottom: 16px; padding-bottom: 12px; gap: 8px; }
+  .page-header h1 { font-size: 30px; }
+  .page-header .subtitle { margin-top: 4px; }
 }
 
 @media (max-width: 900px) {
@@ -1219,7 +1267,7 @@ html[data-native-chrome="1"] .tabbar {
   padding-top: 14px; border-top: 1px solid var(--line);
 }
 .event-hero-meta b { color: var(--ink-2); font-weight: 500; }
-@media (max-width: 780px) {
+@media (max-width: 779.98px), (max-height: 499.98px) {
   /* 16/9 statt 16/10: gleicht die Detail-Hero-Box der Event-Übersichtskarte an,
      damit die typischen 16:9-Eventbilder randlos füllen (kein Letterbox-Streifen
      oben/unten mehr). Quadratische Bilder bleiben dank contain unbeschnitten. */
@@ -1292,7 +1340,7 @@ html[data-native-chrome="1"] .tabbar {
   /* Lange Adressen ohne Leerzeichen dürfen umbrechen statt zu überlaufen. */
   overflow-wrap: anywhere;
 }
-@media (max-width: 779px) {
+@media (max-width: 779.98px), (max-height: 499.98px) {
   .settings-row {
     grid-template-columns: minmax(0, 1fr);
     gap: 10px;

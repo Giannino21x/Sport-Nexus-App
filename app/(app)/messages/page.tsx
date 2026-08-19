@@ -9,6 +9,7 @@ import { ImagePreview } from "@/components/image-preview";
 import { useSettings } from "@/components/settings-context";
 import { reload, useConversations, useMe, useMembers, useThreadMessages, type ChatMessage, type Conversation } from "@/lib/hooks";
 import { markThreadReadAction, sendMessageAction, sendMessageWithAttachmentAction } from "@/app/actions/messages";
+import { isMobileChrome } from "@/lib/breakpoint";
 import { error as hapticError, success as hapticSuccess } from "@/lib/haptics";
 import { createClient } from "@/lib/supabase/client";
 import { MEMBERS, type Member } from "@/lib/data";
@@ -59,11 +60,9 @@ function MessagesInner() {
   // Startwert synchron aus window: Seiten unter der AppShell mounten erst
   // clientseitig (Boot-Splash-Gate), darum ist das sicher — der alte
   // useEffect-Weg liess das Layout nach dem ersten Render umspringen.
-  const [isMobile, setIsMobile] = useState(
-    () => typeof window !== "undefined" && window.innerWidth < 780,
-  );
+  const [isMobile, setIsMobile] = useState(isMobileChrome);
   useEffect(() => {
-    const h = () => setIsMobile(window.innerWidth < 780);
+    const h = () => setIsMobile(isMobileChrome());
     window.addEventListener("resize", h);
     return () => window.removeEventListener("resize", h);
   }, []);

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "./icon";
+import { isMobileChrome } from "@/lib/breakpoint";
 import { reload, type Notif } from "@/lib/hooks";
 import { markNotificationsReadAction } from "@/app/actions/notifications";
 
@@ -92,7 +93,7 @@ export function NotificationsPopover({ notifs, onClose }: Props) {
   // ankerten dann an der Leiste statt am Bildschirm. Desktop bleibt in-place,
   // weil das Popover dort absolut am Bell-Button dockt.
   // (Rendert nur nach Klick, also garantiert client-seitig.)
-  if (typeof window !== "undefined" && window.matchMedia("(max-width: 780px)").matches) {
+  if (isMobileChrome()) {
     return createPortal(panel, document.body);
   }
   return panel;

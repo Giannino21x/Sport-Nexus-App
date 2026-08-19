@@ -14,6 +14,7 @@ import { useSettings } from "./settings-context";
 import { clearLiveCache, reload, useEvents, useLiveRefresh, useMe, useMembers, useNotifications } from "@/lib/hooks";
 import { signOutAction } from "@/app/actions/auth";
 import { removePushTokenAction, savePushTokenAction } from "@/app/actions/push";
+import { isMobileChrome } from "@/lib/breakpoint";
 import { tap } from "@/lib/haptics";
 import { hideNativeSplash, initNativeDeepLinks, registerPushNotifications } from "@/lib/native";
 
@@ -33,9 +34,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // Synchroner Startwert (Server: false — dort wird eh nur der Splash
   // gerendert). Verhindert einen falschen ersten Frame bei Drawer/Popover.
-  const [isMobile, setIsMobile] = useState(
-    () => typeof window !== "undefined" && window.innerWidth < 780,
-  );
+  const [isMobile, setIsMobile] = useState(isMobileChrome);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const { data: members } = useMembers();
@@ -102,7 +101,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const h = () => setIsMobile(window.innerWidth < 780);
+    const h = () => setIsMobile(isMobileChrome());
     h();
     window.addEventListener("resize", h);
     return () => window.removeEventListener("resize", h);
