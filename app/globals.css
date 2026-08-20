@@ -53,7 +53,19 @@
   --glass-rim: inset 0 1px 0 rgba(255, 255, 255, 0.7);
   --glass-sheen: linear-gradient(115deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.06) 30%, rgba(255, 255, 255, 0) 55%, rgba(255, 255, 255, 0.1) 100%);
   --glass-shadow: 0 12px 40px rgba(0, 0, 0, 0.14), 0 2px 10px rgba(0, 0, 0, 0.05);
-  --glass-blur: blur(40px) saturate(180%);
+  /* 40px Blur sah minimal weicher aus, kostete aber bei JEDEM Scroll-Frame
+     eine Neuberechnung der Leiste. 26px ist auf dem Geraet nicht zu
+     unterscheiden und deutlich billiger. */
+  --glass-blur: blur(26px) saturate(180%);
+
+  /* Ein Tempo-Satz statt handverteilter Millisekunden. Kurz und mit einer
+     Kurve, die schnell losgeht und weich ausläuft: DAS liest sich als
+     "reagiert sofort", nicht die Dauer allein. */
+  --dur-1: 110ms;              /* Farbe, Zustand */
+  --dur-2: 150ms;              /* kleine Bewegung */
+  --dur-3: 240ms;              /* Overlays, längere Wege */
+  --ease-out: cubic-bezier(0.22, 0.9, 0.24, 1);
+  --ease-spring: cubic-bezier(0.22, 1.15, 0.32, 1);
 
   --font-display: var(--font-bricolage), "Azo Sans", "Manrope", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --font-sans: var(--font-manrope), "Azo Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -609,10 +621,10 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   font-size: 13.5px; font-weight: 500;
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background 120ms, border-color 120ms, transform 120ms;
+  transition: background var(--dur-1), border-color var(--dur-1), transform var(--dur-1) var(--ease-out);
   letter-spacing: -0.005em;
 }
-.btn:active { transform: translateY(1px); }
+.btn:active { transform: translateY(1px) scale(0.985); }
 .btn .icon { width: 15px; height: 15px; stroke: currentColor; fill: none; stroke-width: 1.8; }
 .btn-primary { background: var(--ink); color: var(--bg); }
 .btn-accent { background: var(--accent); color: var(--accent-ink); }
@@ -652,7 +664,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 
 /* Event-Karten: dezenter Hover — anheben, tieferer Schatten, kräftigerer Rahmen */
 .event-card {
-  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+  transition: transform var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out);
 }
 @media (hover: hover) {
   .event-card:hover {
@@ -668,7 +680,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
 
 /* Dashboard-Statistik-Kacheln sind Links — Hover dezenter als bei Event-Karten */
 .stat-card {
-  transition: transform 200ms ease, box-shadow 200ms ease, border-color 200ms ease;
+  transition: transform var(--dur-2) var(--ease-out), box-shadow var(--dur-2) var(--ease-out), border-color var(--dur-2) var(--ease-out);
 }
 @media (hover: hover) {
   .stat-card:hover {
@@ -1017,7 +1029,8 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   box-shadow: var(--shadow-sm);
   pointer-events: none;
   transform: translateX(calc(var(--tab-index, 0) * 100%));
-  transition: transform 420ms cubic-bezier(0.22, 1.2, 0.32, 1), opacity 180ms ease;
+  will-change: transform;
+  transition: transform 300ms var(--ease-spring), opacity var(--dur-2) var(--ease-out);
 }
 /* Route ohne eigenen Tab (Einstellungen, Detailseiten): Pille aus. Sie bleibt
    dabei stehen, wo sie war (--tab-index hält den letzten Wert). */
@@ -1370,7 +1383,7 @@ html[data-native-chrome="1"] .tabbar {
 
 /* Bilder blenden weich ein, sobald sie geladen sind (classList "loaded"
    kommt per onLoad bzw. ref-Check für gecachte Bilder). */
-.img-fade { opacity: 0; transition: opacity 0.4s ease; }
+.img-fade { opacity: 0; transition: opacity var(--dur-3) var(--ease-out); }
 .img-fade.loaded { opacity: 1; }
 
 /* Seiteninhalt beim Routenwechsel sanft einblenden. Bewusst kurz und NICHT
@@ -1438,6 +1451,30 @@ img {
 }
 
 button, a, .btn, .nav-item { touch-action: manipulation; }
+
+/* Druck-Feedback: auf dem Handy entscheidet nicht die Dauer einer Animation
+   darüber, ob sich etwas "snappy" anfühlt, sondern ob im Moment der
+   Berührung SOFORT etwas passiert. Native Listen quittieren jeden Tap,
+   Web-Listen meistens nicht — hier tun sie es.
+   tr bleibt aussen vor: transform auf Tabellenzeilen rendert unsauber. */
+@media (hover: none) and (pointer: coarse) {
+  .event-card,
+  .stat-card,
+  a.card,
+  [data-haptic]:not(tr) {
+    transition: transform var(--dur-2) var(--ease-out);
+  }
+  .event-card:active,
+  .stat-card:active,
+  a.card:active,
+  [data-haptic]:not(tr):active {
+    transform: scale(0.985);
+    transition-duration: 90ms;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .event-card:active, .stat-card:active, a.card:active, [data-haptic]:active { transform: none; }
+}
 
 /* Fokus: kein Web-Ring bei Tap/Klick, klarer Ring nur bei Tastatur-Navigation.
    Ersetzt das bisherige Flickwerk (Ring mal da, mal per outline:none weg). */
