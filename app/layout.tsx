@@ -3,6 +3,7 @@ import { Bricolage_Grotesque, Manrope, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { ConfirmDialogHost } from "@/components/confirm-dialog";
 import { HapticsBridge } from "@/components/haptics-bridge";
+import { NativeDeepLinks } from "@/components/native-deep-links";
 
 const bricolage = Bricolage_Grotesque({
   variable: "--font-bricolage",
@@ -112,6 +113,10 @@ export default function RootLayout({
             App-Hüllen den vercel.app-Hostnamen zeigt) — global gemountet,
             damit jede Seite confirmDialog() aufrufen kann. */}
         <ConfirmDialogHost />
+        {/* Universal Links in Client-Navigation übersetzen. Muss ausserhalb
+            der App-Shell liegen: Reset- und Invite-Links treffen Ausgeloggte,
+            die nie in der Shell landen. */}
+        <NativeDeepLinks />
         {children}
       </body>
     </html>

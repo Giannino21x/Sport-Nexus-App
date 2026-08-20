@@ -4,7 +4,19 @@
     "details": [
       {
         "appIDs": ["699K5VAG3G.ch.sportnexus.app"],
-        "components": [{ "/": "/*" }]
+        "components": [
+          {
+            "/": "/reset-confirm*",
+            "exclude": true,
+            "comment": "Passwort-Reset gehoert in den Browser - die App darf Einmal-Links nicht abfangen"
+          },
+          { "/": "/reset-password*", "exclude": true, "comment": "Folgeschritt des Resets" },
+          { "/": "/invite*", "exclude": true, "comment": "Einladungslink aus der Onboarding-Mail" },
+          { "/": "/auth/*", "exclude": true, "comment": "Supabase-Callback" },
+          { "/": "/login*", "exclude": true, "comment": "Login inkl. Passwort-vergessen-Modus" },
+          { "/": "/datenschutz.html", "exclude": true, "comment": "Pflichtseite aus dem Store-Listing" },
+          { "/": "/*" }
+        ]
       }
     ]
   },

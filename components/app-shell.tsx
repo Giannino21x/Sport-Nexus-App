@@ -16,7 +16,7 @@ import { signOutAction } from "@/app/actions/auth";
 import { removePushTokenAction, savePushTokenAction } from "@/app/actions/push";
 import { isMobileChrome } from "@/lib/breakpoint";
 import { tap } from "@/lib/haptics";
-import { hideNativeSplash, initNativeDeepLinks, registerPushNotifications } from "@/lib/native";
+import { hideNativeSplash, registerPushNotifications } from "@/lib/native";
 
 // Reihenfolge = Position der Auswahl-Pille in der Bottom-Leiste; sie muss
 // mit `tabs` im ViewController der iOS-Hülle übereinstimmen.
@@ -129,14 +129,15 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (meResolved) hideNativeSplash();
   }, [meResolved]);
 
-  // Native Hülle, eingeloggt: Universal Links in Client-Navigation übersetzen
-  // und das Gerät für Push registrieren (Token → push_tokens, für den
-  // DB-Trigger-Versand). Beides No-ops im Browser / ohne die Plugins.
+  // Native Hülle, eingeloggt: das Gerät für Push registrieren (Token →
+  // push_tokens, für den DB-Trigger-Versand). No-op im Browser / ohne Plugin.
+  // Universal Links werden NICHT mehr hier initialisiert — das läuft global im
+  // Root-Layout (components/native-deep-links.tsx), weil Reset- und
+  // Invite-Links Ausgeloggte treffen, die diese Shell nie sehen.
   const loggedIn = Boolean(meResolved && me && dataSource === "live");
   useEffect(() => {
     if (!loggedIn) return;
     const navigate = (p: string) => router.push(p);
-    initNativeDeepLinks(navigate);
     registerPushNotifications((token, platform) => {
       // Token fürs Abmelden merken — dort wird er wieder ausgetragen.
       try { localStorage.setItem("sn_push_token", token); } catch {}

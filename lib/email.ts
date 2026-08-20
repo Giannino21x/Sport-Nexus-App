@@ -144,7 +144,7 @@ export function newMessageEmail(opts: {
       </table>`
     : "";
 
-  const html = `<!doctype html><html><body style="margin:0; padding:0; background:#F7F7F7; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; color:#000;">
+  const html = `<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0; padding:0; background:#F7F7F7; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; color:#000;">
   <div style="max-width:560px; margin:24px auto; padding:32px; background:#FFFFFF; border-radius:8px;">
     <div style="font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:#868686;">SportNexus · Neue Nachricht</div>
     <h1 style="font-size:22px; font-weight:600; margin:14px 0 6px; color:#000;">${greeting}</h1>
@@ -185,8 +185,8 @@ export function newMessageEmail(opts: {
   return { subject, html, text };
 }
 
-// Template: Passwort-Reset. Wird ueber unseren Hostpoint-Nodemailer verschickt
-// statt ueber den Supabase-internen SMTP, weil dort ein Rate-Limit greift
+// Template: Passwort-Reset. Wird über unseren Hostpoint-Nodemailer verschickt
+// statt über den Supabase-internen SMTP, weil dort ein Rate-Limit greift
 // (Free-Plan: ~4 Reset-Mails/h) und Pascal seine Mail nicht erhalten hat.
 export function passwordResetEmail(opts: {
   recoveryUrl: string;
@@ -195,12 +195,12 @@ export function passwordResetEmail(opts: {
   const greeting = opts.recipientFirst ? `Hallo ${opts.recipientFirst},` : "Hallo,";
   const subject = "SportNexus · Passwort zurücksetzen";
 
-  const html = `<!doctype html><html><body style="margin:0; padding:0; background:#F7F7F7; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; color:#000;">
+  const html = `<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0; padding:0; background:#F7F7F7; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; color:#000;">
   <div style="max-width:560px; margin:24px auto; padding:32px; background:#FFFFFF; border-radius:8px;">
     <div style="font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:#868686;">SportNexus · Passwort-Reset</div>
     <h1 style="font-size:22px; font-weight:600; margin:14px 0 6px; color:#000;">${greeting}</h1>
     <p style="margin:0 0 18px; font-size:15px; line-height:1.5; color:#000;">
-      Klicke auf den Button unten, um ein neues Passwort fuer deinen SportNexus-Account zu setzen. Der Link ist 24 Stunden gueltig.
+      Klicke auf den Button unten, um ein neues Passwort für deinen SportNexus-Account zu setzen. Der Link ist 24 Stunden gültig.
     </p>
     <div style="margin:24px 0;">
       <a href="${opts.recoveryUrl}" style="display:inline-block; background:#000; color:#fff; padding:11px 18px; border-radius:6px; text-decoration:none; font-size:14px; font-weight:500;">Neues Passwort setzen</a>
@@ -211,7 +211,7 @@ export function passwordResetEmail(opts: {
     </p>
     <hr style="margin:32px 0; border:none; border-top:1px solid #ECECEC;">
     <p style="font-size:11px; color:#868686; margin:0; line-height:1.5;">
-      Du hast diesen Reset nicht angefordert? Dann ignoriere diese Mail — dein Passwort bleibt unveraendert.
+      Du hast diesen Reset nicht angefordert? Dann ignoriere diese Mail — dein Passwort bleibt unverändert.
     </p>
   </div>
 </body></html>`;
@@ -219,7 +219,7 @@ export function passwordResetEmail(opts: {
   const text = [
     greeting,
     ``,
-    `Klicke auf den Link unten, um ein neues Passwort zu setzen (24 Stunden gueltig):`,
+    `Klicke auf den Link unten, um ein neues Passwort zu setzen (24 Stunden gültig):`,
     ``,
     opts.recoveryUrl,
     ``,
