@@ -44,7 +44,9 @@ export interface NativeGlassConfig {
   interactive: boolean;
   /** Ab welchem Abstand (pt) Leiste und Lozenge ineinanderfliessen. Grösser = stärkeres Verschmelzen. */
   spacing: number;
-  /** Deckkraft des Akzents im Auswahl-Lozenge. Zu niedrig = Auswahl verschwindet, zu hoch = liegt auf statt drin. */
+  /** Deckkraft des Akzents im Auswahl-Lozenge. 0 = neutrales Glas (WhatsApp-Muster:
+   *  die Pille ist farblos, nur Icon + Label tragen den Akzent). Hohe Werte legen
+   *  einen farbigen Klecks auf die Leiste — genau der Look, der 1.5 raus musste. */
   tintAlpha: number;
   /** Abstand des Lozenge zum Tab-Rand (pt). */
   lozengeInsetX: number;
@@ -61,7 +63,7 @@ const NATIVE_GLASS: NativeGlassConfig = {
   clearStyle: false,
   interactive: true,
   spacing: 24,
-  tintAlpha: 0.5,
+  tintAlpha: 0.1,
   lozengeInsetX: 3,
   lozengeInsetY: 5,
   switchDuration: 0.44,

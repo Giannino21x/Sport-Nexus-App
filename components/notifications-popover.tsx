@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "./icon";
 import { isMobileChrome } from "@/lib/breakpoint";
-import { reload, type Notif } from "@/lib/hooks";
+import { reload, useMembers, type Notif } from "@/lib/hooks";
 import { markNotificationsReadAction } from "@/app/actions/notifications";
 
 type Props = { notifs: Notif[]; onClose: () => void };
@@ -18,6 +18,20 @@ function iconFor(kind: string): IconName {
 
 export function NotificationsPopover({ notifs, onClose }: Props) {
   const router = useRouter();
+  const { data: members } = useMembers();
+
+  // Ziel einer Nachrichten-Benachrichtigung. Der Link steht seit dem
+  // notification_links-Trigger in der Zeile — aeltere Zeilen (und jede, die
+  // ein Trigger ohne link schreibt) haetten sonst gar kein Ziel und der
+  // Eintrag waere tot. Fallback: Absendername aus dem Titel gegen die
+  // Member-Liste aufloesen, sonst wenigstens in die Nachrichten-Liste.
+  const linkFor = (n: Notif): string => {
+    if (n.link) return n.link;
+    if (n.kind !== "message") return "";
+    const name = n.title.replace(/^Neue Nachricht von\s+/i, "").trim().toLowerCase();
+    const m = members.find((x) => `${x.first} ${x.last}`.trim().toLowerCase() === name);
+    return m ? `/messages?to=${m.id}` : "/messages";
+  };
   // Beim Öffnen serverseitig als gelesen markieren; beim Schliessen die Liste
   // neu laden, damit der Unread-Punkt an der Glocke verschwindet. (Im Popover
   // selbst bleibt die Hervorhebung sichtbar, solange es offen ist.)
@@ -53,13 +67,15 @@ export function NotificationsPopover({ notifs, onClose }: Props) {
               Keine Benachrichtigungen.
             </div>
           ) : (
-            notifs.map((n) => (
+            notifs.map((n) => {
+              const target = linkFor(n);
+              return (
               <div
                 key={n.id}
-                onClick={n.link ? () => { onClose(); router.push(n.link); } : undefined}
-                role={n.link ? "button" : undefined}
-                tabIndex={n.link ? 0 : undefined}
-                onKeyDown={n.link ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClose(); router.push(n.link); } } : undefined}
+                onClick={target ? () => { onClose(); router.push(target); } : undefined}
+                role={target ? "button" : undefined}
+                tabIndex={target ? 0 : undefined}
+                onKeyDown={target ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClose(); router.push(target); } } : undefined}
                 style={{
                   display: "flex",
                   gap: 12,
@@ -67,7 +83,7 @@ export function NotificationsPopover({ notifs, onClose }: Props) {
                   borderBottom: "1px solid var(--line)",
                   background: n.unread ? "var(--accent-soft)" : "transparent",
                   opacity: n.unread ? 1 : 0.7,
-                  cursor: n.link ? "pointer" : "default",
+                  cursor: target ? "pointer" : "default",
                 }}
               >
                 <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--bg-sunken)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--ink-2)", flexShrink: 0 }}>
@@ -80,7 +96,8 @@ export function NotificationsPopover({ notifs, onClose }: Props) {
                 </div>
                 {n.unread && <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent)", flexShrink: 0, marginTop: 6 }} />}
               </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>

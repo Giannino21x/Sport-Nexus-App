@@ -1197,11 +1197,31 @@ html[data-native-chrome="1"] .tabbar {
     border-radius: 0;
     box-shadow: none;
   }
-  .messages-wrap.thread-open .messages-composer { padding: 10px 12px 12px; }
+  /* Composer sitzt auf der Bildschirmkante, der Home-Indicator bekommt sein
+     Polster als PADDING — nicht als toter schwarzer Streifen unter der
+     Leiste (so macht es WhatsApp). Bei offener Tastatur meldet iOS
+     safe-area-inset-bottom = 0, das Polster faellt dann von selbst weg. */
+  .messages-wrap.thread-open .messages-composer {
+    padding: 10px calc(12px + var(--safe-right)) calc(10px + env(safe-area-inset-bottom)) calc(12px + var(--safe-left));
+  }
   body:has(.messages-wrap.thread-open) .tabbar {
     opacity: 0;
     pointer-events: none;
   }
+  /* Vollbild heisst VOLLBILD: im offenen Thread faellt auch die App-Topbar
+     weg, der Thread-Kopf (Zurueck, Name, Profil) IST der Kopf des Screens.
+     Vorher standen zwei Kopfleisten uebereinander — zusammen ~105px, die
+     dem Gespraech fehlten. Zurueck fuehrt aus dem Thread, nicht aus der
+     Seite, der Weg zu Glocke/Drawer bleibt also erhalten. */
+  body:has(.messages-wrap.thread-open) .topbar { display: none; }
+  :root[data-shell="edge"] body:has(.messages-wrap.thread-open) .main { padding-top: 0; }
+  /* Ohne Topbar faellt deren 58px aus der Hoehenformel; die Status-Bar-Zone
+     uebernimmt der Thread-Kopf als Padding, und die Home-Indicator-Zone
+     gehoert jetzt dem Composer (siehe oben) statt abgezogen zu werden. */
+  .messages-wrap.thread-open {
+    height: calc(100dvh - env(safe-area-inset-top) - var(--kb-inset, 0px));
+  }
+  .messages-wrap.thread-open .thread-head { padding-top: calc(12px + var(--safe-top)); }
   /* Offene Tastatur (data-kb via visualViewport in der AppShell): Tab-Bar
      weg — sie sässe sonst auf (Android, resize) oder über (iOS, overlay)
      der Tastatur. */

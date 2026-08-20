@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
 import { ImagePreview } from "@/components/image-preview";
@@ -164,15 +165,23 @@ function MessagesInner() {
   const MENU_W = 160;
   const MENU_H = 96;
 
+  // Popover ueber dem Plus-Button — aber immer VOLLSTAENDIG im Bild. Oben
+  // kein Platz? Dann darunter. Auch dann nicht? Dann an den Rand geklemmt.
+  // Das blosse Math.max(12, ...) von vorher konnte das Menue unter die
+  // Bildschirmkante schieben, wo der halbe Inhalt abgeschnitten war.
   const anchorAbove = (height: number, width: number): { left: number; top: number } | null => {
     const btn = plusBtnRef.current;
     if (!btn) return null;
     const r = btn.getBoundingClientRect();
     const vw = window.innerWidth;
+    const vh = window.visualViewport?.height ?? window.innerHeight;
     let left = r.left;
     if (left + width > vw - 12) left = Math.max(12, vw - width - 12);
     if (left < 12) left = 12;
-    const top = Math.max(12, r.top - height - 8);
+    const above = r.top - height - 8;
+    const top = above >= 12
+      ? above
+      : Math.max(12, Math.min(r.bottom + 8, vh - height - 12));
     return { left, top };
   };
 
@@ -495,7 +504,7 @@ function MessagesInner() {
             <div className="messages-thread" style={{ position: "relative" }}>
               {activeMember ? (
                 <>
-                  <div style={{ padding: "12px 16px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                  <div className="thread-head" style={{ padding: "12px 16px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                     {isMobile && (
                       <button
                         className="icon-btn"
@@ -684,7 +693,13 @@ function MessagesInner() {
         </div>
       </div>
 
-      {plusOpen && plusPos && (
+      {/* Anhaenge-Menue und Emoji-Picker haengen per Portal am <body>. Innerhalb
+          der Chat-Karte reicht position:fixed nicht: sobald irgendein Vorfahr
+          einen Containing Block aufmacht (Blur/Transform der Glas-Leisten),
+          rechnen die Viewport-Koordinaten aus getBoundingClientRect gegen die
+          falsche Kante — das Menue rutschte um die Topbar-Hoehe nach unten und
+          wurde am Bildschirmrand abgeschnitten. */}
+      {plusOpen && plusPos && createPortal(
         <div
           ref={plusMenuRef}
           role="menu"
@@ -752,10 +767,11 @@ function MessagesInner() {
             </span>
             <span>Bild</span>
           </button>
-        </div>
+        </div>,
+        document.body,
       )}
 
-      {emojiOpen && emojiPos && (
+      {emojiOpen && emojiPos && createPortal(
         <div
           ref={emojiPopRef}
           role="dialog"
@@ -812,7 +828,8 @@ function MessagesInner() {
               </button>
             ))}
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
