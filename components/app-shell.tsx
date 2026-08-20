@@ -670,6 +670,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link
             key={it.href}
             href={it.href}
+            // prefetch: schiebt den Eintrag in den `static`-Topf des
+            // Client-Router-Caches (300 s statt der 30 s oben) — die fünf
+            // Tabs sind der Pfad, den man am häufigsten hin und her läuft.
+            prefetch
             className={"tabbar-item" + (isActive(it.href) ? " active" : "")}
           >
             <Icon name={it.icon} size={19} />

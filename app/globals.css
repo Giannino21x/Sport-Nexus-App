@@ -1348,10 +1348,13 @@ html[data-native-chrome="1"] .tabbar {
 .img-fade { opacity: 0; transition: opacity 0.4s ease; }
 .img-fade.loaded { opacity: 1; }
 
-/* Seiteninhalt beim Routenwechsel sanft einblenden. */
-.page-enter { animation: page-enter 0.26s ease both; }
+/* Seiteninhalt beim Routenwechsel sanft einblenden. Bewusst kurz und NICHT
+   bei 0 startend: die Animation liegt auf jedem Seitenwechsel obendrauf, und
+   ein Viertelsekunden-Fade aus dem Nichts liest sich als Ladezeit, nicht als
+   Übergang. Ab 0.45 ist der Inhalt sofort lesbar und wird nur noch fertig. */
+.page-enter { animation: page-enter 0.15s ease-out both; }
 @keyframes page-enter {
-  from { opacity: 0; transform: translateY(6px); }
+  from { opacity: 0.45; transform: translateY(4px); }
   to { opacity: 1; transform: none; }
 }
 
