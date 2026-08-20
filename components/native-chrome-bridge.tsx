@@ -38,6 +38,13 @@ import { useSettings } from "./settings-context";
  * Wirksam ab Binary 1.5 — ältere Hüllen ignorieren das Feld.
  */
 export interface NativeGlassConfig {
+  /** true = Apples ECHTE Tab-Bar (UITabBarController) statt der nachgebauten
+   *  Kapsel. WhatsApp und Reddit zeigen genau diese Leiste, inklusive des
+   *  Auswahl-Morphs, der dem System gehört und sich nachgebaut nur annähern
+   *  lässt. Kostet dafür die Feinjustage: Breite, Höhe, Farben und Timing
+   *  bestimmt dann iOS, nicht mehr die Regler weiter unten.
+   *  Braucht Binary 1.5 Build 19+ und iOS 26; sonst greift die eigene Kapsel. */
+  useSystemTabBar: boolean;
   /** true = UIGlassEffect(.clear): viel durchsichtiger, aber über Eventbildern schlechter lesbar. */
   clearStyle: boolean;
   /** Glas reagiert auf Berührung (Apples "interactive glass"). */
@@ -81,6 +88,7 @@ export interface NativeGlassConfig {
 }
 
 const NATIVE_GLASS: NativeGlassConfig = {
+  useSystemTabBar: true,
   clearStyle: false,
   interactive: true,
   spacing: 40,
