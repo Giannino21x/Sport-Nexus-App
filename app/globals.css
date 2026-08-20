@@ -980,7 +980,6 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
     opacity: 0.5;
     pointer-events: none;
   }
-  .tabbar > * { position: relative; }
 }
 .tabbar-item {
   flex: 1;
@@ -994,13 +993,45 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   /* ink-2 statt ink-3: über durchscheinendem (Bild-)Inhalt lesbar bleiben */
   color: var(--ink-2);
   cursor: pointer;
-  transition: background 220ms cubic-bezier(0.2, 0.8, 0.2, 1), color 160ms;
+  /* liegt über dem Sheen UND über der Auswahl-Pille */
+  position: relative;
+  transition: color 160ms;
 }
 .tabbar-item .tabbar-label { font-size: 10px; line-height: 1; }
-.tabbar-item.active {
-  color: var(--ink);
+.tabbar-item.active { color: var(--ink); }
+
+/* Wandernde Auswahl-Pille: EIN Element, das zum aktiven Tab gleitet, statt
+   fünf Hintergründen, die gegeneinander ein- und ausblenden. Genau der
+   Unterschied zwischen „irgendwo leuchtet jetzt was anderes“ und dem
+   flüssigen Switch der iOS-26-Leiste. Die Kurve überschwingt leicht (y > 1)
+   — das gibt den kurzen Nachfeder-Impuls am Ziel. */
+.tabbar-pill {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  left: 5px;
+  width: calc((100% - 10px) / 5);
+  border-radius: 999px;
   background: var(--glass-bg-strong);
   box-shadow: var(--shadow-sm);
+  pointer-events: none;
+  transform: translateX(calc(var(--tab-index, 0) * 100%));
+  transition: transform 420ms cubic-bezier(0.22, 1.2, 0.32, 1), opacity 180ms ease;
+}
+/* Route ohne eigenen Tab (Einstellungen, Detailseiten): Pille aus. Sie bleibt
+   dabei stehen, wo sie war (--tab-index hält den letzten Wert). */
+.tabbar[data-tab-active="false"] .tabbar-pill { opacity: 0; }
+
+/* Kurzer Stauch-Impuls auf dem frisch gewählten Icon. Läuft neu an, weil
+   .active auf ein ANDERES Element wandert. */
+.tabbar-item.active svg { animation: tab-pop 420ms cubic-bezier(0.22, 1.2, 0.32, 1); }
+@keyframes tab-pop {
+  from { transform: scale(0.82); }
+  to { transform: scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tabbar-pill { transition: opacity 180ms ease; }
+  .tabbar-item.active svg { animation: none; }
 }
 /* Native Hülle (iOS 26, Binary 1.3+): die Tab-Bar kommt als echte
    UIGlassEffect-View über dem WebView (NativeChromeBridge) — die

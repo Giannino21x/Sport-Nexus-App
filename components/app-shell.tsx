@@ -18,6 +18,16 @@ import { isMobileChrome } from "@/lib/breakpoint";
 import { tap } from "@/lib/haptics";
 import { hideNativeSplash, initNativeDeepLinks, registerPushNotifications } from "@/lib/native";
 
+// Reihenfolge = Position der Auswahl-Pille in der Bottom-Leiste; sie muss
+// mit `tabs` im ViewController der iOS-Hülle übereinstimmen.
+const TABBAR_ITEMS = [
+  { href: "/dashboard", icon: "home" as const, l: "Home" },
+  { href: "/directory", icon: "users" as const, l: "Members" },
+  { href: "/events", icon: "calendar" as const, l: "Events" },
+  { href: "/messages", icon: "message" as const, l: "Chat" },
+  { href: "/profile", icon: "user" as const, l: "Profil" },
+];
+
 type NavItem = { k: string; href: string; label: string; icon: IconName; badge?: number; dot?: boolean; beta?: boolean };
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -422,6 +432,14 @@ export function AppShell({ children }: { children: ReactNode }) {
     return pathname === href || pathname.startsWith(href + "/");
   };
 
+  // Bottom-Tab-Bar: der Index des aktiven Tabs treibt die gleitende Pille.
+  // Auf Routen ohne eigenen Tab (Einstellungen, Detailseiten) blendet sie aus
+  // und bleibt stehen, wo sie war — sonst rückte sie unsichtbar auf Position 0
+  // und käme beim Zurückkehren quer über die Leiste angeflogen.
+  const tabIndex = TABBAR_ITEMS.findIndex((it) => isActive(it.href));
+  const lastTabIndex = useRef(0);
+  if (tabIndex >= 0) lastTabIndex.current = tabIndex;
+
   const currentNavLabel =
     [...navItems, ...adminItems].find((n) => isActive(n.href))?.label ||
     (pathname.startsWith("/directory/") ? "Member Detail" :
@@ -642,14 +660,13 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       </div>
 
-      <div className="tabbar">
-        {[
-          { href: "/dashboard", icon: "home" as const, l: "Home" },
-          { href: "/directory", icon: "users" as const, l: "Members" },
-          { href: "/events", icon: "calendar" as const, l: "Events" },
-          { href: "/messages", icon: "message" as const, l: "Chat" },
-          { href: "/profile", icon: "user" as const, l: "Profil" },
-        ].map((it) => (
+      <div
+        className="tabbar"
+        data-tab-active={tabIndex >= 0}
+        style={{ ["--tab-index" as string]: String(lastTabIndex.current) }}
+      >
+        <span className="tabbar-pill" aria-hidden="true" />
+        {TABBAR_ITEMS.map((it) => (
           <Link
             key={it.href}
             href={it.href}
