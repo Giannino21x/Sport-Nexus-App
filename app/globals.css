@@ -209,8 +209,11 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   min-height: 100vh;
   transition: grid-template-columns 180ms ease;
 }
-.app[data-mobile="true"] { grid-template-columns: 1fr; }
 .app[data-sidebar="collapsed"] { grid-template-columns: 68px 1fr; }
+/* Nach der Collapsed-Regel: der auf dem Desktop gemerkte Collapsed-Zustand
+   darf auf dem Handy keine 68px-Spalte reservieren — dort ist die
+   Desktop-Sidebar display:none und .main sass sonst in der 68px-Spur. */
+.app[data-mobile="true"] { grid-template-columns: 1fr; }
 
 .sidebar {
   background: var(--bg-sunken);
@@ -250,7 +253,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   }
   .sidebar-drawer .me { background: transparent; }
 }
-.app[data-sidebar="collapsed"] .sidebar { overflow: hidden; }
+.app[data-sidebar="collapsed"] .sidebar:not(.sidebar-drawer) { overflow: hidden; }
 .sidebar .brand {
   display: flex;
   align-items: center;
@@ -288,39 +291,46 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   height: 22px;
 }
 .sidebar .brand .brand-logo-n { display: none; }
-.app[data-sidebar="collapsed"] .sidebar .brand { justify-content: center; }
-.app[data-sidebar="collapsed"] .sidebar .brand .brand-logo-full { display: none !important; }
-.app[data-sidebar="collapsed"] .sidebar .brand .brand-logo-n { display: block; }
+.app[data-sidebar="collapsed"] .sidebar:not(.sidebar-drawer) .brand { justify-content: center; }
+.app[data-sidebar="collapsed"] .sidebar:not(.sidebar-drawer) .brand .brand-logo-full { display: none !important; }
+.app[data-sidebar="collapsed"] .sidebar:not(.sidebar-drawer) .brand .brand-logo-n { display: block; }
 
-/* ---- Collapsed sidebar ---- */
-.app[data-sidebar="collapsed"] .sidebar { padding: 18px 10px 0; }
-.app[data-sidebar="collapsed"] .sidebar .brand { padding: 4px 0 2px; }
+/* ---- Collapsed sidebar ----
+   ALLE Regeln hier sind auf `.sidebar:not(.sidebar-drawer)` gescopet. Der
+   Mobile-Drawer rendert innerhalb desselben `.app`-Div und trug sonst den
+   auf dem Desktop gemerkten Collapsed-Zustand mit: Nav-Zeilen zentriert ohne
+   Icon-Abstand, Section-Labels unsichtbar (Hoehe blieb → raetselhafte
+   Luecken) und das `padding: 18px 10px 0` schlug per Spezifitaet das
+   Safe-Area-Padding des Drawers, sodass das Logo unter Status-Bar und
+   Dynamic Island rutschte. */
+.app[data-sidebar="collapsed"] .sidebar:not(.sidebar-drawer) { padding: 18px 10px 0; }
+.app[data-sidebar="collapsed"] .sidebar:not(.sidebar-drawer) .brand { padding: 4px 0 2px; }
 
 /* Hide label text but keep each element's vertical footprint so icons don't jump */
-.app[data-sidebar="collapsed"] .sidebar-label-area,
-.app[data-sidebar="collapsed"] .nav-section-label {
+.app[data-sidebar="collapsed"] .sidebar:not(.sidebar-drawer) .sidebar-label-area,
+.app[data-sidebar="collapsed"] .sidebar:not(.sidebar-drawer) .nav-section-label {
   visibility: hidden;
   white-space: nowrap;
   overflow: hidden;
 }
 
 /* These sit inline inside nav rows — removing them doesn't shift vertical rhythm */
-.app[data-sidebar="collapsed"] .nav-label,
-.app[data-sidebar="collapsed"] .nav-beta,
-.app[data-sidebar="collapsed"] .nav-item .count-badge,
-.app[data-sidebar="collapsed"] .me-text { display: none; }
+.app[data-sidebar="collapsed"] .sidebar:not(.sidebar-drawer) .nav-label,
+.app[data-sidebar="collapsed"] .sidebar:not(.sidebar-drawer) .nav-beta,
+.app[data-sidebar="collapsed"] .sidebar:not(.sidebar-drawer) .nav-item .count-badge,
+.app[data-sidebar="collapsed"] .sidebar:not(.sidebar-drawer) .me-text { display: none; }
 
-.app[data-sidebar="collapsed"] .nav-item {
+.app[data-sidebar="collapsed"] .sidebar:not(.sidebar-drawer) .nav-item {
   justify-content: center;
   padding: 7px 0;
   gap: 0;
 }
-.app[data-sidebar="collapsed"] .nav-item.active::before { left: -10px; }
-.app[data-sidebar="collapsed"] .sidebar-footer {
+.app[data-sidebar="collapsed"] .sidebar:not(.sidebar-drawer) .nav-item.active::before { left: -10px; }
+.app[data-sidebar="collapsed"] .sidebar:not(.sidebar-drawer) .sidebar-footer {
   margin-left: -10px;
   margin-right: -10px;
 }
-.app[data-sidebar="collapsed"] .sidebar .me {
+.app[data-sidebar="collapsed"] .sidebar:not(.sidebar-drawer) .me {
   justify-content: center;
   margin-left: -10px;
   margin-right: -10px;
