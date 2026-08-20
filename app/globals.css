@@ -924,6 +924,7 @@ input, select, textarea { font-family: inherit; font-size: inherit; color: inher
   overflow-y: auto;
   min-height: 0;
 }
+.thread-head { padding: 12px 16px; }
 .messages-thread {
   display: flex;
   flex-direction: column;
@@ -1219,7 +1220,11 @@ html[data-native-chrome="1"] .tabbar {
      uebernimmt der Thread-Kopf als Padding, und die Home-Indicator-Zone
      gehoert jetzt dem Composer (siehe oben) statt abgezogen zu werden. */
   .messages-wrap.thread-open {
-    height: calc(100dvh - env(safe-area-inset-top) - var(--kb-inset, 0px));
+    /* Ohne Topbar beginnt der Thread bei y=0 und reicht bis zur unteren
+       Bildschirmkante: volle Hoehe. Status-Bar- und Home-Indicator-Zone
+       liegen INNERHALB und werden als Padding von Kopf bzw. Composer
+       getragen — wer sie hier abzieht, bekommt einen toten Streifen. */
+    height: calc(100dvh - var(--kb-inset, 0px));
   }
   .messages-wrap.thread-open .thread-head { padding-top: calc(12px + var(--safe-top)); }
   /* Offene Tastatur (data-kb via visualViewport in der AppShell): Tab-Bar

@@ -504,7 +504,7 @@ function MessagesInner() {
             <div className="messages-thread" style={{ position: "relative" }}>
               {activeMember ? (
                 <>
-                  <div className="thread-head" style={{ padding: "12px 16px", borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+                  <div className="thread-head" style={{ borderBottom: "1px solid var(--line)", display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
                     {isMobile && (
                       <button
                         className="icon-btn"
