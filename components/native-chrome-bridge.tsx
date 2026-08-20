@@ -51,7 +51,10 @@ export interface NativeGlassConfig {
   /** Abstand des Lozenge zum Tab-Rand (pt). */
   lozengeInsetX: number;
   lozengeInsetY: number;
-  /** Feder des Tab-Wechsels. Dämpfung < 1 schwingt nach; 1 = ohne Überschwingen. */
+  /** Feder des Tab-Wechsels. Dämpfung < 1 schwingt nach; 1 = ohne Überschwingen.
+   *  switchDuration <= 0.02 heisst "gar nicht wandern": die Pille blendet am
+   *  alten Tab aus und am neuen wieder ein, statt über die Leiste zu gleiten
+   *  (so schaltet die System-Leiste, und damit WhatsApp). */
   switchDuration: number;
   switchDamping: number;
   /** SF-Symbol-Grösse (pt) und ob der aktive Tab die gefüllte Variante nimmt. */
@@ -66,8 +69,8 @@ const NATIVE_GLASS: NativeGlassConfig = {
   tintAlpha: 0.1,
   lozengeInsetX: 3,
   lozengeInsetY: 5,
-  switchDuration: 0.44,
-  switchDamping: 0.76,
+  switchDuration: 0.001,
+  switchDamping: 1,
   iconSize: 16,
   iconFilledWhenActive: true,
 };
