@@ -60,20 +60,50 @@ export interface NativeGlassConfig {
   /** SF-Symbol-Grösse (pt) und ob der aktive Tab die gefüllte Variante nimmt. */
   iconSize: number;
   iconFilledWhenActive: boolean;
+  /** Schriftgrösse der Tab-Beschriftung (pt). */
+  labelSize: number;
+  /** Geometrie der Kapsel. barMaxWidth ist ein Deckel für breite Screens,
+   *  im Hochformat gewinnen die Seitenränder. */
+  barMaxWidth: number;
+  barSideMargin: number;
+  barHeight: number;
+  /** Farbe des Auswahl-Lozenge bzw. von Icon + Label des aktiven Tabs.
+   *  null = Akzentfarbe der Web-App. Die System-Leiste (und WhatsApp) hält
+   *  beides neutral, die Marke steckt im Inhalt, nicht in der Leiste. */
+  tintHex: string | null;
+  activeHex: string | null;
 }
 
 const NATIVE_GLASS: NativeGlassConfig = {
   clearStyle: false,
   interactive: true,
   spacing: 24,
-  tintAlpha: 0.1,
+  tintAlpha: 0.22,
   lozengeInsetX: 3,
   lozengeInsetY: 5,
   switchDuration: 0.001,
   switchDamping: 1,
-  iconSize: 16,
+  iconSize: 22,
   iconFilledWhenActive: true,
+  labelSize: 10.5,
+  barMaxWidth: 420,
+  barSideMargin: 14,
+  barHeight: 62,
+  tintHex: "#FFFFFF",
+  activeHex: "#FFFFFF",
 };
+
+/* Was sich mit dem Theme dreht: eine helle Kapsel auf hellem Grund wäre
+   unsichtbar, darum kippt im Light-Theme sowohl die Farbe als auch die
+   Deckkraft. Alles andere ist themeunabhängig und steht oben. */
+const GLASS_BY_THEME: Record<"dark" | "light", Partial<NativeGlassConfig>> = {
+  dark: { tintHex: "#FFFFFF", activeHex: "#FFFFFF", tintAlpha: 0.22 },
+  light: { tintHex: "#111111", activeHex: "#111111", tintAlpha: 0.1 },
+};
+
+function glassFor(theme: string): NativeGlassConfig {
+  return { ...NATIVE_GLASS, ...GLASS_BY_THEME[theme === "dark" ? "dark" : "light"] };
+}
 
 interface NativeChromeMessage {
   hidden?: boolean;
@@ -122,7 +152,7 @@ export function NativeChromeBridge() {
   const router = useRouter();
   const { theme, accent } = useSettings();
   const lastSent = useRef<{ hidden?: boolean; active?: string; theme?: string; accent?: string }>({});
-  const glassSent = useRef(false);
+  const glassSent = useRef("");
 
   // Nativ -> Web: Navigations-Hook bereitstellen
   useEffect(() => {
@@ -159,12 +189,14 @@ export function NativeChromeBridge() {
       ) {
         lastSent.current = next;
         try {
-          // Die Glas-Konfiguration hängt an der ersten Meldung mit: sie ist pro
-          // Seitenladung konstant, und die erste Meldung geht immer raus (prev
-          // ist leer). Die Hülle vergleicht selbst und wendet nur an, was sich
-          // wirklich geändert hat.
-          handler.postMessage(glassSent.current ? next : { ...next, glass: NATIVE_GLASS });
-          glassSent.current = true;
+          // Die Glas-Konfiguration hängt mit, solange sie sich unterscheidet:
+          // beim ersten Mal immer, danach nur noch nach einem Theme-Wechsel
+          // (die Kapselfarben drehen sich mit). Die Hülle vergleicht selbst
+          // und wendet nur an, was sich wirklich geändert hat.
+          const glass = glassFor(theme);
+          const glassKey = JSON.stringify(glass);
+          handler.postMessage(glassKey === glassSent.current ? next : { ...next, glass });
+          glassSent.current = glassKey;
         } catch {
           /* best-effort */
         }
@@ -194,7 +226,7 @@ export function NativeChromeBridge() {
       try {
         getHandler()?.postMessage({ hidden: true });
         lastSent.current = {};
-        glassSent.current = false;
+        glassSent.current = "";
       } catch {}
     };
   }, []);
