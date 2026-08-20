@@ -22,8 +22,64 @@ import { useSettings } from "./settings-context";
  * ihre CSS-Tab-Bar (die native bleibt bis zur ersten Meldung unsichtbar).
  */
 
+/*
+ * ---- Stellschrauben der nativen Glas-Kapsel ----
+ *
+ * DAS HIER IST DIE DATEI ZUM DREHEN. Nativer Code steckt im Binary und
+ * bräuchte für jede Korrektur einen App-Store-Durchlauf — diese Werte gehen
+ * dagegen über die Brücke an die Hülle und wirken nach einem Vercel-Deploy
+ * sofort auf jedem installierten Gerät.
+ *
+ * Nur Werte ändern, keine Schlüssel erfinden: die Hülle übernimmt
+ * ausschliesslich Felder, die sie kennt, alles andere bleibt auf ihrem
+ * eingebauten Default. Strukturell Neues (weitere Glasformen, anderer
+ * Effekt-Typ) braucht weiterhin einen Build.
+ *
+ * Wirksam ab Binary 1.5 — ältere Hüllen ignorieren das Feld.
+ */
+export interface NativeGlassConfig {
+  /** true = UIGlassEffect(.clear): viel durchsichtiger, aber über Eventbildern schlechter lesbar. */
+  clearStyle: boolean;
+  /** Glas reagiert auf Berührung (Apples "interactive glass"). */
+  interactive: boolean;
+  /** Ab welchem Abstand (pt) Leiste und Lozenge ineinanderfliessen. Grösser = stärkeres Verschmelzen. */
+  spacing: number;
+  /** Deckkraft des Akzents im Auswahl-Lozenge. Zu niedrig = Auswahl verschwindet, zu hoch = liegt auf statt drin. */
+  tintAlpha: number;
+  /** Abstand des Lozenge zum Tab-Rand (pt). */
+  lozengeInsetX: number;
+  lozengeInsetY: number;
+  /** Feder des Tab-Wechsels. Dämpfung < 1 schwingt nach; 1 = ohne Überschwingen. */
+  switchDuration: number;
+  switchDamping: number;
+  /** SF-Symbol-Grösse (pt) und ob der aktive Tab die gefüllte Variante nimmt. */
+  iconSize: number;
+  iconFilledWhenActive: boolean;
+}
+
+const NATIVE_GLASS: NativeGlassConfig = {
+  clearStyle: false,
+  interactive: true,
+  spacing: 24,
+  tintAlpha: 0.5,
+  lozengeInsetX: 3,
+  lozengeInsetY: 5,
+  switchDuration: 0.44,
+  switchDamping: 0.76,
+  iconSize: 16,
+  iconFilledWhenActive: true,
+};
+
+interface NativeChromeMessage {
+  hidden?: boolean;
+  active?: string;
+  theme?: string;
+  accent?: string;
+  glass?: NativeGlassConfig;
+}
+
 interface NativeChromeHandler {
-  postMessage: (msg: { hidden?: boolean; active?: string; theme?: string; accent?: string }) => void;
+  postMessage: (msg: NativeChromeMessage) => void;
 }
 
 function getHandler(): NativeChromeHandler | null {
@@ -61,6 +117,7 @@ export function NativeChromeBridge() {
   const router = useRouter();
   const { theme, accent } = useSettings();
   const lastSent = useRef<{ hidden?: boolean; active?: string; theme?: string; accent?: string }>({});
+  const glassSent = useRef(false);
 
   // Nativ -> Web: Navigations-Hook bereitstellen
   useEffect(() => {
@@ -97,7 +154,12 @@ export function NativeChromeBridge() {
       ) {
         lastSent.current = next;
         try {
-          handler.postMessage(next);
+          // Die Glas-Konfiguration hängt an der ersten Meldung mit: sie ist pro
+          // Seitenladung konstant, und die erste Meldung geht immer raus (prev
+          // ist leer). Die Hülle vergleicht selbst und wendet nur an, was sich
+          // wirklich geändert hat.
+          handler.postMessage(glassSent.current ? next : { ...next, glass: NATIVE_GLASS });
+          glassSent.current = true;
         } catch {
           /* best-effort */
         }
@@ -127,6 +189,7 @@ export function NativeChromeBridge() {
       try {
         getHandler()?.postMessage({ hidden: true });
         lastSent.current = {};
+        glassSent.current = false;
       } catch {}
     };
   }, []);
