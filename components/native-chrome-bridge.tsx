@@ -42,7 +42,8 @@ export interface NativeGlassConfig {
   clearStyle: boolean;
   /** Glas reagiert auf Berührung (Apples "interactive glass"). */
   interactive: boolean;
-  /** Ab welchem Abstand (pt) Leiste und Lozenge ineinanderfliessen. Grösser = stärkeres Verschmelzen. */
+  /** Ab welchem Abstand (pt) Leiste und Lozenge ineinanderfliessen. Grösser = stärkeres
+   *  Verschmelzen. Apples eigene Beispiele stehen auf 40. */
   spacing: number;
   /** Deckkraft des Akzents im Auswahl-Lozenge. 0 = neutrales Glas (WhatsApp-Muster:
    *  die Pille ist farblos, nur Icon + Label tragen den Akzent). Hohe Werte legen
@@ -51,10 +52,15 @@ export interface NativeGlassConfig {
   /** Abstand des Lozenge zum Tab-Rand (pt). */
   lozengeInsetX: number;
   lozengeInsetY: number;
-  /** Feder des Tab-Wechsels. Dämpfung < 1 schwingt nach; 1 = ohne Überschwingen.
-   *  switchDuration <= 0.02 heisst "gar nicht wandern": die Pille blendet am
-   *  alten Tab aus und am neuen wieder ein, statt über die Leiste zu gleiten
-   *  (so schaltet die System-Leiste, und damit WhatsApp). */
+  /** Wie die Auswahl den Tab wechselt.
+   *  "flow"  = Liquid-Morph: der Tropfen zieht sich zum Ziel lang, wird dabei
+   *            flacher und federt am Ziel auf Endgrösse. Das ist das "Blopp"
+   *            der System-Leiste — es entsteht NUR, während sich die Glasform
+   *            bewegt, weil der Container erst dann verschmilzt.
+   *  "fade"  = am alten Tab aus-, am neuen einblenden (kein Weg, kein Morph)
+   *  "slide" = harte Feder ohne Verformung */
+  switchStyle: "flow" | "fade" | "slide";
+  /** Dauer des Wechsels und, nur bei "slide", die Dämpfung der Feder. */
   switchDuration: number;
   switchDamping: number;
   /** SF-Symbol-Grösse (pt) und ob der aktive Tab die gefüllte Variante nimmt. */
@@ -77,12 +83,13 @@ export interface NativeGlassConfig {
 const NATIVE_GLASS: NativeGlassConfig = {
   clearStyle: false,
   interactive: true,
-  spacing: 24,
+  spacing: 40,
   tintAlpha: 0.22,
   lozengeInsetX: 3,
   lozengeInsetY: 5,
-  switchDuration: 0.001,
-  switchDamping: 1,
+  switchStyle: "flow",
+  switchDuration: 0.42,
+  switchDamping: 0.72,
   iconSize: 22,
   iconFilledWhenActive: true,
   labelSize: 10.5,
