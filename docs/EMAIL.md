@@ -18,7 +18,7 @@ SMTP_PORT=587
 SMTP_USER=no-reply@sport-nexus.ch            # Hostpoint-Mailbox (nur Auth!)
 SMTP_PASS=<Mailbox-Passwort von no-reply@sport-nexus.ch>
 SMTP_FROM=SportNexus <no-reply@sportnexus.ch>
-APP_URL=https://sport-nexus-app.vercel.app   # für Reply-/Profil-Links in der Mail
+APP_URL=https://app.sportnexus.ch   # für Reply-/Profil-Links in der Mail
 ```
 
 **WICHTIG — zwei verschiedene Domains:** Die Hostpoint-Mailbox heisst

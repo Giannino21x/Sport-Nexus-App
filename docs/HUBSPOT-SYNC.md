@@ -30,7 +30,7 @@ Next.js API-Route  /api/hubspot/member-webhook
 
 **Workflow:**
 1. Sales/Boris setzt die Property auf TRUE, sobald ein neuer Mitglieder-Kontakt genehmigt ist.
-2. HubSpot-Workflow „Member onboarding" feuert einen Webhook an `https://sport-nexus-app.vercel.app/api/hubspot/member-webhook`. (Achtung: die Domain sport-nexus.ch existiert nicht — siehe docs/EMAIL.md.)
+2. HubSpot-Workflow „Member onboarding" feuert einen Webhook an `https://app.sportnexus.ch/api/hubspot/member-webhook`. (Achtung: die Domain sport-nexus.ch existiert nicht — siehe docs/EMAIL.md.)
 3. Webhook-Payload enthält Contact-Properties (siehe Field-Mapping unten) + Signatur-Header.
 
 ### Field-Mapping HubSpot → SportNexus

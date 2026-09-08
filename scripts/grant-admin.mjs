@@ -154,7 +154,7 @@ if (memberRow) {
 console.log("\n=========================================================");
 console.log("DONE — share the credentials below with Pascal (private):");
 console.log("---------------------------------------------------------");
-console.log(`Login URL : ${env.APP_URL ?? "https://sport-nexus-app.vercel.app"}/login`);
+console.log(`Login URL : ${env.APP_URL ?? "https://app.sportnexus.ch"}/login`);
 console.log(`Email     : ${CANONICAL_EMAIL}`);
 console.log(`Password  : ${tempPassword}`);
 console.log("---------------------------------------------------------");

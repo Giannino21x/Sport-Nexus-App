@@ -13,7 +13,7 @@
 // Schicht (lib/hooks.ts) misst das hier also NICHT, Bilder und Rendering schon.
 import { chromium, devices } from "playwright";
 
-const BASE = process.env.BASE || "https://sport-nexus-app.vercel.app";
+const BASE = process.env.BASE || "https://app.sportnexus.ch";
 const CPU = Number(process.env.CPU || 4);
 const EXPECT = { dashboard: "Gute", directory: "Mitglied", events: "Event", messages: "Nachrichten", profile: "Profil" };
 const ORDER = ["directory", "events", "messages", "profile", "dashboard"];

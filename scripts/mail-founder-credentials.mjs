@@ -14,7 +14,7 @@ const env = Object.fromEntries(
     .map(([, k, v]) => [k, v.replace(/^"(.*)"$/, "$1")]),
 );
 
-const APP_URL = env.APP_URL ?? "https://sport-nexus-app.vercel.app";
+const APP_URL = env.APP_URL ?? "https://app.sportnexus.ch";
 const LOGIN_URL = `${APP_URL}/login`;
 const SELF = "info@space-media.ch";
 

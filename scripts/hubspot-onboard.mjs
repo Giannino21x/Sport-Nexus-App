@@ -40,7 +40,7 @@ const env = Object.fromEntries(
 const HUBSPOT_TOKEN = env.HUBSPOT_TOKEN;
 const SUPABASE_URL = env.NEXT_PUBLIC_SUPABASE_URL;
 const SERVICE_ROLE = env.SUPABASE_SERVICE_ROLE_KEY;
-const APP_URL = env.APP_URL ?? "https://sport-nexus-app.vercel.app";
+const APP_URL = env.APP_URL ?? "https://app.sportnexus.ch";
 
 // ---------- CLI-Args ----------
 const args = argv.slice(2);

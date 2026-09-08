@@ -20,7 +20,7 @@ const SMTP_HOST = clean(process.env.SMTP_HOST) ?? "asmtp.mail.hostpoint.ch";
 const SMTP_PORT = Number(clean(process.env.SMTP_PORT) ?? "587");
 const SMTP_USER = clean(process.env.SMTP_USER) ?? "no-reply@sport-nexus.ch";
 const SMTP_FROM = clean(process.env.SMTP_FROM) ?? "SportNexus <no-reply@sportnexus.ch>";
-const APP_URL = clean(process.env.APP_URL) ?? "https://sport-nexus-app.vercel.app";
+const APP_URL = clean(process.env.APP_URL) ?? "https://app.sportnexus.ch";
 
 let transporter: Transporter | null = null;
 function getTransporter(): Transporter | null {
