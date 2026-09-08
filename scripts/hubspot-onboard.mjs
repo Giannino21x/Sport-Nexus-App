@@ -114,7 +114,7 @@ const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=ch.sportne
 // Text; neuer Einstieg; drei Schritte; App-Store-Links (beide Stores live).
 function welcomeEmail({ first, actionUrl }) {
   const greeting = first ? `Hallo ${first},` : "Hallo,";
-  const subject = "Willkommen in der SportNexus-Memberapp: dein Zugang";
+  const subject = "Willkommen bei SportNexus: dein Zugang";
   const intro =
     "willkommen in der neuen Memberapp. Dein Netzwerk hast du damit ab sofort immer griffbereit: " +
     "Eventdetails, Memberübersicht, Direktnachrichten und die Möglichkeit, einen Tischwunsch zu platzieren, " +
