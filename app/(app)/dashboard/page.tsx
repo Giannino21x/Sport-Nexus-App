@@ -7,7 +7,7 @@ import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
 import { useEvents, useMe, useMembers } from "@/lib/hooks";
 import { useMyRegistrations } from "@/lib/registrations";
-import { getEventAttendeeCountsAction } from "@/app/actions/guestoo";
+import { useGuestooCounts } from "@/lib/guestoo-counts";
 import { Skel, SkelCircle } from "@/components/skeleton";
 
 export default function DashboardPage() {
@@ -27,7 +27,10 @@ export default function DashboardPage() {
   // Hooks müssen unbedingt VOR dem early-return stehen — Rules of Hooks. Wir
   // berechnen `upcoming` daher hier oben (auch wenn `me` evtl. noch fehlt),
   // damit `useMemo`/`useState`/`useEffect` stabil sind.
-  const upcoming = events.filter((e) => e.status === "upcoming").sort((a, b) => a.date.localeCompare(b.date));
+  const upcoming = useMemo(
+    () => events.filter((e) => e.status === "upcoming").sort((a, b) => a.date.localeCompare(b.date)),
+    [events],
+  );
 
   // Echtzeit-Anmeldungen aus Guestoo für die Top-3 — Pascals F1-Wunsch, dass
   // Gästeanzahl pro Event im Memberbereich angezeigt wird. Best-effort: wenn
@@ -37,18 +40,7 @@ export default function DashboardPage() {
     () => upcoming.slice(0, 3).map((e) => e.guestooId).filter((id): id is string => Boolean(id)),
     [upcoming],
   );
-  const [guestooCounts, setGuestooCounts] = useState<Record<string, number | null>>({});
-  const guestooKey = top3GuestooIds.join(",");
-  useEffect(() => {
-    if (top3GuestooIds.length === 0) return;
-    let cancelled = false;
-    getEventAttendeeCountsAction(top3GuestooIds).then((r) => {
-      if (cancelled) return;
-      setGuestooCounts(r.counts);
-    });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- Stabilisiert via guestooKey, sonst Endlosschleife durch neue Array-Identität
-  }, [guestooKey]);
+  const guestooCounts = useGuestooCounts(top3GuestooIds);
 
   if (!me) return null;
 

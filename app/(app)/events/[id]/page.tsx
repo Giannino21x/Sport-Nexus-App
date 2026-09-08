@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Avatar } from "@/components/avatar";
+import { Pic } from "@/components/pic";
 import { Icon, type IconName } from "@/components/icon";
 import { reload, useEvent, useMe, useMembers } from "@/lib/hooks";
 import { useMyRegistrations } from "@/lib/registrations";
@@ -217,19 +218,22 @@ export default function EventDetailPage() {
         <div className="event-hero-media">
           {ev.img && (
             <>
-              {/* Gleiche (scharfe) Quelle wie das Hauptbild — ein Download, aus dem Cache. */}
-              <img aria-hidden="true" src={heroSrc} alt="" className="event-hero-bg" />
-              <img
+              {/* Blur-Füllung aus einer winzigen Variante (billig), das Hero
+                  selbst in Viewport-Breite über den Optimierer. */}
+              <Pic ariaHidden src={heroSrc} alt="" sizes="64px" quality={30} className="event-hero-bg" />
+              <Pic
                 src={heroSrc}
                 alt={ev.subtitle || ev.title}
+                sizes="(max-width: 779px) 100vw, 900px"
+                priority
                 className="event-hero-img img-fade"
-                ref={(el) => { if (el?.complete) el.classList.add("loaded"); }}
+                imgRef={(el) => { if (el?.complete) el.classList.add("loaded"); }}
                 onLoad={(e) => {
                   const img = e.currentTarget;
                   if (img.naturalHeight > 0 && img.naturalWidth / img.naturalHeight >= 1.45) setHeroCover(true);
                   img.classList.add("loaded");
                 }}
-                style={{ objectFit: heroCover ? "cover" : undefined, filter: past ? "grayscale(0.15) brightness(0.92)" : "none" }}
+                style={{ objectFit: heroCover ? "cover" : "contain", filter: past ? "grayscale(0.15) brightness(0.92)" : "none" }}
               />
             </>
           )}

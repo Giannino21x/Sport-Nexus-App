@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Avatar } from "@/components/avatar";
+import { Pic } from "@/components/pic";
 import { confirmDialog } from "@/components/confirm-dialog";
 import { Icon } from "@/components/icon";
 import { ImagePreview } from "@/components/image-preview";
@@ -792,23 +793,20 @@ function FeedPostImage({ src }: { src: string }) {
         alt="Post"
         thumbnail={
           <div style={{ aspectRatio: "16/9", position: "relative", overflow: "hidden", background: "var(--ink)" }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              aria-hidden="true"
+            <Pic
+              ariaHidden
               src={src}
               alt=""
-              loading="lazy"
-              decoding="async"
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "blur(20px) brightness(0.5)", transform: "scale(1.2)" }}
+              sizes="64px"
+              quality={30}
+              style={{ objectFit: "cover", filter: "blur(20px) brightness(0.5)", transform: "scale(1.2)" }}
             />
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <Pic
               src={src}
               alt="Post"
-              loading="lazy"
-              decoding="async"
+              sizes="(max-width: 779px) 100vw, 640px"
               onLoad={onImgLoad}
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: coverFit ? "cover" : "contain", objectPosition: "center" }}
+              style={{ objectFit: coverFit ? "cover" : "contain", objectPosition: "center" }}
             />
           </div>
         }

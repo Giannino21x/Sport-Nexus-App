@@ -19,6 +19,24 @@ const KEY = "sn_event_registrations";
 
 const listeners = new Set<() => void>();
 
+// Server-Abgleich höchstens alle 60 s: Dashboard UND Events mounten diesen
+// Hook, jeder Tab-Wechsel löste vorher eine Server-Action (Auth-Roundtrip +
+// Query) aus. Alle Instanzen teilen sich eine laufende Anfrage.
+const SYNC_TTL = 60_000;
+let lastSync = 0;
+let syncing: Promise<{ ids: string[]; auth: boolean }> | null = null;
+function syncFromServer(force = false) {
+  if (syncing) return syncing;
+  if (!force && Date.now() - lastSync < SYNC_TTL) return null;
+  syncing = getMyEventRegistrationsAction()
+    .then((r) => {
+      lastSync = Date.now();
+      return r;
+    })
+    .finally(() => { syncing = null; });
+  return syncing;
+}
+
 function readRaw(): string[] {
   if (typeof window === "undefined") return [];
   try {
@@ -53,8 +71,8 @@ export function useMyRegistrations() {
     window.addEventListener("storage", sync);
 
     // 2. Server ist Source of Truth, sobald eingeloggt — überschreibt den Cache.
-    getMyEventRegistrationsAction()
-      .then((r) => {
+    syncFromServer()
+      ?.then((r) => {
         if (cancelled || !r.auth) return; // Demo/nicht eingeloggt → lokal bleiben
         setAuthed(true);
         writeRaw(r.ids); // Cache + andere Hook-Instanzen syncen
@@ -76,6 +94,7 @@ export function useMyRegistrations() {
     const curr = readRaw();
     const next = value ? [...curr, eventId] : curr.filter((x) => x !== eventId);
     writeRaw(next);
+    lastSync = 0;
     // Serverseitig persistieren (no-op im Demo-Modus, dort zählt nur lokal).
     // Schlägt der Server-Write fehl, lokalen Marker zurückrollen — sonst zeigt
     // dieses Gerät dauerhaft "angemeldet", während der Server nichts weiss.

@@ -11,7 +11,7 @@ import { NativeChromeBridge } from "./native-chrome-bridge";
 import { NotificationsPopover } from "./notifications-popover";
 import { PhotoGate } from "./photo-gate";
 import { useSettings } from "./settings-context";
-import { clearLiveCache, reload, useEvents, useLiveRefresh, useMe, useMembers, useNotifications } from "@/lib/hooks";
+import { clearLiveCache, reload, useConversations, useEvents, useLiveRefresh, useMe, useMembers, useNotifications } from "@/lib/hooks";
 import { signOutAction } from "@/app/actions/auth";
 import { removePushTokenAction, savePushTokenAction } from "@/app/actions/push";
 import { isMobileChrome } from "@/lib/breakpoint";
@@ -37,6 +37,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { data: me, dbId: meDbId, resolved: meResolved } = useMe();
   const { data: events } = useEvents();
   const { data: notifs } = useNotifications(meDbId);
+  // Chat-Liste schon hier vorwärmen: der Chat-Tab rendert dann aus dem Store,
+  // statt beim Antippen erst zwei Roundtrips abzuwarten.
+  useConversations(meDbId);
   // Badge + Chats aktuell halten: Revalidate bei App-Resume und alle 60 s.
   useLiveRefresh(dataSource === "live");
 
@@ -654,11 +657,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        {/* key={pathname}: remountet den Wrapper pro Routenwechsel, damit die
-            page-enter-Animation bei jeder Navigation sauber neu läuft. */}
-        <div className="content">
-          <div key={pathname} className="page-enter">{children}</div>
-        </div>
+        {/* Kein Einblend-Wrapper mehr: die frühere page-enter-Animation
+            (transform + opacity auf dem gesamten Seiteninhalt, per key
+            remountet) legte bei jedem Tab-Wechsel eine neue Compositing-
+            Ebene über die ganze Seite und lief genau parallel zum Render der
+            neuen Seite. Native Tab-Bars wechseln den Inhalt ohne Übergang —
+            das fühlt sich schneller an, weil es schneller ist. */}
+        <div className="content">{children}</div>
       </div>
 
       <div

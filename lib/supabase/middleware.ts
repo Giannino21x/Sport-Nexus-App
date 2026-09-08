@@ -30,7 +30,12 @@ export async function updateSession(request: NextRequest) {
     },
   );
 
-  const { data: { user } } = await supabase.auth.getUser();
+  // getClaims statt getUser: prüft das Session-JWT lokal gegen die
+  // (gecachten) Signing-Keys des Projekts, statt bei JEDEM Request — auch
+  // jedem RSC-Prefetch eines Tab-Wechsels — einen Roundtrip zum Supabase-
+  // Auth-Server zu machen. Abgelaufene Tokens werden weiterhin erneuert.
+  const { data: claims } = await supabase.auth.getClaims();
+  const user = claims?.claims?.sub ? { id: claims.claims.sub } : null;
   const { pathname } = request.nextUrl;
   const mode = request.cookies.get("sn-mode")?.value; // "demo" | "live" | undefined
   const isDemo = mode === "demo";

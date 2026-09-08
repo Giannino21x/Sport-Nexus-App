@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { Avatar } from "@/components/avatar";
+import { Pic } from "@/components/pic";
 import { Icon } from "@/components/icon";
 import { ImagePreview } from "@/components/image-preview";
 import { useSettings } from "@/components/settings-context";
@@ -941,14 +942,14 @@ function Msg({
                 alt="Anhang"
                 rounded={false}
                 thumbnail={
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
+                  <Pic
                     src={resolvedAttachmentUrl}
                     alt="Anhang"
+                    sizes="320px"
                     className="img-fade"
-                    ref={(el) => { if (el?.complete) el.classList.add("loaded"); }}
+                    imgRef={(el) => { if (el?.complete) el.classList.add("loaded"); }}
                     onLoad={(e) => e.currentTarget.classList.add("loaded")}
-                    style={{ display: "block", width: "100%", height: "100%", objectFit: "cover", position: "absolute", inset: 0 }}
+                    style={{ objectFit: "cover" }}
                   />
                 }
               />

@@ -1,16 +1,15 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { confirmDialog } from "@/components/confirm-dialog";
 import { Icon } from "@/components/icon";
 import { type SnEvent } from "@/lib/data";
 import { reload, useEvents, useMe } from "@/lib/hooks";
 import { useMyRegistrations } from "@/lib/registrations";
 import { createEventAction, deleteEventAction, type EventInput } from "@/app/actions/events";
-import { getEventAttendeeCountsAction } from "@/app/actions/guestoo";
+import { useGuestooCounts } from "@/lib/guestoo-counts";
+import { Pic } from "@/components/pic";
 import { Skel, SkelLines } from "@/components/skeleton";
 
 export default function EventsPage() {
@@ -18,7 +17,7 @@ export default function EventsPage() {
   const { data: me } = useMe();
   const { isRegistered } = useMyRegistrations();
   const isAdmin = Boolean(me?.isAdmin);
-  const upcoming = events.filter((e) => e.status === "upcoming");
+  const upcoming = useMemo(() => events.filter((e) => e.status === "upcoming"), [events]);
   // Past-Events: jüngstes zuoberst, ältestes zuunterst (Pascal-Feedback).
   // Die Quelle ist nach Datum aufsteigend sortiert, hier kehren wir die
   // Reihenfolge für die vergangenen Events explizit um.
@@ -28,22 +27,12 @@ export default function EventsPage() {
     .sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
 
   // Verlässliche Anmeldezahlen pro kommendem Event über die öffentliche Guestoo-
-  // API (kein Login, läuft nicht ab).
+  // API (kein Login, läuft nicht ab) — gecacht, sofort da (lib/guestoo-counts).
   const upcomingGuestooIds = useMemo(
     () => upcoming.map((e) => e.guestooId).filter((id): id is string => Boolean(id)),
     [upcoming],
   );
-  const [counts, setCounts] = useState<Record<string, number | null>>({});
-  const countsKey = upcomingGuestooIds.join(",");
-  useEffect(() => {
-    if (upcomingGuestooIds.length === 0) return;
-    let cancelled = false;
-    getEventAttendeeCountsAction(upcomingGuestooIds).then((r) => {
-      if (!cancelled) setCounts(r.counts);
-    });
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- stabilisiert über countsKey
-  }, [countsKey]);
+  const counts = useGuestooCounts(upcomingGuestooIds);
 
   const [composerOpen, setComposerOpen] = useState(false);
 
@@ -269,25 +258,27 @@ function EventCard({ ev, past, isAdmin, registered, count }: { ev: SnEvent; past
         {ev.img && (
           <>
             {/* Unscharfer Füll-Hintergrund, damit nicht-16:9-Bilder den Rahmen sauber
-                füllen, ohne das Motiv zu beschneiden. */}
-            <img
-              aria-hidden="true"
+                füllen, ohne das Motiv zu beschneiden. Aus einer 64-px-Variante
+                gerechnet — der Blur eines 3-MB-Originals kostete pro Karte
+                einen sichtbaren Ruckler. */}
+            <Pic
+              ariaHidden
               src={ev.img}
               alt=""
-              loading="lazy"
-              decoding="async"
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", filter: "blur(20px) brightness(0.5)", transform: "scale(1.2)" }}
+              sizes="64px"
+              quality={30}
+              style={{ objectFit: "cover", filter: "blur(20px) brightness(0.5)", transform: "scale(1.2)" }}
             />
-            {/* Vollständiges Bild, mittig; breite Motive als cover (füllt Rahmen). */}
-            <img
+            {/* Vollständiges Bild, mittig; breite Motive als cover (füllt Rahmen).
+                Karten sind auf dem Handy viewportbreit, am Desktop ~360 px. */}
+            <Pic
               src={ev.img}
               alt=""
-              loading="lazy"
-              decoding="async"
+              sizes="(max-width: 779px) 100vw, 400px"
               className="img-fade"
-              ref={(el) => { if (el?.complete) el.classList.add("loaded"); }}
+              imgRef={(el) => { if (el?.complete) el.classList.add("loaded"); }}
               onLoad={(e) => { onImgLoad(e); e.currentTarget.classList.add("loaded"); }}
-              style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: coverFit ? "cover" : "contain", objectPosition: "center", filter: past ? "grayscale(0.3) brightness(0.92)" : "none" }}
+              style={{ objectFit: coverFit ? "cover" : "contain", objectPosition: "center", filter: past ? "grayscale(0.3) brightness(0.92)" : "none" }}
             />
           </>
         )}

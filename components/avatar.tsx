@@ -1,3 +1,5 @@
+import { Pic } from "./pic";
+
 type AvatarProps = {
   first?: string;
   last?: string;
@@ -22,18 +24,20 @@ export function Avatar({ first = "", last = "", color = "#C7916A", size = 40, sq
       }}
     >
       {hasImage ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
+        // Über den Bildoptimierer in Darstellungsgrösse: Profilbilder liegen
+        // mit bis zu 1600 px / 400 KB im Storage, gezeigt werden 30–52 px.
+        // 114 Members × Originalgrösse zu dekodieren war ein Hauptgrund für
+        // den zähen Members-Tab.
+        <Pic
           src={url as string}
           alt={`${first} ${last}`.trim()}
-          loading="lazy"
-          decoding="async"
+          sizes={`${size}px`}
           className="img-fade"
           // ref-Check fängt bereits gecachte Bilder ab, deren onLoad vor der
           // Hydration gefeuert hat — sonst blieben sie unsichtbar.
-          ref={(el) => { if (el?.complete) el.classList.add("loaded"); }}
+          imgRef={(el) => { if (el?.complete) el.classList.add("loaded"); }}
           onLoad={(e) => e.currentTarget.classList.add("loaded")}
-          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
+          style={{ objectFit: "cover" }}
         />
       ) : (
         <>
