@@ -99,7 +99,7 @@ function transporter() {
 // schreiben. Nodemailer deklariert zwar UTF-8, aber beim Weiterleiten/Anzeigen
 // in manchen Clients geht die Deklaration verloren und Umlaute werden zu
 // Fehlzeichen (Fabio, Feedback 2026-09-01). Entities sind zeichensatz-
-// unabhängig und überleben jede Umkodierung. Nur fürs HTML — der Text-Teil
+// unabhängig und überleben jede Umkodierung. Nur fürs HTML, der Text-Teil
 // bleibt UTF-8.
 function htmlEntities(html) {
   return html.replace(/[^\x00-\x7F]/g, (ch) => `&#${ch.codePointAt(0)};`);
