@@ -149,17 +149,23 @@ export default function EventDetailPage() {
   const maxSlots = stats?.maxVisitor ?? ev.guests;
   // Vollständige Anmeldeliste (alle Namen, die wir haben) — beim Aufklappen
   // sollen ALLE sichtbar sein, nicht nur eine Vorschau.
+  // Anmeldungen mit Member-Treffer (memberSlug aus dem 6h-Sync) verlinken auf
+  // das Profil und zeigen Foto/Rolle des Members; Gäste ohne Treffer bleiben
+  // reiner Text (Pascal-Feedback 2026-08-19).
   const attendeesFull = hasRealAttendees
-    ? realAttendees.map((a) => ({
-        id: `gst-${a.guestooId}`,
-        first: a.firstName,
-        last: a.lastName,
-        company: a.company ?? "",
-        role: "",
-        color: "#6B8AA8",
-        avatarUrl: undefined as string | undefined,
-        memberSlug: null as string | null,
-      }))
+    ? realAttendees.map((a) => {
+        const member = a.memberSlug ? members.find((m) => m.id === a.memberSlug) ?? null : null;
+        return {
+          id: `gst-${a.guestooId}`,
+          first: a.firstName,
+          last: a.lastName,
+          company: member?.company || a.company || "",
+          role: member?.role ?? "",
+          color: member?.color ?? "#6B8AA8",
+          avatarUrl: member?.avatarUrl as string | undefined,
+          memberSlug: (member ? member.id : null) as string | null,
+        };
+      })
     : isDemo
       ? members.slice(0, Math.min(8, Math.max(4, Math.floor(ev.guests / 10)))).map((m) => ({
           id: m.id,

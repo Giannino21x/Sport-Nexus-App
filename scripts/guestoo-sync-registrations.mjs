@@ -79,10 +79,19 @@ log(`\n=== Guestoo-Anmeldungs-Sync (${DRY ? "DRY-RUN" : "LIVE"}) ===`);
 log(`Als "angemeldet" gewertete Status: ${STATUSES.join(", ")}\n`);
 
 // 1. Members-E-Mail → id Lookup (einmal laden).
-const { data: members, error: mErr } = await supabase.from("members").select("id, email");
+const { data: members, error: mErr } = await supabase.from("members").select("id, email, slug");
 if (mErr) { console.error("✗ members:", mErr.message); process.exit(1); }
 const emailToId = new Map();
-for (const m of members ?? []) if (m.email) emailToId.set(m.email.trim().toLowerCase(), m.id);
+// E-Mail → Profil-Slug (Directory-URL), damit die Namensliste im Event auf das
+// Memberprofil verlinken kann (Pascal-Feedback 2026-08-19). Die Zuordnung
+// existiert im Sync längst — sie wurde beim Snapshot bisher nur verworfen.
+const emailToSlug = new Map();
+for (const m of members ?? []) {
+  if (!m.email) continue;
+  const key = m.email.trim().toLowerCase();
+  emailToId.set(key, m.id);
+  emailToSlug.set(key, m.slug ?? String(m.id));
+}
 log(`Members: ${emailToId.size} mit E-Mail.`);
 
 // 2. Events mit guestoo_id.
@@ -115,6 +124,8 @@ for (const ev of events ?? []) {
       lastName: v.userAccount?.lastName ?? "",
       company: v.userAccount?.company ?? null,
       registeredAt: v.confirmDate ?? v.registerDate ?? null,
+      // Member-Treffer über die E-Mail → Slug fürs Profil; Gäste bleiben null.
+      memberSlug: emailToSlug.get(v.userAccount?.email?.trim().toLowerCase() ?? "") ?? null,
     }));
 
   // E-Mails der "angemeldeten" Visitors → Member-IDs.

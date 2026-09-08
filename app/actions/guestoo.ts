@@ -16,6 +16,10 @@ export type EventAttendee = {
   lastName: string;
   company: string | null;
   registeredAt: number | null;
+  // Profil-Slug des zugeordneten Members (E-Mail-Abgleich im 6h-Sync);
+  // null/undefined = Gast ohne Member-Treffer. Ältere Snapshots haben das
+  // Feld noch nicht → optional.
+  memberSlug?: string | null;
 };
 
 function asAttendee(v: GuestooVisitor): EventAttendee {
