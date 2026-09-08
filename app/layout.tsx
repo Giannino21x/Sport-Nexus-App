@@ -30,6 +30,10 @@ export const metadata: Metadata = {
   icons: {
     apple: "/apple-touch-icon.png",
   },
+  // Smart App Banner: Safari auf dem iPhone zeigt oben einen Hinweis auf die
+  // App im App Store (Pascal, 2026-09-01: Members sollen die Handy-App finden).
+  // In der nativen Hülle selbst blendet iOS den Banner nicht ein.
+  itunes: { appId: "6780907802" },
 };
 
 // Viewport-Meta — ohne diesen rendert Mobile-Browser die Seite in
