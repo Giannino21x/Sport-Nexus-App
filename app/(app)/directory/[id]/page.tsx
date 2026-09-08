@@ -383,16 +383,22 @@ function TableWishButton({ targetMemberDbId }: { targetMemberDbId: string }) {
         {wished ? "Tischwunsch gemeldet" : "Tischwunsch melden"}
       </button>
       {/* Bestätigung unterhalb der Button-Zeile (Pascal-Feedback 2026-08-12):
-          flexBasis 100% bricht in der wrap-Row auf eine eigene Zeile um. */}
+          flexBasis 100% bricht in der wrap-Row auf eine eigene Zeile um.
+          contain: inline-size (Pascal-Feedback 2026-08-19/09-01): Ohne das
+          zählte der lange Satz zur Wunschbreite der Button-Zeile, die Zeile
+          passte nicht mehr neben den Namen und sprang unter den Avatar — die
+          drei Buttons "rutschten nach unten". Mit Size-Containment bleibt die
+          Zeile so breit wie die Buttons; der Text bricht darunter in genau
+          dieser Breite um. */}
       {wished && (
-        <div style={{ flexBasis: "100%", fontSize: 12.5, lineHeight: 1.5, color: "var(--ink-2)" }}>
+        <div style={{ flexBasis: "100%", minWidth: 0, contain: "inline-size", fontSize: 12.5, lineHeight: 1.5, color: "var(--ink-2)" }}>
           Tischwunsch gespeichert: SportNexus versucht, euch beim nächsten Event am gleichen
           Tisch zu platzieren. Das sehen nur du und die Organisatoren — die Person selbst wird
           nicht benachrichtigt.
         </div>
       )}
       {err && (
-        <div style={{ flexBasis: "100%", fontSize: 12.5, lineHeight: 1.5, color: "var(--danger)" }}>
+        <div style={{ flexBasis: "100%", minWidth: 0, contain: "inline-size", fontSize: 12.5, lineHeight: 1.5, color: "var(--danger)" }}>
           {err}
         </div>
       )}
