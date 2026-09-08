@@ -594,7 +594,9 @@ ${tpl.text}`, "utf8");
   }
   log(`\nTest-${BETA ? "Beta" : "Welcome"}-Mail an ${to}...`);
   try {
-    const res = await sendWelcome(to, "Test", link);
+    // --first=<Vorname>: Anrede in der Test-Mail (Default "Test").
+    const firstArg = args.find((a) => a.startsWith("--first="));
+    const res = await sendWelcome(to, firstArg ? firstArg.split("=")[1] : "Test", link);
     log(res.ok ? `✓ verschickt.` : `✗ übersprungen: ${res.reason}`);
     process.exit(res.ok ? 0 : 1);
   } catch (e) {
