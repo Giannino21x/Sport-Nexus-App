@@ -327,7 +327,10 @@ export default function EventDetailPage() {
                   style={{ padding: "4px 10px", fontSize: 12, color: "var(--ink-3)" }}
                   aria-expanded={attendeesOpen}
                 >
-                  {attendeesOpen ? "Ausblenden" : `Alle ${totalAttendees} anzeigen`}
+                  {/* Zahl = was die Liste wirklich hergibt; die Public-Zahl
+                      (max - frei) kann davon abweichen und versprach sonst
+                      mehr Namen, als der Snapshot hat. */}
+                  {attendeesOpen ? "Ausblenden" : `Alle ${attendeesFull.length} anzeigen`}
                 </button>
               )}
             </div>
@@ -436,7 +439,11 @@ export default function EventDetailPage() {
                 <div className="upper-label" style={{ marginBottom: 10 }}>
                   {past ? "Alle Teilnehmenden" : "Alle Anmeldungen"} · {attendeesFull.length}
                 </div>
-                <div style={{ maxHeight: 460, overflowY: "auto", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 4, marginRight: -6, paddingRight: 6 }}>
+                {/* Kein eigener Scroll-Kasten mehr (vorher 460 px hoch): auf dem
+                    Handy sah man darin nur die ersten ~9 Namen und hielt das
+                    fuer die ganze Liste. Die Liste laeuft jetzt im Seitenfluss,
+                    "Alle anzeigen" zeigt wirklich alle. */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: 4 }}>
                   {attendeesFull.map((m) => m.memberSlug ? (
                     <Link
                       key={m.id}

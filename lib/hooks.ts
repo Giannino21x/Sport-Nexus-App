@@ -700,6 +700,17 @@ async function fetchNotifications(meDbId: string): Promise<Notif[] | undefined> 
 
 const EMPTY_NOTIFS: Notif[] = [];
 
+// Optimistisch: alle Benachrichtigungen dieses Users sofort als gelesen
+// zeigen (Badge weg), bevor der Server geantwortet hat. Der anschliessende
+// reload("notifications") holt dann die Server-Wahrheit.
+export function markNotificationsReadLocally(meDbId: string | null) {
+  if (!meDbId) return;
+  const key = `notifications:${meDbId}`;
+  const cur = getEntry<Notif[]>(key).data;
+  if (!cur || !cur.some((n) => n.unread)) return;
+  setEntry(key, { data: cur.map((n) => (n.unread ? { ...n, unread: false } : n)) });
+}
+
 export function useNotifications(meDbId: string | null) {
   const { dataSource, hydrated } = useSettings();
   const live = hydrated && dataSource === "live" && Boolean(meDbId);

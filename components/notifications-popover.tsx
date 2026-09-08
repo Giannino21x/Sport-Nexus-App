@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Icon, type IconName } from "./icon";
 import { isMobileChrome } from "@/lib/breakpoint";
-import { reload, useMembers, type Notif } from "@/lib/hooks";
+import { markNotificationsReadLocally, reload, useMe, useMembers, type Notif } from "@/lib/hooks";
 import { markNotificationsReadAction } from "@/app/actions/notifications";
 
 type Props = { notifs: Notif[]; onClose: () => void };
@@ -19,6 +19,10 @@ function iconFor(kind: string): IconName {
 export function NotificationsPopover({ notifs, onClose }: Props) {
   const router = useRouter();
   const { data: members } = useMembers();
+  const { dbId: meDbId } = useMe();
+  // Was beim Öffnen ungelesen war, bleibt im Popover hervorgehoben, auch
+  // wenn der Store die Einträge (optimistisch) schon als gelesen führt.
+  const [unreadAtOpen] = useState(() => new Set(notifs.filter((n) => n.unread).map((n) => n.id)));
 
   // Ziel einer Nachrichten-Benachrichtigung. Der Link steht seit dem
   // notification_links-Trigger in der Zeile — aeltere Zeilen (und jede, die
@@ -32,12 +36,17 @@ export function NotificationsPopover({ notifs, onClose }: Props) {
     const m = members.find((x) => `${x.first} ${x.last}`.trim().toLowerCase() === name);
     return m ? `/messages?to=${m.id}` : "/messages";
   };
-  // Beim Öffnen serverseitig als gelesen markieren; beim Schliessen die Liste
-  // neu laden, damit der Unread-Punkt an der Glocke verschwindet. (Im Popover
-  // selbst bleibt die Hervorhebung sichtbar, solange es offen ist.)
+  // Beim Öffnen: Badge sofort weg (optimistisch im Store), serverseitig als
+  // gelesen markieren und ERST DANACH neu laden. Vorher lief der Reload beim
+  // Schliessen, oft bevor der Server-Write durch war — der Refetch brachte die
+  // alten "ungelesen"-Zeilen zurück, der Badge blieb bis zum nächsten 60-s-
+  // Tick stehen oder sprang später von selbst weg.
   useEffect(() => {
-    markNotificationsReadAction().catch(() => {});
-    return () => { reload("notifications"); };
+    markNotificationsReadLocally(meDbId);
+    markNotificationsReadAction()
+      .catch(() => {})
+      .then(() => reload("notifications"));
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- einmal pro Öffnen
   }, []);
 
   const panel = (
@@ -69,6 +78,7 @@ export function NotificationsPopover({ notifs, onClose }: Props) {
           ) : (
             notifs.map((n) => {
               const target = linkFor(n);
+              const unread = n.unread || unreadAtOpen.has(n.id);
               return (
               <div
                 key={n.id}
@@ -81,8 +91,8 @@ export function NotificationsPopover({ notifs, onClose }: Props) {
                   gap: 12,
                   padding: "12px 16px",
                   borderBottom: "1px solid var(--line)",
-                  background: n.unread ? "var(--accent-soft)" : "transparent",
-                  opacity: n.unread ? 1 : 0.7,
+                  background: unread ? "var(--accent-soft)" : "transparent",
+                  opacity: unread ? 1 : 0.7,
                   cursor: target ? "pointer" : "default",
                 }}
               >
@@ -90,11 +100,11 @@ export function NotificationsPopover({ notifs, onClose }: Props) {
                   <Icon name={iconFor(n.kind)} size={15} />
                 </div>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <div style={{ fontSize: 13, fontWeight: n.unread ? 500 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</div>
+                  <div style={{ fontSize: 13, fontWeight: unread ? 500 : 400, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{n.title}</div>
                   {n.preview && <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 2, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{n.preview}</div>}
                   <div style={{ fontSize: 11, color: "var(--ink-4)", marginTop: 3 }}>{n.time}</div>
                 </div>
-                {n.unread && <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent)", flexShrink: 0, marginTop: 6 }} />}
+                {unread && <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--accent)", flexShrink: 0, marginTop: 6 }} />}
               </div>
               );
             })

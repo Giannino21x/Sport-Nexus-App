@@ -126,6 +126,14 @@ function MessagesInner() {
     return () => window.removeEventListener("popstate", onPop);
   }, [isMobile, activeDbId]);
 
+  // Thread per Deep-Link (?to=…, z. B. Tap auf eine Benachrichtigung): mobil
+  // ebenfalls einen History-Eintrag anlegen — sonst führt die Zurück-Geste
+  // aus dem Chat direkt aus der Seite hinaus statt in die Liste.
+  useEffect(() => {
+    if (!isMobile || !toParam || !activeDbId) return;
+    if (!window.history.state?.snThread) window.history.pushState({ snThread: true }, "");
+  }, [isMobile, toParam, activeDbId]);
+
   const activeConvo = convos.find((c) => c.otherDbId === activeDbId) ?? null;
   const activeMember: Member | null = activeConvo?.other ?? (toParam ? members.find((m) => m.id === toParam) ?? null : convos[0]?.other ?? null);
 
