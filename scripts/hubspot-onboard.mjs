@@ -95,15 +95,34 @@ function transporter() {
   return _tx;
 }
 
+// Nicht-ASCII-Zeichen (ä, ö, ü, →, …) im HTML als numerische Entities
+// schreiben. Nodemailer deklariert zwar UTF-8, aber beim Weiterleiten/Anzeigen
+// in manchen Clients geht die Deklaration verloren und Umlaute werden zu
+// Fehlzeichen (Fabio, Feedback 2026-09-01). Entities sind zeichensatz-
+// unabhängig und überleben jede Umkodierung. Nur fürs HTML — der Text-Teil
+// bleibt UTF-8.
+function htmlEntities(html) {
+  return html.replace(/[^\x00-\x7F]/g, (ch) => `&#${ch.codePointAt(0)};`);
+}
+
+const APP_STORE_URL = "https://apps.apple.com/ch/app/id6780907802";
+const PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=ch.sportnexus.app";
+
 // Gebrandete Welcome-/Onboarding-Mail mit klarer Login-Anleitung. Das ist die
-// Mail, die Member (und jetzt zuerst die Founder zum Testen) erhalten.
+// Mail, die alle Members zum Start erhalten. Text nach Pascals Vorgabe vom
+// 2026-09-01 (Feedback zur Einladungsmail): Logo mit Claim, linksbündig zum
+// Text; neuer Einstieg; drei Schritte; App-Store-Links (beide Stores live).
 function welcomeEmail({ first, actionUrl }) {
   const greeting = first ? `Hallo ${first},` : "Hallo,";
-  const subject = "Willkommen bei SportNexus — dein Zugang";
+  const subject = "Willkommen in der SportNexus-Memberapp: dein Zugang";
+  const intro =
+    "willkommen in der neuen Memberapp. Dein Netzwerk hast du damit ab sofort immer griffbereit: " +
+    "Eventdetails, Memberübersicht, Direktnachrichten und die Möglichkeit, einen Tischwunsch zu platzieren, " +
+    "alles an einem Ort. Dein Zugang steht bereit, in drei kurzen Schritten bist du startklar:";
   const steps = [
-    ["1", "Passwort festlegen", "Klick auf den Button unten und vergib dein persönliches Passwort (mind. 8 Zeichen)."],
-    ["2", "Profilbild hinzufügen", "Beim ersten Login lädst du kurz ein Foto hoch — das macht das Verzeichnis persönlicher."],
-    ["3", "Loslegen", "Verzeichnis, Events, Nachrichten und dein Profil stehen dir offen."],
+    ["1", "Passwort setzen", "Klick auf den Button unten und setze dein persönliches Passwort (mind. 8 Zeichen)."],
+    ["2", "Profilbild hochladen", "Beim ersten Login lädst du ein Foto von dir hoch. Das macht die App und dein Profil persönlicher."],
+    ["3", "Loslegen", "Alle Member, Events und Nachrichten sind jetzt in der App oder Web-Version für dich verfügbar. Viel Spass!"],
   ];
   const stepRows = steps.map(([n, t, d]) => `
     <tr>
@@ -116,50 +135,58 @@ function welcomeEmail({ first, actionUrl }) {
       </td>
     </tr>`).join("");
 
-  const html = `<!doctype html><html><body style="margin:0; padding:0; background:#F7F7F7; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; color:#000;">
+  const storeBtn = (href, label) =>
+    `<a href="${href}" style="display:inline-block; border:1px solid #000; color:#000; padding:9px 14px; border-radius:6px; text-decoration:none; font-size:13.5px; font-weight:600; margin:0 8px 8px 0;">${label}</a>`;
+
+  const html = htmlEntities(`<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"></head><body style="margin:0; padding:0; background:#F7F7F7; font-family:'Helvetica Neue',Helvetica,Arial,sans-serif; color:#000;">
   <div style="max-width:560px; margin:24px auto; padding:32px; background:#FFFFFF; border-radius:8px;">
-    <!-- Weisser Chip hinter dem Logo: im Light Mode unsichtbar, verhindert im
-         Dark Mode (Client invertiert die Karte), dass der dunkle Teil des
-         Logo-PNGs unlesbar wird. -->
-    <div style="display:inline-block; background:#FFFFFF; padding:8px 12px 6px; border-radius:6px; margin:14px 0 18px;">
-      <img src="${APP_URL}/logo-sportnexus.png" alt="SportNexus" width="190" style="display:block; width:190px; max-width:60vw; height:auto; border:0;">
-    </div>
-    <h1 style="font-size:23px; font-weight:600; margin:12px 0 6px; color:#000;">${greeting}</h1>
-    <p style="margin:0 0 22px; font-size:15px; line-height:1.55; color:#000;">
-      schön, dass du dabei bist. Dein Zugang zum SportNexus-Memberbereich ist bereit — <strong>Sport trifft auf Business</strong>. In drei kurzen Schritten bist du drin:
-    </p>
+    <!-- Logo mit Claim, linksbündig zum Text (kein Chip-Padding). Das JPG bringt
+         seinen weissen Hintergrund mit und bleibt auch im Dark Mode lesbar. -->
+    <img src="${APP_URL}/logo-sportnexus-claim.jpg" alt="SportNexus. Sport trifft auf Business" width="240" style="display:block; width:240px; max-width:70vw; height:auto; border:0; margin:8px 0 22px 0;">
+    <h1 style="font-size:23px; font-weight:600; margin:0 0 6px; color:#000;">${greeting}</h1>
+    <p style="margin:0 0 22px; font-size:15px; line-height:1.55; color:#000;">${intro}</p>
     <table cellpadding="0" cellspacing="0" border="0" style="width:100%;">${stepRows}</table>
-    <div style="margin:18px 0 6px;">
-      <a href="${actionUrl}" style="display:inline-block; background:#000; color:#fff; padding:13px 22px; border-radius:6px; text-decoration:none; font-size:15px; font-weight:600;">Passwort festlegen &amp; einloggen →</a>
+    <div style="margin:14px 0 6px;">
+      <a href="${actionUrl}" style="display:inline-block; background:#000; color:#fff; padding:13px 22px; border-radius:6px; text-decoration:none; font-size:15px; font-weight:600;">Passwort setzen &amp; einloggen →</a>
     </div>
-    <p style="margin:18px 0 0; font-size:12.5px; line-height:1.5; color:#575757;">
+    <p style="margin:14px 0 0; font-size:12.5px; line-height:1.5; color:#575757;">
       Falls der Button nicht funktioniert, kopiere diesen Link in den Browser:<br>
       <span style="word-break:break-all; color:#006FB6;">${actionUrl}</span>
     </p>
+    <div style="margin:26px 0 0; padding:18px 20px; background:#F7F7F7; border-radius:8px;">
+      <div style="font-size:14.5px; font-weight:600; color:#000; margin-bottom:4px;">Die App fürs Handy</div>
+      <p style="margin:0 0 12px; font-size:13.5px; line-height:1.5; color:#575757;">
+        Am praktischsten ist SportNexus auf dem Handy: Lade die App im App Store oder bei Google Play und melde dich mit derselben E-Mail und deinem Passwort an.
+      </p>
+      ${storeBtn(APP_STORE_URL, "App Store (iPhone)")}${storeBtn(PLAY_STORE_URL, "Google Play (Android)")}
+    </div>
     <hr style="margin:28px 0; border:none; border-top:1px solid #ECECEC;">
     <p style="font-size:12px; color:#575757; margin:0 0 6px; line-height:1.5;">
-      Später meldest du dich jederzeit unter <a href="${APP_URL}/login" style="color:#006FB6;">${APP_URL.replace(/^https?:\/\//, "")}/login</a> mit deiner E-Mail und deinem Passwort an. Die App gibt's auch fürs Handy — Link folgt nach der Store-Freigabe.
+      Der Login-Link ist 4 Wochen gültig. Später meldest du dich jederzeit in der App oder unter <a href="${APP_URL}/login" style="color:#006FB6;">${APP_URL.replace(/^https?:\/\//, "")}/login</a> mit deiner E-Mail und deinem Passwort an.
     </p>
     <p style="font-size:11px; color:#868686; margin:10px 0 0; line-height:1.5;">
       Du erhältst diese E-Mail, weil für dich ein SportNexus-Member-Zugang eingerichtet wurde. Bei Fragen oder Problemen mit der App melde dich unter <a href="mailto:info@sportnexus.ch" style="color:#006FB6;">info@sportnexus.ch</a>.
     </p>
   </div>
-</body></html>`;
+</body></html>`);
 
   const text = [
     greeting,
     ``,
-    `schön, dass du dabei bist. Dein Zugang zum SportNexus-Memberbereich ist bereit.`,
+    intro,
     ``,
-    `So legst du los:`,
-    `1. Passwort festlegen — über den Link unten dein persönliches Passwort vergeben (mind. 8 Zeichen).`,
-    `2. Profilbild hinzufügen — beim ersten Login kurz ein Foto hochladen.`,
-    `3. Loslegen — Verzeichnis, Events, Nachrichten & dein Profil.`,
+    `1. Passwort setzen: Klick auf den Link unten und setze dein persönliches Passwort (mind. 8 Zeichen).`,
+    `2. Profilbild hochladen: Beim ersten Login lädst du ein Foto von dir hoch.`,
+    `3. Loslegen: Alle Member, Events und Nachrichten sind jetzt in der App oder Web-Version für dich verfügbar. Viel Spass!`,
     ``,
-    `Passwort festlegen & einloggen:`,
+    `Passwort setzen & einloggen:`,
     actionUrl,
     ``,
-    `Später: Login unter ${APP_URL}/login mit E-Mail + Passwort.`,
+    `Die App fürs Handy (gleicher Login):`,
+    `iPhone: ${APP_STORE_URL}`,
+    `Android: ${PLAY_STORE_URL}`,
+    ``,
+    `Der Login-Link ist 4 Wochen gültig. Später: Login in der App oder unter ${APP_URL}/login mit E-Mail + Passwort.`,
     `Fragen oder Probleme mit der App? Melde dich unter info@sportnexus.ch.`,
   ].join("\n");
 
@@ -500,7 +527,11 @@ async function onboardOne(admin, m) {
   // Beta-Einladungen verlinken den 4 Wochen gültigen Langzeit-Link (/invite)
   // statt des 24h-OTP-Links — makeActionLink oben stellt trotzdem sicher,
   // dass der Auth-User existiert (invite legt ihn bei Bedarf an).
-  const actionLink = BETA ? makeLongInviteLink(m.email) : linkRes.link;
+  // Beide Vorlagen verschicken den 4 Wochen gültigen Langzeit-Link (/invite):
+  // Members klicken Einladungen oft erst Wochen später, der 24h-Supabase-Link
+  // lief dann ab (Pascal, 2026-07-20). generateLink oben bleibt nötig, weil es
+  // bei neuen Adressen den Auth-User anlegt.
+  const actionLink = makeLongInviteLink(m.email);
 
   // 3. Verknüpfte Zeile (nach evtl. Invite/Trigger) holen und mit HubSpot-Daten füllen.
   const { data: rows, error: selErr } = await admin
@@ -547,7 +578,20 @@ if (testMailArg) {
   const to = testMailArg.split("=")[1].trim();
   // Mit --beta: echter Langzeit-Link auf die eigene Adresse (voll klickbar),
   // sonst Platzhalter-Link wie bisher.
-  const link = BETA ? makeLongInviteLink(to) : `${APP_URL}/auth/callback?next=/reset-password`;
+  const link = makeLongInviteLink(to);
+  // --dump=<datei>: nur das HTML der Vorlage schreiben (Vorschau/Review), nichts senden.
+  const dumpArg = args.find((a) => a.startsWith("--dump="));
+  if (dumpArg) {
+    const { writeFileSync } = await import("node:fs");
+    const file = dumpArg.split("=")[1];
+    const tpl = (BETA ? betaEmail : welcomeEmail)({ first: "Test", actionUrl: link });
+    writeFileSync(file, tpl.html, "utf8");
+    writeFileSync(file.replace(/\.html?$/, "") + ".txt", `${tpl.subject}
+
+${tpl.text}`, "utf8");
+    log(`Vorlage geschrieben: ${file}`);
+    process.exit(0);
+  }
   log(`\nTest-${BETA ? "Beta" : "Welcome"}-Mail an ${to}...`);
   try {
     const res = await sendWelcome(to, "Test", link);
