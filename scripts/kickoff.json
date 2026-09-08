@@ -1,0 +1,8 @@
+{
+  "_hinweis": "Kickoff-Einladung an alle Members. armed auf true setzen, sobald Pascal die Ausschlussliste (Boris/Fabio) geliefert hat. Versand nur im Fenster ab send_at. Siehe scripts/kickoff-send.mjs.",
+  "armed": false,
+  "send_at": "2026-09-17T14:00:00+02:00",
+  "window_min": 120,
+  "status": "Founder,Seed Member,Early Member,Regular Member,Stellvertreter,Premium Sponsor,Moderation",
+  "exclude": []
+}

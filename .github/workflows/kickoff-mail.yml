@@ -1,0 +1,66 @@
+name: Kickoff-Einladung an alle Members
+
+# Verschickt die Einladungsmail (Welcome-Vorlage, 4-Wochen-Link) an alle Members
+# am Eventtag 17.09.2026 um 14:00 MESZ (Pascal, 2026-09-08). Cron läuft in UTC:
+# 12:00 UTC = 14:00 MESZ. GitHub-Cron kann einige Minuten verzögert starten;
+# scripts/kickoff-send.mjs sendet nur innerhalb des Fensters ab send_at und nur,
+# wenn scripts/kickoff.json auf "armed": true steht.
+#
+# Manuell: Actions → «Kickoff-Einladung» → Run workflow → mode=dry-run zeigt die
+# Kandidatenliste, mode=live-now verschickt sofort (Fenster ignoriert).
+#
+# Benötigte Repository-Secrets (zusätzlich zu denen des Guestoo-Syncs):
+#   HUBSPOT_TOKEN, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, SMTP_FROM, APP_URL
+
+on:
+  schedule:
+    - cron: "0 12 17 9 *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run (nur anzeigen) | live (nur im Fenster) | live-now (sofort)"
+        default: dry-run
+        type: choice
+        options: [dry-run, live, live-now]
+
+concurrency:
+  group: kickoff-mail
+  cancel-in-progress: false
+
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: .env.local aus Secrets erzeugen
+        run: |
+          cat > .env.local <<EOF
+          NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          HUBSPOT_TOKEN=${{ secrets.HUBSPOT_TOKEN }}
+          SMTP_HOST=${{ secrets.SMTP_HOST }}
+          SMTP_PORT=${{ secrets.SMTP_PORT }}
+          SMTP_USER=${{ secrets.SMTP_USER }}
+          SMTP_PASS=${{ secrets.SMTP_PASS }}
+          SMTP_FROM=${{ secrets.SMTP_FROM }}
+          APP_URL=${{ secrets.APP_URL }}
+          EOF
+
+      - name: Kickoff-Versand
+        env:
+          MODE: ${{ github.event_name == 'schedule' && 'live' || inputs.mode }}
+        run: |
+          case "$MODE" in
+            live)     node scripts/kickoff-send.mjs --live ;;
+            live-now) node scripts/kickoff-send.mjs --live --now ;;
+            *)        node scripts/kickoff-send.mjs ;;
+          esac

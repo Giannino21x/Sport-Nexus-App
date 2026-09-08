@@ -68,6 +68,23 @@ const BETA = args.includes("--beta");
 // --skip-active: Members auslassen, die sich schon eingeloggt haben (Launch-
 // Runde 23.07.: Founder/Pascal/Giannino brauchen keine Welcome-Mail mehr).
 const SKIP_ACTIVE = args.includes("--skip-active");
+// --exclude=a@x.ch,b@y.ch bzw. --exclude-file=<datei> (eine E-Mail pro Zeile,
+// `#` = Kommentar): Members, die KEINE Einladung bekommen sollen, obwohl ihr
+// Status passt (Kickoff 17.09.2026: «keine Verlängerung, aber keine Kündigung»,
+// Liste kommt von Pascal/Boris/Fabio). Ehemalige/LOST fallen schon über
+// --status raus.
+const excludeArg = args.find((a) => a.startsWith("--exclude="));
+const excludeFileArg = args.find((a) => a.startsWith("--exclude-file="));
+const EXCLUDE = new Set(
+  [
+    ...(excludeArg ? excludeArg.split("=")[1].split(",") : []),
+    ...(excludeFileArg
+      ? readFileSync(excludeFileArg.split("=")[1], "utf8").split(/\r?\n/).map((l) => l.replace(/#.*$/, ""))
+      : []),
+  ]
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean),
+);
 
 const log = (...a) => console.log(...a);
 
@@ -621,6 +638,16 @@ let candidates = contacts
   .filter((m) => m.email)
   .filter((m) => ALLOWED_STATUS.includes((m.memberstatus ?? "").toLowerCase()))
   .filter((m) => !ONLY || ONLY.includes(m.email));
+
+if (EXCLUDE.size > 0) {
+  const excluded = candidates.filter((m) => EXCLUDE.has(m.email));
+  candidates = candidates.filter((m) => !EXCLUDE.has(m.email));
+  const unknown = [...EXCLUDE].filter((e) => !contacts.some((c) => (c.properties.email ?? "").toLowerCase() === e));
+  log(`--exclude: ${excluded.length} Member ausgeschlossen:`);
+  for (const m of excluded) log(`  – ${m.first} ${m.last} <${m.email}>`);
+  if (unknown.length) log(`  (nicht in HubSpot gefunden, ignoriert: ${unknown.join(", ")})`);
+  log("");
+}
 
 // --skip-active: wer sich schon eingeloggt hat, kennt die App — keine Mail.
 if (SKIP_ACTIVE) {

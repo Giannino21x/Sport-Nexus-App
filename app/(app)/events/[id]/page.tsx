@@ -30,6 +30,15 @@ export default function EventDetailPage() {
   const { isRegistered, setRegistered } = useMyRegistrations();
 
   const [attendeesOpen, setAttendeesOpen] = useState(false);
+  // Rücksprung aus einem Memberprofil («Zurück zum Event», Pascal-Feedback
+  // 2026-09-08): Die Liste ist sonst wieder zugeklappt und man klickt für jede
+  // Person erneut «Alle anzeigen». Mit #teilnehmer im Link bleibt sie offen.
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.location.hash === "#teilnehmer") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- bewusst: Hash nur beim Mount lesen
+      setAttendeesOpen(true);
+    }
+  }, []);
   const [attendees, setAttendees] = useState<EventAttendee[] | null>(null);
   const [stats, setStats] = useState<EventStats | null>(null);
   // Breite Bilder (~16:9) füllen den Hero komplett (cover) — keine grauen
@@ -315,8 +324,9 @@ export default function EventDetailPage() {
             </div>
           )}
 
-          {/* Teilnehmer-Karte: direkt unterhalb von "Ablauf", gleiche Breite (Pascal). */}
-          <div className="card" style={{ padding: 24 }}>
+          {/* Teilnehmer-Karte: direkt unterhalb von "Ablauf", gleiche Breite (Pascal).
+              id=teilnehmer: Sprungziel für «Zurück zum Event» aus dem Memberprofil. */}
+          <div id="teilnehmer" className="card" style={{ padding: 24, scrollMarginTop: 80 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, gap: 10 }}>
               <div className="upper-label">{past ? "Wer teilnahm" : "Wer kommt"}</div>
               {attendingPreview.length > 0 && (
@@ -447,7 +457,9 @@ export default function EventDetailPage() {
                   {attendeesFull.map((m) => m.memberSlug ? (
                     <Link
                       key={m.id}
-                      href={`/directory/${m.memberSlug}`}
+                      // from=event:<id>: das Profil zeigt dann «Zurück zum Event»
+                      // statt «Zurück zur Memberübersicht» (Teilnehmende durchgehen).
+                      href={`/directory/${m.memberSlug}?from=event:${encodeURIComponent(id)}`}
                       style={{
                         display: "flex",
                         alignItems: "center",

@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
-import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { Avatar } from "@/components/avatar";
 import { Icon } from "@/components/icon";
 import { useSettings } from "@/components/settings-context";
@@ -26,7 +26,32 @@ function formatSinceLong(s: string): string {
     .toLocaleDateString("de-CH", { day: "numeric", month: "long", year: "numeric" });
 }
 
+// useSearchParams (für ?from=…) verlangt eine Suspense-Grenze, sonst fällt die
+// ganze Route beim Prerender auf Client-Rendering zurück (Next-Hinweis).
 export default function MemberDetailPage() {
+  return (
+    <Suspense fallback={null}>
+      <MemberDetailInner />
+    </Suspense>
+  );
+}
+
+// Zurück-Link: standardmässig zur Memberübersicht. Kommt man aus der Teilnehmer-
+// liste eines Events (?from=event:<id>), führt er zurück zum Event und lässt die
+// Liste offen (#teilnehmer) — Pascal-Feedback 2026-09-08: Teilnehmende einzeln
+// durchgehen und ggf. anschreiben, ohne jedes Mal über die Übersicht zu gehen.
+function BackLink() {
+  const from = useSearchParams().get("from") ?? "";
+  const eventId = from.startsWith("event:") ? from.slice("event:".length) : null;
+  const href = eventId ? `/events/${encodeURIComponent(eventId)}#teilnehmer` : "/directory";
+  return (
+    <Link href={href} className="btn btn-text" style={{ marginBottom: 12, padding: "6px 10px", fontSize: 12.5, color: "var(--ink-3)", display: "inline-flex" }}>
+      ← {eventId ? "Zurück zum Event" : "Zurück zur Memberübersicht"}
+    </Link>
+  );
+}
+
+function MemberDetailInner() {
   const params = useParams<{ id: string }>();
   const id = params.id;
   const { data: m, isDemo, resolved } = useMember(id);
@@ -52,9 +77,7 @@ export default function MemberDetailPage() {
   if (!resolved && !m) {
     return (
       <div>
-        <Link href="/directory" className="btn btn-text" style={{ marginBottom: 12, padding: "6px 10px", fontSize: 12.5, color: "var(--ink-3)", display: "inline-flex" }}>
-          ← Zurück zur Memberübersicht
-        </Link>
+        <BackLink />
         <div className="card" style={{ padding: 0, overflow: "hidden", marginBottom: 18 }}>
           <Skel h={140} r={0} />
           <div style={{ padding: "18px 28px 24px", display: "flex", gap: 18, alignItems: "flex-end" }}>
@@ -93,9 +116,7 @@ export default function MemberDetailPage() {
   if (!m) {
     return (
       <div>
-        <Link href="/directory" className="btn btn-text" style={{ marginBottom: 12, padding: "6px 10px", fontSize: 12.5, color: "var(--ink-3)", display: "inline-flex" }}>
-          ← Zurück zur Memberübersicht
-        </Link>
+        <BackLink />
         <div style={{ padding: 40, textAlign: "center", color: "var(--ink-3)" }}>
           <div className="serif" style={{ fontSize: 24 }}>Mitglied nicht gefunden</div>
           <div style={{ fontSize: 13, marginTop: 6 }}>Dieses Profil existiert nicht (mehr).</div>
@@ -112,9 +133,7 @@ export default function MemberDetailPage() {
 
   return (
     <div>
-      <Link href="/directory" className="btn btn-text" style={{ marginBottom: 12, padding: "6px 10px", fontSize: 12.5, color: "var(--ink-3)", display: "inline-flex" }}>
-        ← Zurück zur Memberübersicht
-      </Link>
+      <BackLink />
 
       <div className="card" style={{ padding: 0, overflow: "hidden", marginBottom: 18 }}>
         <div
